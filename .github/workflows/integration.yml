@@ -1,0 +1,32 @@
+name: Cross-service integration
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: integration-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  economy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: game
+      - uses: actions/checkout@v4
+        with:
+          repository: cordisx/plugin-economy
+          ref: 2db025570fbe570d3964b2f2252ca7ff6e7fbb05
+          path: economy
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.14.1
+      - run: npm ci --ignore-scripts && npm run build
+        working-directory: economy
+      - run: npm ci --ignore-scripts && npm run build
+        working-directory: game
+      - run: node --test integration/economy.test.mjs
+        working-directory: game
+        env:
+          ECONOMY_REPOSITORY: ${{ github.workspace }}/economy
