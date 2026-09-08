@@ -27,6 +27,13 @@ controlled-turn `read` both confirm completion. Abort and disposal call public
 `cancel` with the exact controlled turn. Shared Host clients are not disposed.
 The package pins the experimental Protocol commit
 `8adc1aab908263e692bd56ca6165b9aeadabe4b9`; it is not a released Host capability.
+Protocol is a package dependency because exported TypeScript source references its
+types. When a sibling client uses `file:../agents`, commit `install-links=true` in
+the client's `.npmrc` and regenerate its lockfile. npm's default local symlink does
+not install that linked package's dependencies. The materialized install supports
+a clean client without an existing `agents/node_modules`. Run
+`npm run check:consumer --prefix agents` to verify a fresh sibling install, frozen
+`npm ci` reinstall and strict consumer typecheck with library checking enabled.
 
 `dispatch(input)` creates a dispatch and starts automatic polling. `get`, `list`
 and `subscribe` expose cloned snapshots containing status and budgets, with no
@@ -100,3 +107,6 @@ server checkout and run `npm test --prefix agents`. That integration test uses a
 real ephemeral HTTP server, SQLite and QuickJS game execution, with a deterministic
 provider fixture. It proves transport/lifecycle behavior, not real AI inference,
 native Host operation or user acceptance. See [Agent delivery evidence](agents-evidence.md).
+Set `GAME_ROOM_PACKAGES` to the built games `dist` directory as well to exercise
+complete Gomoku and Texas Hold'em matches through dispatch using seat legal-action
+descriptors. Those players are explicitly deterministic test fixtures.
