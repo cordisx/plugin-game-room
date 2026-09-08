@@ -37,9 +37,9 @@ a clean client without an existing `agents/node_modules`. Run
 `npm ci` reinstall and strict consumer typecheck with library checking enabled.
 
 For native integration, the experimental Host checkpoint is
-`1d2636adbe239550fd70e3e82d4b43681a800833`, paired with the Protocol commit above.
+`69b0146c4d4b6acd411758ae4ec3005ea74d0b89`, paired with the Protocol commit above.
 Build its SDK using the Host-owned
-[exact-source packaging guide](https://github.com/cordisx/cordisx/blob/1d2636adbe239550fd70e3e82d4b43681a800833/.agents/docs/sdk-source-packaging.md).
+[exact-source packaging guide](https://github.com/cordisx/cordisx/blob/69b0146c4d4b6acd411758ae4ec3005ea74d0b89/.agents/docs/sdk-source-packaging.md).
 The client owns its Host dependency and lockfile; this package depends only on
 Protocol. Artifact identities and validation limits are recorded in
 [Agent delivery evidence](agents-evidence.md).
