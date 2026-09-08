@@ -8,11 +8,11 @@ not user acceptance or a released Host capability.
 
 `client/` is an independent npm package generated from the maintained Host creator.
 Follow [reproduction](../client/README.md): `prepare-sdk.mjs` fetches exact Host
-`69b0146c4d4b6acd411758ae4ec3005ea74d0b89` and Protocol
+`be2403c70664ff6624671224a405e409874d59c7` and Protocol
 `465c444c65eec1be8e337b94c2cf658ed536f49c`, builds/packs into ignored `.cache`, and
 checks the expected archive hashes against `sdk-evidence.json`. Final candidate
 Host archive SHA256:
-`42f655ad735fd430e6f455bbb2e8da31f5eb564c247a3c31bbb1e9774df131c4`.
+`abd300ccade96d095563f95f971164838237a376655a55b7f96bdccb3bf2dd46`.
 Protocol archive SHA256:
 `9576e28592b44c589aa847f3e57c02db1731a664c5cfa5a0f1fd5c4b5a3e21c8`.
 The wrapper invokes the Host’s `scripts/prepare-sdk.mjs` with a new absolute output
@@ -71,7 +71,7 @@ max-lines policy run in the independent client gate.
 
 ## Verification record
 
-With release-candidate Host `69b0146`, `npm --prefix client run check` passes formatting,
+With release-candidate Host `be2403c`, `npm --prefix client run check` passes formatting,
 source/CSS lint, typecheck, 11 behavior tests (one real-server test explicitly
 skipped), build and verification of all four indexed runtime files.
 `dev:dry-run` also passes. Existing-client installation of the complete SDK took
@@ -115,6 +115,12 @@ install trees, then restarted the sole lightweight Playground at
 provider experimental dist. Homepage and source-runtime requests return HTTP 200.
 This is HTTP readiness only: Mac lock blocked CUA, so fresh clicks/screenshots wait
 for unlock. No existing user App was restarted.
+
+The first client Linux run using H69b0146 failed during SDK preparation, before
+client installation: Proxy compilation picked up the enclosing game repository’s
+TypeScript 6 and reported CSS side-effect import errors. Host be2403c isolates
+plugin-local build tools in the maintained recipe. The client keeps the same
+recipe call and compiler settings; the corrected cold Linux run remains a CI gate.
 
 The superseded H510 archive mismatch was traced to executable metadata alone.
 H69b0146 fixes entry modes, bundles complete Channel/Proxy, and resolves Protocol
