@@ -1,0 +1,9 @@
+{
+  "id": "gomoku",
+  "version": "1.0.0",
+  "name": "五子棋",
+  "minPlayers": 2,
+  "maxPlayers": 2,
+  "modes": ["score", "local-chips", "token"],
+  "description": "15×15 自由五子棋；连成至少五子获胜，超时判负。"
+}

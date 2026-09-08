@@ -1,0 +1,14 @@
+{
+  "lineWidth": 100,
+  "indentWidth": 2,
+  "typescript": { "quoteStyle": "preferSingle", "semiColons": "asi" },
+  "includes": ["**/*.{js,mjs,json,md,css,html}"],
+  "excludes": ["node_modules/**", "dist/**", "package-lock.json"],
+  "plugins": [
+    "npm:@dprint/typescript@0.96.1",
+    "npm:@dprint/json@0.23.0",
+    "npm:@dprint/markdown@0.23.3",
+    "https://plugins.dprint.dev/g-plane/malva-v0.16.0.wasm",
+    "https://plugins.dprint.dev/g-plane/markup_fmt-v0.25.0.wasm"
+  ]
+}
