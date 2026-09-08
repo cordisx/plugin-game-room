@@ -46,10 +46,12 @@ small four-seat game is an integration fixture, not the shipped game package.
 It verifies one human and two owned Agent seats against a second human, one-time
 account linking, aggregated consent and reservations, conserved payout, a shop
 purchase with response retry, and a fresh match rejecting old Agent grants.
-It does not run a model, render uploaded UI or fulfill an item in Pet.
+It also executes the author UI renderer in a separate guest and checks that its
+scene contains only the selected seat's observation. It does not run a model,
+draw the scene in a native Host or fulfill an item in Pet.
 
 Observed passing on 2026-09-09 with game server
-`093fbfd455928df8309b5e531a247aa7ca1b1c03`, Agent package
-`155e43af73ca6f051c921d3bb119e19581dbf8bc`, and economy
-`8719f1aecac6b115b220723d83d0ff808a1072d6`. This is component integration evidence;
+`88155a87cfd55949796714fa9a2f8138d1425cbb`, Agent package
+`0df25226eb747bc8dc3f735d0c629003b544c4ac`, and economy
+`2db025570fbe570d3964b2f2252ca7ff6e7fbb05`. This is component integration evidence;
 native Host, final merged revisions and user acceptance remain separate gates.

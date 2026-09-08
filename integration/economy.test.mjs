@@ -99,7 +99,16 @@ test('real game and economy HTTP: multiple owned seats, consent, settlement, pur
         return s.move===4?{state:s,turn:null,done:{winners:[3]}}:{state:s,turn:s.move}},
       timeout(s){return {state:s,turn:null,done:{winners:[]}}}
     }`,
-    ui: { html: '<!doctype html><p>Integration game</p>' },
+    ui: {
+      format: 'scene-v1',
+      render: `globalThis.render=function(observation,context){
+        if(typeof process!=='undefined'||typeof fetch!=='undefined')throw Error('unexpected host');
+        return {version:1,root:{type:'stack',children:[
+          {type:'text',text:observation.hand},
+          {type:'button',label:'Move',action:{type:'move'},disabled:!context.canAct}
+        ]}};
+      }`,
+    },
   }
   const published = await request(gameUrl, '/packages', alice.token, packageData)
   assert.equal(published.reviewState, 'unreviewed')
@@ -161,6 +170,8 @@ test('real game and economy HTTP: multiple owned seats, consent, settlement, pur
     const observation = await request(gameUrl, '/agent/observation', grant.token)
     assert.equal(observation.observation.hand, `seat-secret-${view.seats.findIndex(s => s.id === seat.id)}`)
     assert.equal(JSON.stringify(observation).includes('seat-secret-0'), false)
+    assert.equal(observation.sceneError, null)
+    assert.equal(observation.scene.root.children[0].text, observation.observation.hand)
     grants.push(grant)
   }
   for (const token of [alice.token, bob.token, ...grants.map(g => g.token)]) {
