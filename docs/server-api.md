@@ -14,7 +14,7 @@ allowlist, not authentication. Each configured source has its own URL and server
 - `GET /health` → `{ok:true}`.
 - `GET /v1/handshake` → `{protocol:"game-room/1",serverId,gamePackageVersion:1,
   runtime:"quickjs-wasm",modes:["score","local-chips","token"],economyAvailable,
-  economy:{url,gameServiceId}|null}`.
+  economy:{url,gameServiceId,instanceId:string|null}|null}`.
 - `POST /v1/accounts` `{name,password}` → `{account:{id,name},token}`.
 - `POST /v1/sessions` `{name,password}` → same. Name 3–40 ASCII letters/digits,
   underscore/hyphen, case-insensitive; password 12–256 characters.
@@ -31,7 +31,7 @@ all room seat operations and replay require an appropriate credential.
 ## Immutable packages and UI
 
 `POST /v1/packages` (human session) publishes GamePackage v1. Response metadata:
-`{hash,manifest,publisherId,reviewState:"unreviewed",uiUrl}`.
+`{hash,manifest,publisherId,reviewState:"unreviewed",uiUrl,uiSha256}`.
 `GET /v1/packages` → `{packages:[metadata]}`;
 `GET /v1/packages/:hash` → metadata. Hash is SHA-256 of recursively key-sorted
 canonical JSON of the entire package. Publisher + manifest.id + version cannot
@@ -61,6 +61,7 @@ Publishing validates syntax, top-level resource use and four required entry poin
 inside QuickJS; it does not assert fairness or correctness of every configuration.
 
 `GET /v1/packages/:hash/ui` is immutable HTML, one-year cache and hash ETag.
+uiSha256 is SHA-256 of exact UTF-8 ui.html, separate from the package hash.
 Response CSP includes `sandbox allow-scripts`, no network, forms, external scripts,
 base URL, or same-origin privilege. Client must additionally use an iframe sandbox
 with scripts only; never load this HTML into a trusted renderer. Parent bridge is
@@ -138,12 +139,13 @@ never touch wallets. Config, packageHash, manifest, mode, stakes and policy rema
 fixed in the room. A room keeps roomId but each round gets a fresh matchId/handNo.
 
 Room mutations return `RoomView` unless specified. RoomCard fields:
-`id,matchId,handNo,serverId,packageHash,manifest,mode,config,maxPlayers,allowAgents,
+`id,creatorAccountId,matchId,handNo,serverId,packageHash,manifest,mode,config,maxPlayers,allowAgents,
 turnTimeoutMs,stake,policy,reviewState,status,version,seats,turn,deadline,result,
-settlement,funding`. RoomView adds `selfSeatId,observation`.
+settlement,funding,economyIdentity`. RoomView adds `selfSeatId,observation`.
 Status `waiting | funding | playing | finished | aborted`.
 Settlement `none | pending | reserved | settled | refunded`.
-Funding `{economyUrl,agreementId,termsHash}|null`. Deadlines are Unix milliseconds.
+Funding `{economyUrl,agreementId,termsHash}|null`; economyIdentity
+`{instanceId,gameServiceId,url}|null` pins the currency source. Deadlines are Unix milliseconds.
 Seat `{id,kind:"human"|"agent",participantId:string|null,accountId,name,ready}`;
 accountId is the economic owner, not a unique seat identity.
 
@@ -191,7 +193,9 @@ Idempotency-Key. They send resulting short-lived opaque code to the game server:
 `POST /v1/economy/link {code}`. Server redeems it using its own service credential,
 verifies service/account audience, and saves only economic accountId. A `token`
 field is rejected. A link cannot change while that owner has active token rooms;
-two game accounts on one server cannot link the same economic account.
+two game accounts on one server cannot link the same economic account. First link
+pins instanceId + serviceId + canonical URL persistently; mismatches return 409
+economy_instance_changed, including reused account IDs after a server restart.
 
 Starting token mode persists funding terms before creating the economic agreement.
 All seats owned by one account aggregate into one participant's amount and

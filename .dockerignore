@@ -1,0 +1,11 @@
+.git
+node_modules
+dist
+.data
+.env
+.env.*
+*.sqlite
+*.sqlite-*
+client
+agents
+games

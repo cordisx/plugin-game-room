@@ -3,12 +3,16 @@
   "includes": [
     "server/**/*.ts",
     "sdk/**/*.ts",
-    "tests/server/**/*.ts",
+    "tests/server/**/*.{ts,mjs}",
     "docs/server*.md",
     "package.json",
     "tsconfig.json",
     "eslint.config.mjs",
     "dprint.json"
   ],
-  "excludes": ["node_modules", "dist", "package-lock.json"]
+  "excludes": [
+    "node_modules",
+    "dist",
+    "package-lock.json"
+  ]
 }

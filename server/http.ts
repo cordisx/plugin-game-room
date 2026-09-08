@@ -91,7 +91,13 @@ export function createGameServer(options: ServerOptions = {}) {
           runtime: 'quickjs-wasm',
           modes: ['score', 'local-chips', 'token'],
           economyAvailable: !!options.economy,
-          economy: options.economy ? { url: options.economy.url, gameServiceId: options.economy.serviceId } : null,
+          economy: options.economy
+            ? {
+              url: options.economy.url,
+              gameServiceId: options.economy.serviceId,
+              instanceId: engine.economyIdentity()?.instanceId ?? null,
+            }
+            : null,
         })
         return
       }
@@ -219,8 +225,13 @@ export function createGameServer(options: ServerOptions = {}) {
   server.headersTimeout = 10000
   server.timeout = 15000
   server.maxHeadersCount = 50
+  let tickQueued = false
   const interval = options.tickMs === 0 ? null : setInterval(() => {
-    void engine.serial(() => engine.tick()).catch(() => {})
+    if (tickQueued) return
+    tickQueued = true
+    void engine.serial(() => engine.tick()).catch(() => {}).finally(() => {
+      tickQueued = false
+    })
   }, options.tickMs ?? 1000)
   interval?.unref()
   return {

@@ -79,3 +79,45 @@ Sites runtime for those capabilities has been supplied in this repository. There
 this delivery provides self-hosting and does not claim a Sites deployment. A future
 adapter must verify those requirements or implement a supported persistence/runtime
 replacement before being advertised.
+
+## Deployment artifacts
+
+`deploy/Dockerfile` is a two-stage Node build, runtime dependencies only and an
+unprivileged runtime user. `deploy/compose.yaml` binds ingress only on loopback,
+uses a persistent named data volume and drops container capabilities. From the
+repository root, operators may run:
+
+```sh
+docker compose -f deploy/compose.yaml config
+docker compose -f deploy/compose.yaml up --build -d
+```
+
+Set the environment shown above before starting; empty economic settings leave
+Token unavailable. TLS ingress is a separate operator responsibility. The supplied
+systemd unit assumes a `game-room` service account, built application at
+`/opt/game-room`, Node at `/usr/bin/node`, and mode-0600 `/etc/game-room.env`.
+Review these paths before installation. This task does not install the unit,
+start containers or modify existing services.
+
+Container build/runtime is unverified in this development environment: Docker CLI
+is installed, but `docker version` reports it cannot connect to the Colima daemon.
+Compose syntax is checked offline with the installed standalone `docker-compose`
+CLI; the Docker Compose subcommand is not installed here. The compiled Node entry and production
+runtime dependencies are smoke-tested separately; that is not a Docker runtime test.
+
+Economic identity is pinned on first successful link as instanceId + serviceId +
+canonical URL, persisted separately from credentials and copied into token rooms.
+Changing any component returns `economy_instance_changed`; credential rotation for
+the same identity is possible, but switching currency instances is not an implicit
+migration. Use a separately initialized game-server identity for another economy,
+or implement an explicit audited migration before reusing account links. Agreement
+reads and settlement acknowledgements must match pinned identity and terms; server
+also checks the economic settled payout record against its requested allocation.
+An unexpected already-settled agreement without a matching game settlement remains
+pending for operator investigation; it is never labelled refunded or successful.
+
+The CI workflow template is `deploy/github-workflow.yml`. Installing it as
+`.github/workflows/server.yml` requires a repository credential with GitHub's
+workflow permission; the task's OAuth credential rejects workflow-path pushes.
+The template runs the complete owner gate and a Docker build on Linux. It has
+not been installed or run by this delivery.

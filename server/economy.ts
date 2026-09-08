@@ -2,9 +2,12 @@ import type { RoomCard } from '../sdk/index.js'
 import { ApiError, requireThat } from './errors.js'
 export interface Agreement {
   id: string
+  instanceId: string
+  serviceId: string
   termsHash: string
   state: 'open' | 'settled' | 'cancelled' | 'expired'
   reservations: string[]
+  outcomeId?: string | null
 }
 export interface FundingTerms {
   matchId: string
@@ -34,6 +37,7 @@ export interface EconomyAdapter {
 export class HttpEconomy implements EconomyAdapter {
   constructor(readonly url: string, private serviceToken: string, readonly serviceId: string) {
     const parsed = new URL(url)
+    requireThat(!parsed.username && !parsed.password && !parsed.search && !parsed.hash, 'invalid_economy_url')
     requireThat(
       parsed.protocol === 'https:'
         || (parsed.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(parsed.hostname)),
@@ -52,7 +56,16 @@ export class HttpEconomy implements EconomyAdapter {
       signal: AbortSignal.timeout(5000),
       redirect: 'error',
     })
-    if (!response.ok) throw new ApiError(503, 'economy_unavailable')
+    if (!response.ok) {
+      const error = await response.json().catch(() => null) as { error?: { code?: string } } | null
+      const code = error?.error?.code
+      throw new ApiError(
+        response.status >= 500 ? 503 : response.status,
+        typeof code === 'string' && /^[A-Z0-9_]{1,64}$/.test(code)
+          ? `economy_${code.toLowerCase()}`
+          : 'economy_unavailable',
+      )
+    }
     return response.json()
   }
   async redeem(code: string, gameAccountId: string, key: string) {
