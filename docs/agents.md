@@ -20,13 +20,15 @@ Joining another person's room is supported when that room allows Agents.
 `createAgentLoopProvider` accepts public `agentLoop` v4 and additive
 `agentLoopControl` v1 clients, a `providerId`, `executionMode: 'ordinary'` and
 `aggregateRewards: 'disabled-or-game-excluded'`. Missing control or unconfirmed
-reward policy returns typed availability information. It creates an independent
-task, uses the profile's fixed model with high effort, and subscribes to that exact
-binding. An action is returned only after its matching completion event and
+reward policy returns typed availability information. It calls
+`agentLoopControl.create` to create an independent task in a fresh Host-owned game
+working directory, uses the profile's fixed model with high effort, and subscribes
+to that exact v4 binding. A control client missing `create` is unavailable; there
+is no fallback to legacy task creation in the user's workspace. An action is returned only after its matching completion event and
 controlled-turn `read` both confirm completion. Abort and disposal call public
 `cancel` with the exact controlled turn. Shared Host clients are not disposed.
 The package pins the experimental Protocol commit
-`8adc1aab908263e692bd56ca6165b9aeadabe4b9`; it is not a released Host capability.
+`dbc494ed11f566a962ab1525cddee3645759b794`; it is not a released Host capability.
 Protocol is a package dependency because exported TypeScript source references its
 types. When a sibling client uses `file:../agents`, commit `install-links=true` in
 the client's `.npmrc` and regenerate its lockfile. npm's default local symlink does

@@ -19,9 +19,23 @@ for (const name of ['gomoku-1.0.0', 'texas-holdem-1.0.0']) {
       const h = await harness();
       t.after(() => h.app.close());
       const pkg = JSON.parse(await readFile(resolve(packagesRoot!, `${name}.json`), 'utf8'));
-      const room = await h.room(pkg, {
+      const published = await h.request('/v1/packages', h.alice.token, pkg);
+      assert.equal(published.status, 200, JSON.stringify(published.body));
+      const created = await h.request('/v1/rooms', h.alice.token, {
+        packageHash: published.body.hash,
+        mode: 'score',
+        allowAgents: true,
         policy: pkg.manifest.settlementPolicies?.[0] ?? 'equal-winners-v1',
       });
+      assert.equal(created.status, 200, JSON.stringify(created.body));
+      const path = `/v1/rooms/${created.body.id}`;
+      assert.equal((await h.request(path + '/join', h.bob.token, {})).status, 200);
+      for (const owner of [h.alice, h.bob]) {
+        assert.equal((await h.request(path + '/ready', owner.token, { ready: true })).status, 200);
+      }
+      const started = await h.request(path + '/start', h.alice.token, {});
+      assert.equal(started.status, 200, JSON.stringify(started.body));
+      const room = started.body;
       assert.equal(room.status, 'playing', JSON.stringify(room));
       const grants: SeatGrant[] = [];
       const tokens = new Map<string, string>();
