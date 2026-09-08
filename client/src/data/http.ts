@@ -5,12 +5,18 @@ export type HttpRequest = {
   method?: 'GET' | 'POST' | 'DELETE'
   body?: unknown
   signal: AbortSignal
+  format?: 'json' | 'text'
   authenticated?: boolean
+  idempotencyKey?: string
 }
 /** Implemented by the public Host network capability; never resolve credential handles in React. */
 export interface HttpTransport {
+  exchange?(request: HttpRequest, credentialField: string): Promise<{ credentialRef: string; value: unknown }>
+  requestCredential?(request: HttpRequest & { credentialRef: string }): Promise<{ status: number; body: unknown }>
+  disconnect?(source: Source): Promise<void>
+  connect?(source: Source, credential: 'none' | 'bearer'): Promise<void>
   request(request: HttpRequest): Promise<unknown>
-  dispose(): void
+  dispose(): void | Promise<void>
 }
 export class PublicDiscoveryTransport implements HttpTransport {
   async request(request: HttpRequest): Promise<unknown> {
@@ -28,7 +34,7 @@ export class PublicDiscoveryTransport implements HttpTransport {
     if (!response.ok) throw new Error(`来源返回 HTTP ${response.status}`)
     const text = await response.text()
     if (text.length > 2_000_000) throw new Error('来源响应超过大小限制')
-    return JSON.parse(text)
+    return request.format === 'text' ? text : JSON.parse(text)
   }
   dispose() {}
 }
@@ -47,4 +53,10 @@ export function number(value: unknown): number {
 export function array(value: unknown): unknown[] {
   if (!Array.isArray(value)) throw new Error('服务器列表字段不兼容')
   return value
+}
+
+export class RequestFailure extends Error {
+  constructor(message: string, readonly outcome: 'rejected' | 'uncertain') {
+    super(message)
+  }
 }

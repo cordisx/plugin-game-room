@@ -1,67 +1,96 @@
 # Client implementation and verification
 
-Audience: plugin maintainers. This guide indexes the client-owned implementation;
-[server API](server-api.md) owns wire semantics and [architecture](architecture.md)
-owns product invariants. This is an implementation checkpoint, not user acceptance.
+Audience: plugin maintainers. [Server API](server-api.md) owns wire semantics;
+[architecture](architecture.md) owns scope. This records implementation and evidence,
+not user acceptance or a released Host capability.
 
-## Package and preview
+## Build and ownership
 
-`client/` is an independent npm package/lock generated from maintained Host creator
-`b75fa2c6f9563924feca271242e2709c136033a3`. `cordisx/vite` produces the indexed
-`dist/runtime/artifact.json`, entry, lazy page chunk and CSS. Initial registration
-has no imported page stylesheet. React comes only from `cordisx/react`.
+`client/` is an independent npm package generated from the maintained Host creator.
+Follow [reproduction](../client/README.md): `prepare-sdk.mjs` fetches exact Host
+`5101d6ec25409a65d939fb4214b4144a5eb672df` and Protocol
+`465c444c65eec1be8e337b94c2cf658ed536f49c`, builds/packs into ignored `.cache`, and
+records SHA256 provenance. Expected provider Host tarball SHA256:
+`638477682bf0de2ce2ba5c1b6f793ffbc46b4e238324b17ba39fcb28e8164dc2`.
+The relative package dependency avoids machine paths. Sibling Agents are materialized
+with `install-links=true`; its own exact Protocol dependency is preserved.
 
-`client/cordisx.config.json` is an explicitly labelled **sample-data** Playground
-composition. `sample:false` selects live discovery. Sources are separate origin,
-server identity and account tuples. Sample state never falls back into live state.
+`cordisx/vite` emits indexed entry, lazy app chunks and CSS. Initial registration
+has no imported page stylesheet. Runtime React comes only from `cordisx/react`.
 
-Host owns the Header, three top-level route tabs (Lobby, My Agents, Dispatch),
-controls, outer padding and Manager scrolling. Client owns the compact two-column
-room results and right-hand Agent list. Personal history and balances are child
-pages; sources belong to settings. There is no global current-server selector.
+Host owns Header, three top-level tabs (Lobby, My Agents, Dispatch), controls,
+configuration, outer padding and Manager scrolling. Client owns room results and
+right Agent panel. History, balances, replay and funding are child routes. Sources
+are simultaneous inputs, with no global current-server switch. Sidebar uses the
+distinct label “游戏大厅”.
 
-Playground at `http://127.0.0.1:43129/` is an independent local review service. It
-uses its own external home and the actual plugin bundle. Open Manager → Lobby if
-the sidebar entry does not open Manager. The three UI extension points require
-Host authorization; Playground review navigation currently auto-allows only the
-sidebar and body seat, so authorize the Manager navigation entry in its UI.
-This is not a native `app://` verification or an accepted UI.
+## Live boundaries
 
-## Boundaries and failure behavior
+- `data/aggregate.ts` publishes each source independently, bounds timeouts and fences
+  obsolete/disposed results. Offline and incompatible sources remain visible.
+- `data/live.ts` consumes authoritative HTTP v1. Catalog selection binds source and
+  package hash, including publisher and version; same-id packages do not collide.
+  Invitations bind exact origin/server/room. Existing owned seats resume by GET.
+- `data/host-http.ts` uses public authorize/request/exchange. Game and economy use
+  separate opaque connections even at one origin. Derived Agent credentials stay
+  in Host; exchanges return redacted metadata and handles. Requests forward abort
+  and deadlines; grant revocation invalidates the local derived handle.
+- `data/package-upload.ts` parses/hash-checks JSON without evaluating author source.
+  Server QuickJS produces scene-v1. `GameSurface` only publishes through public
+  restrictedContent. Trusted closures bind server/room/match/seat/version; author
+  payload supplies only JSON action data. No HTML, iframe or private bridge path.
+- Actions use stable request identities across lost acknowledgements. The scene
+  callback publishes the newer authoritative scene before accepting. Definite
+  rejection is distinguished from uncertainty; the UI can retry the same request.
+  Replay uses owned-seat event views and disables action nodes.
+- Token confirmation is tied to package/version/rules/review/stake/policy, and resets
+  on changes. Unreviewed packages remain allowed. Wallet identity, agreement hash,
+  match, game, conserved policy, all owned seat IDs and total exposure are checked
+  before reserve. Only one-use link proof reaches the game server. Reserve retries
+  preserve the idempotency key. Economic instances are never summed or exchanged.
+- `data/agents.ts` connects the public dispatch adapter and controlled AgentLoop
+  creation. Each seat has a bounded grant, action/model-call/time budgets and a
+  fresh game task. Dispatch works without Pet/usage/Token services in score mode.
+  Model token counts are not treated as currency or fabricated billing evidence.
+  Cleanup withdraws active runs, closes the service and releases component mounts.
 
-- `data/port.ts` is an internal view-model port, not a second server contract.
-- `data/live.ts` decodes server HTTP v1; `data/http.ts` owns its injectable transport.
-  The baseline public-discovery transport rejects authenticated operations.
-  Host secure HTTP/credential connection integration is in progress.
-- `data/aggregate.ts` independently publishes each source, bounds timeouts, aborts
-  replacement requests and fences stale/disposed completions. Offline rooms are
-  excluded from actionable results. Incompatible handshake state stays visible.
-- Invitations encode exact source origin, serverId and roomId. Decoding rejects
-  unknown or mismatched origins; joining rechecks server identity.
-- Token consent is version/rules/stake/policy specific. Economic instances remain
-  separate; there is no summed cross-instance balance. Unreviewed packages are
-  disclosed and are not categorically disallowed for Token.
-- Uploaded UI must use Host restricted content service. No uploaded HTML/script is
-  imported in the trusted renderer, and no private iframe/bridge is implemented.
-- The product does not yet claim live Agent execution, wallet funding, native
-  lifecycle or installed-generation validation. These consume the respective
-  public Host and owning service adapters when ready.
+## CSS
 
-## CSS ownership
+Foundation and lobby styles own only `gr-*` DOM. Semantic tokens derive from public
+`--cx-*` tokens. Main layout collapses below 1120px and room cards below 720px.
+Host controls have no selector overrides. dprint/Malva, Stylelint and shared ESLint
+max-lines policy run in the independent client gate.
 
-`app.tsx` lazily imports `styles/foundation.css`; `components/lobby.tsx` imports
-`styles/lobby.css`. Both style plugin-owned `gr-*` DOM only. Foundation defines
-semantic `--gr-*` tokens backed by public `--cx-*` values; lobby owns grid, card,
-filter and Agent-list states. The lobby changes to one main column below 1120px,
-room cards to one column below 720px. Host controls receive no selector overrides.
-All styles are under 800 lines. dprint/Malva format, Stylelint checks maintained
-CSS, shared ESLint policy enforces standard source max-lines.
+## Verification record
 
-## Evidence
+Candidate typecheck and source/CSS lint pass. An earlier eleven-test run passed, including
+an actual two-server HTTP test against server scene checkpoint `88155a8`: duplicate
+manifest IDs from different publishers, exact package selection, two-player ready /
+start / action / finish, lost-ACK retry, private-state exclusion, replay, next-match
+reset and independent source outage. Other tests cover invitations, lifecycle
+fences, inert package parsing, role-scoped HTTP handles, derived grant revocation
+and multi-seat economic consent with same-key reserve recovery.
 
-Run `npm run check` and `npm run dev:dry-run` inside `client/`. Behavior tests cover
-incremental multi-source results, timeout independence, refresh/dispose fences,
-search/filter composition and origin-bound invitations. Actual browser review
-confirmed two-column cards, right Agent panel and Host-owned tabs on the sample
-composition in light theme. Dark/responsive, full interaction, live services and
-native/installed lifecycle verification remain separate delivery work.
+To include real HTTP in the client gate, build the root server and run:
+
+```sh
+GAME_ROOM_SERVER_MODULE="$PWD/dist/server/http.js" npm --prefix client test
+```
+
+Without this environment variable, the HTTP integration test is explicitly skipped.
+Candidate build and dry-run passed before the final lifecycle cleanup. The last
+full check reached real HTTP and failed with `rule_failure` while publishing a
+healthy fixture under machine-wide load 40–73 on eight cores; server ownership
+reported the same healthy-guest timeouts. No runtime limits were relaxed. The
+updated server `66adc014ff790d2e204236a6c049c3720d249f82` has been merged as a read-only
+dependency baseline; final client regression against its immutable build is pending.
+
+Fresh-entry browser review, dark/responsive review,
+native installed-generation lifecycle, real-model dispatch and real-wallet UI
+funding are separately tracked; no sample screenshot proves those outcomes.
+The old preview entry was retracted after a fresh-window navigation failure; do not
+use “open Manager manually” as acceptance. Unified Host includes its fix and is
+awaiting fresh-entry verification. The owner stopped its isolated preview and
+recursive dependency-install processes to reduce load; no running preview is
+currently advertised. SDK preparation still needs the shared portable Channel
+bootstrap fix before clean-machine reproducibility can be claimed.

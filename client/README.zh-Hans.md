@@ -1,14 +1,26 @@
-# 棋牌游戏客户端
+# 游戏大厅客户端
 
-CordisX 插件：同时聚合多个服务器的房间，管理 Agent 与派遣，展示规则、投入确认和个人战绩。
-页面标题、导航、共享控件和生命周期由 Host 管理；插件只负责页面正文。
+CordisX 多来源游戏大厅：创建房间、发布自制玩法、邀请加入、派遣 Agent、回放与虚拟 Token 投入。
+Header、路由标签、控件、配置表单和页面生命周期均由 Host 提供。
 
-- `npm run check`：格式、源码与 CSS lint、类型、行为测试和正式构建。
-- `npm run dev:dry-run`：检查本地插件配置，不启动 App。
-- `cordisx.config.json`：明确标注样例数据的独立 Playground 预览。
+从 `client/` 执行：
 
-构建使用 maintained creator 与 `cordisx/vite`，保留完整的 ESM/CSS artifact 图。
-当前 SDK 是精确基线的本地开发包；此检查点不代表可移植发布或原生验收。
-陌生上传游戏代码不会进入受信任 renderer，须通过 Host 的隔离内容能力运行。
+```sh
+node scripts/prepare-sdk.mjs
+npm ci --ignore-scripts
+npm run check
+npm run dev:dry-run
+```
 
-[客户端指南](../docs/client.md) · [产品架构](../docs/architecture.md)
+SDK 脚本以固定提交构建候选 Host/Protocol，产物与 provenance 留在忽略的 `.cache/`。
+Git 依赖准备可能需要数分钟。需要 Node 22.19+、Git、npm 与仓库内相邻的 `agents/`。
+构建保留 `dist/runtime` 中完整索引 ESM/CSS 图。
+
+默认预览配置明确使用样例数据。真实使用时，通过“设置 · 数据来源 → 管理来源与 Agent 配置”
+填写多个来源与 Agent，关闭 `sample`。游戏账户和经济账户分别在 Host 安全凭证框中连接。
+账户与会话由服务器提供；凭证不保存于插件配置、不传给模型或游戏场景。
+
+上传的规则及渲染代码只在服务器受限运行器执行。客户端通过公共 `restrictedContent`
+显示声明式场景。候选 SDK、组件预览、服务端测试与原生实测是不同验证范围。
+
+[实现与验证记录](../docs/client.md) · [服务端 API](../docs/server-api.md)

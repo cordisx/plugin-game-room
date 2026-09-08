@@ -171,8 +171,8 @@ function RoomCard({ room, sourceName, join }: { room: Room; sourceName: string; 
           <span>{room.occupied} / {room.capacity}</span>
         </div>
         <span className='gr-economy'>{economyLabel(room.mode)}{room.stake > 0 ? ` · ${room.stake}` : ''}</span>
-        <Button disabled={!available} title={room.compatibilityReason} onClick={join}>
-          {available ? '加入' : room.state === 'playing' ? '对局中' : '无空位'}
+        <Button disabled={!room.compatible} title={room.compatibilityReason} onClick={join}>
+          {available ? '加入' : '恢复我的席位'}
         </Button>
       </div>
     </article>

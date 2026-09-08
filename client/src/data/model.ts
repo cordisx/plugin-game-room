@@ -8,7 +8,17 @@ export type Source = {
   enabled: boolean
   connectionId?: string
 }
-export type Game = { id: string; name: string; version: string; icon: string; description: string }
+export type Game = {
+  id: string
+  name: string
+  version: string
+  icon: string
+  description: string
+  packageHash: string
+  publisherId: string
+  modes: EconomyMode[]
+  policies: string[]
+}
 export type Room = {
   id: string
   sourceId: string
@@ -41,7 +51,9 @@ export type Dispatch = {
   sourceId: string
   roomId: string
   agentId: string
-  state: 'running' | 'withdrawn' | 'completed'
+  state: 'running' | 'withdrawn' | 'completed' | 'failed'
+  detail?: string
+  modelCalls?: number
   budget: number
   turns: number
 }
@@ -63,7 +75,18 @@ export type Seat = {
   ready: boolean
   consentRequired: boolean
   observation: unknown
+  scene?: unknown
+  sceneError?: string | null
   legalActions: readonly unknown[]
+  matchId?: string
+  version?: number
+  status?: 'waiting' | 'funding' | 'playing' | 'finished' | 'aborted'
+  canStart?: boolean
+  canNextMatch?: boolean
+  funding?: { economyUrl: string; agreementId: string; termsHash: string } | null
+  result?: unknown
+  settlementState?: string
+  ownedSeats?: { id: string; name: string; kind: string }[]
 }
 export type SourceSnapshot = { rooms: Room[]; games: Game[]; compatible: boolean; protocol: string; reason?: string }
 export type SourceState = {
@@ -76,11 +99,14 @@ export type CreateRoom = {
   name: string
   gameId: string
   gameVersion: string
+  packageHash: string
   mode: EconomyMode
   stake: number
   allowAgents: boolean
+  consentAccepted?: boolean
 }
 export type Consent = {
+  packageHash?: string
   gameVersion: string
   rules: string
   review: string
@@ -92,6 +118,7 @@ export type Consent = {
 export type Invitation = { sourceId: string; roomId: string; sourceUrl?: string }
 export const roomKey = (room: Pick<Room, 'sourceId' | 'id'>) => JSON.stringify([room.sourceId, room.id])
 export const consentFor = (room: Room): Consent => ({
+  packageHash: room.game.packageHash,
   gameVersion: room.game.version,
   rules: room.rules,
   review: room.review,
@@ -141,3 +168,5 @@ export function decodeInvitation(value: string, sources: readonly Source[]): Inv
   ) throw new Error('邀请地址与已连接来源不匹配，请在设置中核对')
   return { sourceId, roomId, sourceUrl }
 }
+
+export type ReplayEvent = { turn: number; description: string; seat?: Seat }
