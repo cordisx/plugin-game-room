@@ -29,8 +29,18 @@ not a merged release or compatible Mono baseline.
   `465c444c65eec1be8e337b94c2cf658ed536f49c`. Public-client fixtures verify controlled
   game-directory creation (no legacy fallback), exact-turn
   filtering, terminal-state confirmation, cancellation, deadline and cleanup errors.
-  The Host owner is implementing the runtime. No private bridge or existing human
-  task is used as a fallback.
+  The Host runtime checkpoint is `1d2636adbe239550fd70e3e82d4b43681a800833`
+  ([draft PR 386](https://github.com/cordisx/cordisx/pull/386)). No private bridge or
+  existing human task is used as a fallback.
+- The Host owner reports a complete portable SDK build and a fresh ordinary npm
+  consumer install without recursive Git preparation. This Agent lane independently
+  verified the supplied tarball SHA-256 values:
+  CLI `fbb47a38f3dc31b1db8ffd78b8b182dae1f01ed9de5c07c27f290af95e92a274`;
+  Protocol `9576e28592b44c589aa847f3e57c02db1731a664c5cfa5a0f1fd5c4b5a3e21c8`.
+  See the Host-owned [source packaging guide](https://github.com/cordisx/cordisx/blob/1d2636adbe239550fd70e3e82d4b43681a800833/.agents/docs/sdk-source-packaging.md)
+  for the reproducible build and `sdk-evidence.json` inputs. The Host full gate was
+  still running at this checkpoint; native and real-provider verification remain
+  pending. Local cold installs and native runs are paused by resource coordination.
 - A regression verifies ordinary Agent execution with no Pet, economy or usage
   service. Reward-ledger adoption is not a dispatch gate. Host owns game-directory
   classification; Pet owns its own work-v2 reward eligibility. This package cannot
