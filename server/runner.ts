@@ -1,5 +1,5 @@
 import { Worker } from 'node:worker_threads'
-import type { Json, Mode, SettlementPolicy, Transition } from '../sdk/index.js'
+import type { Json, Mode, SettlementPolicy, Transition, ViewContext } from '../sdk/index.js'
 import { ApiError, integer, object, requireThat } from './errors.js'
 
 export interface Invocation {
@@ -16,6 +16,20 @@ export interface RuntimeLimits {
   outputLimit?: number
 }
 export function invoke(input: Invocation, limits: RuntimeLimits = {}): Promise<{ value: Json; cursor: number }> {
+  return launch({ ...input, kind: 'rules' }, limits)
+}
+export function invokeUi(
+  input: { render: string; observation: Json; context: ViewContext },
+  limits: RuntimeLimits = {},
+  validate = false,
+): Promise<{ value: Json; cursor: number }> {
+  // This worker payload deliberately has no rule source, state, seed or account data.
+  return launch(
+    { kind: 'ui', render: input.render, observation: input.observation, context: input.context, validate },
+    { ...limits, outputLimit: limits.outputLimit ?? 65536 },
+  )
+}
+function launch(input: Record<string, unknown>, limits: RuntimeLimits): Promise<{ value: Json; cursor: number }> {
   return new Promise((resolve, reject) => {
     const extension = import.meta.url.endsWith('.ts') ? 'ts' : 'js'
     const worker = new Worker(new URL(`./runner-worker.${extension}`, import.meta.url), {

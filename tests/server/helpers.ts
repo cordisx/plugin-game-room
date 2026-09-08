@@ -19,7 +19,11 @@ export function game(source = rules): GamePackage {
       settlementPolicies: ['equal-winners-v1', 'conserved-payouts-v1'],
     },
     rules: source,
-    ui: { html: '<!doctype html><p>Isolated test</p>' },
+    ui: {
+      format: 'scene-v1',
+      render:
+        `globalThis.render=(observation,context)=>({version:1,root:{type:'stack',children:[{type:'text',text:observation.hand},{type:'button',label:'Move',action:{type:'move'},disabled:!context.canAct}]}})`,
+    },
   }
 }
 export async function harness(options: ServerOptions = {}) {

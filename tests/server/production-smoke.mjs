@@ -14,7 +14,7 @@ try {
   for (const path of ['server', 'sdk']) cpSync(resolve('dist', path), join(staging, 'dist', path), { recursive: true })
   const install = spawnSync('npm', ['ci', '--omit=dev', '--ignore-scripts'], { cwd: staging, encoding: 'utf8' })
   assert.equal(install.status, 0, install.stderr)
-  const { invoke } = await import(pathToFileURL(join(staging, 'dist/server/runner.js')).href)
+  const { invoke, invokeUi } = await import(pathToFileURL(join(staging, 'dist/server/runner.js')).href)
   const result = await invoke({
     rules: 'globalThis.game={setup(ctx){return {random:ctx.random(),network:typeof fetch}}}',
     method: 'setup',
@@ -25,6 +25,12 @@ try {
   })
   assert.equal(result.value.network, 'undefined')
   assert.equal(result.cursor, 1)
+  const ui = await invokeUi({
+    render: 'globalThis.render=(observation)=>({version:1,root:{type:"text",text:observation.text}})',
+    observation: { text: 'production scene' },
+    context: { seatIndex: 0, seatCount: 2, mode: 'score', canAct: true },
+  })
+  assert.equal(ui.value.root.text, 'production scene')
   child = spawn(process.execPath, ['dist/server/main.js'], {
     cwd: staging,
     env: {
@@ -61,7 +67,9 @@ try {
   const stopped = once(child, 'exit')
   child.kill('SIGTERM')
   await stopped
-  console.log('Production dependency install, compiled WASM worker, main entrypoint and graceful shutdown passed')
+  console.log(
+    'Production dependency install, compiled rule/UI WASM workers, main entrypoint and graceful shutdown passed',
+  )
 } finally {
   if (child && child.exitCode === null) child.kill('SIGKILL')
   rmSync(staging, { recursive: true, force: true })
