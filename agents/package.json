@@ -1,0 +1,24 @@
+{
+  "name": "@cordisx/game-room-agents",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": "./index.ts",
+  "scripts": {
+    "test": "tsx --test test/*.test.ts",
+    "typecheck": "tsc --noEmit",
+    "format": "dprint fmt",
+    "format:check": "dprint check",
+    "lint": "eslint .",
+    "check": "npm run typecheck && npm run test && npm run format:check && npm run lint"
+  },
+  "devDependencies": {
+    "@cordisx/eslint-config": "github:cordisx/cordisxmono#32fa3b257cd5a7bfa0bb2d5f1012ca18665d1637",
+    "@types/node": "^24.0.0",
+    "dprint": "^0.50.2",
+    "eslint": "^9.35.0",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2",
+    "typescript-eslint": "^8.42.0"
+  }
+}
