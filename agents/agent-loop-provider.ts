@@ -11,6 +11,7 @@ import type {
 import { createPlayerPrompt, PLAYER_INSTRUCTIONS } from './prompt.ts';
 import { DispatchError } from './types.ts';
 import type { AgentProvider, ModelRequest } from './types.ts';
+import type { GameUsageExclusionCheck } from './usage-policy.ts';
 
 export interface AgentLoopProviderOptions {
   agentLoop?: BoundAgentLoopClient;
@@ -18,7 +19,9 @@ export interface AgentLoopProviderOptions {
   providerId: string;
   executionMode?: 'ordinary' | 'strict-data-only';
   /** Integration policy acknowledgement, not a claim that this package controls other plugins. */
-  aggregateRewards: 'disabled-or-game-excluded' | 'unknown';
+  aggregateRewards:
+    | GameUsageExclusionCheck['aggregateRewards']
+    | (() => GameUsageExclusionCheck['aggregateRewards']);
   now?: () => number;
 }
 interface Context {
@@ -67,7 +70,13 @@ export function createAgentLoopProvider(options: AgentLoopProviderOptions): Agen
     if (options.executionMode === 'strict-data-only') {
       return { available: false, reason: 'strict-data-only-unsupported' };
     }
-    if (options.aggregateRewards !== 'disabled-or-game-excluded') {
+    let rewards: GameUsageExclusionCheck['aggregateRewards'] = 'unknown';
+    try {
+      rewards = typeof options.aggregateRewards === 'function'
+        ? options.aggregateRewards()
+        : options.aggregateRewards;
+    } catch { /* Unreadable policy fails closed. */ }
+    if (rewards !== 'disabled-or-game-excluded') {
       return { available: false, reason: 'aggregate-reward-policy-unconfirmed' };
     }
     if (

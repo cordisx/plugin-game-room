@@ -252,3 +252,20 @@ test('a context cannot be rebound to another seat or profile', async () => {
   input.binding.seatId = 'someone-else';
   await assert.rejects(provider.act(input), /provider_context_scope_mismatch/);
 });
+
+test('reward policy is checked again before each inference and failure cannot retain old approval', async () => {
+  const f = fixture();
+  let permitted = true;
+  const provider = createAgentLoopProvider({
+    ...f.options,
+    aggregateRewards: () => {
+      if (!permitted) throw Error('retired work epoch');
+      return 'disabled-or-game-excluded';
+    },
+  });
+  await provider.act(request('first'));
+  permitted = false;
+  assert.equal(provider.availability().available, false);
+  await assert.rejects(provider.act(request('second')), /aggregate-reward-policy-unconfirmed/);
+  assert.equal(f.creates.length, 1);
+});

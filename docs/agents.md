@@ -28,7 +28,7 @@ is no fallback to legacy task creation in the user's workspace. An action is ret
 controlled-turn `read` both confirm completion. Abort and disposal call public
 `cancel` with the exact controlled turn. Shared Host clients are not disposed.
 The package pins the experimental Protocol commit
-`dbc494ed11f566a962ab1525cddee3645759b794`; it is not a released Host capability.
+`465c444c65eec1be8e337b94c2cf658ed536f49c`; it is not a released Host capability.
 Protocol is a package dependency because exported TypeScript source references its
 types. When a sibling client uses `file:../agents`, commit `install-links=true` in
 the client's `.npmrc` and regenerate its lockfile. npm's default local symlink does
@@ -84,6 +84,21 @@ Game inference rewards are disabled (`rewardEnabled: false`), with no deferred
 accrual. Before enabling ordinary play, the integrator must ensure any other
 profile-aggregate Token reward source is paused or reliably excludes these turns.
 The dispatch service cannot alter another plugin's economic policy.
+
+The experimental `usage.readWork()` v2 projection excludes Host game directories,
+forks/subagents and unknown sources. `checkGameUsageExclusion(snapshot, adopted)`
+checks exact schema v2, policy `codex-local-work-input-output-v2`, classification
+`host-game-cwd-v1` and all three exclusion fields. The trusted reward owner must
+first adopt that projection with a new scope/source/epoch baseline and confirm
+other aggregate reward sources are disabled or migrated. Passing no adopted
+ledger, a v1 watermark, or a changed epoch returns `unknown`; the helper does not
+create baselines, compute deltas or issue rewards. Normal eligible work may then
+continue earning through the separate work ledger. Its coverage remains partial,
+and individual game-seat usage remains unknown.
+
+`aggregateRewards` may be a callback returning the current check's policy value;
+the provider reevaluates it before every inference. Integrations should use this
+form for live work-ledger status so a retired or changed epoch fails closed.
 
 ## Recovery and verification
 
