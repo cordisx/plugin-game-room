@@ -1,0 +1,84 @@
+.gr-root {
+  --gr-border: var(--cx-border, #34373b);
+  --gr-muted: var(--cx-muted, #999fa8);
+  --gr-surface: var(--cx-surface-raised, #202225);
+  --gr-text: var(--cx-text, #eceef1);
+  color: var(--gr-text);
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.gr-muted {
+  color: var(--gr-muted);
+}
+.gr-section-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+.gr-notice {
+  color: var(--gr-muted);
+  font-size: 12px;
+}
+.gr-error {
+  color: var(--cx-danger, #ed8d85);
+}
+.gr-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-width: 760px;
+}
+.gr-detail-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid var(--gr-border);
+  padding-bottom: 16px;
+}
+.gr-detail-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.gr-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.gr-action-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.gr-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  color: var(--gr-muted);
+}
+.gr-code {
+  overflow-wrap: anywhere;
+  font-size: 12px;
+}
+.gr-record {
+  padding: 16px;
+  border: 1px solid var(--gr-border);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.gr-isolation-seat {
+  min-height: 280px;
+  border: 1px dashed var(--gr-border);
+  border-radius: 12px;
+  display: grid;
+  place-content: center;
+  gap: 12px;
+  text-align: center;
+}

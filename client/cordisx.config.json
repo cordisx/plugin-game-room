@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "playground": {
+    "name": "Game Room \u00b7 \u7ec4\u4ef6\u9884\u89c8",
+    "description": "\u771f\u5b9e\u63d2\u4ef6\u7ec4\u4ef6\uff0c\u6837\u4f8b\u6570\u636e\uff0c\u975e\u539f\u751f App \u9a8c\u6536",
+    "pluginBundleFixture": true,
+    "reviewNavigationItem": "game-room:open"
+  },
+  "providers": [],
+  "plugins": [
+    {
+      "id": "game-room",
+      "entry": "./src/client.tsx",
+      "enabled": true,
+      "config": {
+        "sample": true
+      }
+    }
+  ]
+}

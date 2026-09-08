@@ -1,0 +1,52 @@
+{
+  "name": "@cordisx/plugin-game-room-client",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "description": "CordisX multi-source game lobby and Agent dispatch client",
+  "type": "module",
+  "files": [
+    "dist",
+    "README.md",
+    "README.zh-Hans.md"
+  ],
+  "main": "./dist/runtime/module.js",
+  "types": "./dist/types/client.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/types/client.d.ts",
+      "import": "./dist/runtime/module.js",
+      "default": "./dist/runtime/module.js"
+    }
+  },
+  "scripts": {
+    "build": "vite build && tsc -p tsconfig.json --emitDeclarationOnly",
+    "check": "npm run format:check && npm run lint && npm run typecheck && npm test && npm run build",
+    "dev": "cordisx dev ./src/client.tsx",
+    "dev:dry-run": "cordisx dev --config ./cordisx.config.json --dry-run",
+    "test": "tsx --test test/*.test.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "format": "dprint fmt",
+    "format:check": "dprint check",
+    "lint": "eslint . && stylelint \"src/**/*.css\""
+  },
+  "devDependencies": {
+    "@cordisx/eslint-config": "github:cordisx/cordisxmono#c63c2e8c2ba7e11502934a52ad2ce3734e804cdc",
+    "@deepseek-ai/cordis": "4.0.1",
+    "@deepseek-ai/schemastery": "3.18.1",
+    "@projectwallace/stylelint-plugin": "0.7.0",
+    "@types/react": "^19.2.18",
+    "@typescript-eslint/parser": "8.69.0",
+    "cordisx": "file:/tmp/game-client-host-b75fa2c",
+    "dprint": "0.57.1",
+    "esbuild": "^0.28.2",
+    "eslint": "9.39.4",
+    "stylelint": "16.26.1",
+    "tsx": "4.20.6",
+    "typescript": "^5.9.2",
+    "vite": "8.2.2"
+  },
+  "engines": {
+    "node": ">=22.19"
+  }
+}
