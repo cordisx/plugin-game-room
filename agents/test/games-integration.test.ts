@@ -19,6 +19,11 @@ for (const name of ['gomoku-1.0.0', 'texas-holdem-1.0.0']) {
       const h = await harness();
       t.after(() => h.app.close());
       const pkg = JSON.parse(await readFile(resolve(packagesRoot!, `${name}.json`), 'utf8'));
+      assert.equal(
+        pkg.ui.format,
+        'scene-v1',
+        'integration packages must use the current scene UI contract',
+      );
       const published = await h.request('/v1/packages', h.alice.token, pkg);
       assert.equal(published.status, 200, JSON.stringify(published.body));
       const created = await h.request('/v1/rooms', h.alice.token, {

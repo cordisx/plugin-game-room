@@ -109,6 +109,8 @@ server checkout and run `npm test --prefix agents`. That integration test uses a
 real ephemeral HTTP server, SQLite and QuickJS game execution, with a deterministic
 provider fixture. It proves transport/lifecycle behavior, not real AI inference,
 native Host operation or user acceptance. See [Agent delivery evidence](agents-evidence.md).
-Set `GAME_ROOM_PACKAGES` to the built games `dist` directory as well to exercise
+Set `GAME_ROOM_PACKAGES` to a fixed games revision's rebuilt `dist` directory as well to exercise
 complete Gomoku and Texas Hold'em matches through dispatch using seat legal-action
-descriptors. Those players are explicitly deterministic test fixtures.
+descriptors. The packages and server fixtures must use the current `scene-v1` UI
+contract. The provider receives only observations, not UI render source. Those
+players are explicitly deterministic test fixtures.
