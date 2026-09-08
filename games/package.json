@@ -1,0 +1,23 @@
+{
+  "name": "@cordisx/game-packages",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node tools/package.mjs build",
+    "validate": "node tools/package.mjs validate",
+    "test": "node --test test/*.test.mjs",
+    "format": "dprint fmt",
+    "format:check": "dprint check",
+    "lint": "eslint . && stylelint '**/*.css'"
+  },
+  "devDependencies": {
+    "@cordisx/eslint-config": "github:cordisx/cordisxmono#32fa3b257cd5a7bfa0bb2d5f1012ca18665d1637",
+    "@projectwallace/stylelint-plugin": "0.7.0",
+    "dprint": "0.57.4",
+    "eslint": "9.39.4",
+    "quickjs-emscripten": "0.32.0",
+    "stylelint": "^16.26.0",
+    "stylelint-config-standard": "^38.0.0"
+  }
+}
