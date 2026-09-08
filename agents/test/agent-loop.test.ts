@@ -151,7 +151,6 @@ function fixture() {
     agentLoop: loop,
     agentLoopControl: control,
     providerId: 'provider',
-    aggregateRewards: 'disabled-or-game-excluded' as const,
   };
   return {
     options,
@@ -230,12 +229,12 @@ test('deadline cancels model work and cancellation failures remain retryable cle
   assert.ok(f.cancels.length >= 2);
 });
 
-test('strict data-only, missing control and unconfirmed reward policy never silently fall back', async () => {
+test('strict data-only and missing control never silently fall back', async () => {
   const f = fixture();
   for (
     const changes of [{ executionMode: 'strict-data-only' as const }, {
       agentLoopControl: undefined,
-    }, { aggregateRewards: 'unknown' as const }]
+    }]
   ) {
     const provider = createAgentLoopProvider({ ...f.options, ...changes });
     assert.equal(provider.availability().available, false);
@@ -253,19 +252,10 @@ test('a context cannot be rebound to another seat or profile', async () => {
   await assert.rejects(provider.act(input), /provider_context_scope_mismatch/);
 });
 
-test('reward policy is checked again before each inference and failure cannot retain old approval', async () => {
+test('ordinary players work without any Pet, economy or usage service', async () => {
   const f = fixture();
-  let permitted = true;
-  const provider = createAgentLoopProvider({
-    ...f.options,
-    aggregateRewards: () => {
-      if (!permitted) throw Error('retired work epoch');
-      return 'disabled-or-game-excluded';
-    },
-  });
+  const provider = createAgentLoopProvider(f.options);
+  assert.deepEqual(provider.availability(), { available: true });
   await provider.act(request('first'));
-  permitted = false;
-  assert.equal(provider.availability().available, false);
-  await assert.rejects(provider.act(request('second')), /aggregate-reward-policy-unconfirmed/);
   assert.equal(f.creates.length, 1);
 });

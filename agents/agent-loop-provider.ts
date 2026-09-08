@@ -11,17 +11,12 @@ import type {
 import { createPlayerPrompt, PLAYER_INSTRUCTIONS } from './prompt.ts';
 import { DispatchError } from './types.ts';
 import type { AgentProvider, ModelRequest } from './types.ts';
-import type { GameUsageExclusionCheck } from './usage-policy.ts';
 
 export interface AgentLoopProviderOptions {
   agentLoop?: BoundAgentLoopClient;
   agentLoopControl?: AgentLoopControlV1;
   providerId: string;
   executionMode?: 'ordinary' | 'strict-data-only';
-  /** Integration policy acknowledgement, not a claim that this package controls other plugins. */
-  aggregateRewards:
-    | GameUsageExclusionCheck['aggregateRewards']
-    | (() => GameUsageExclusionCheck['aggregateRewards']);
   now?: () => number;
 }
 interface Context {
@@ -69,15 +64,6 @@ export function createAgentLoopProvider(options: AgentLoopProviderOptions): Agen
   function availability() {
     if (options.executionMode === 'strict-data-only') {
       return { available: false, reason: 'strict-data-only-unsupported' };
-    }
-    let rewards: GameUsageExclusionCheck['aggregateRewards'] = 'unknown';
-    try {
-      rewards = typeof options.aggregateRewards === 'function'
-        ? options.aggregateRewards()
-        : options.aggregateRewards;
-    } catch { /* Unreadable policy fails closed. */ }
-    if (rewards !== 'disabled-or-game-excluded') {
-      return { available: false, reason: 'aggregate-reward-policy-unconfirmed' };
     }
     if (
       options.agentLoop?.contract !== 'cordisx.bound-agent-loop-client/v4'

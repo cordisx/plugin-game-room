@@ -18,9 +18,8 @@ Human authorization and grant capture belong in the client/Host credential flow.
 Joining another person's room is supported when that room allows Agents.
 
 `createAgentLoopProvider` accepts public `agentLoop` v4 and additive
-`agentLoopControl` v1 clients, a `providerId`, `executionMode: 'ordinary'` and
-`aggregateRewards: 'disabled-or-game-excluded'`. Missing control or unconfirmed
-reward policy returns typed availability information. It calls
+`agentLoopControl` v1 clients, a `providerId` and optional
+`executionMode: 'ordinary'`. Missing control returns typed availability information. It calls
 `agentLoopControl.create` to create an independent task in a fresh Host-owned game
 working directory, uses the profile's fixed model with high effort, and subscribes
 to that exact v4 binding. A control client missing `create` is unavailable; there
@@ -81,24 +80,12 @@ ordinary turn cancellation and Host-enforced deadlines; unsubscribing alone does
 not cancel model work.
 
 Game inference rewards are disabled (`rewardEnabled: false`), with no deferred
-accrual. Before enabling ordinary play, the integrator must ensure any other
-profile-aggregate Token reward source is paused or reliably excludes these turns.
-The dispatch service cannot alter another plugin's economic policy.
-
-The experimental `usage.readWork()` v2 projection excludes Host game directories,
-forks/subagents and unknown sources. `checkGameUsageExclusion(snapshot, adopted)`
-checks exact schema v2, policy `codex-local-work-input-output-v2`, classification
-`host-game-cwd-v1` and all three exclusion fields. The trusted reward owner must
-first adopt that projection with a new scope/source/epoch baseline and confirm
-other aggregate reward sources are disabled or migrated. Passing no adopted
-ledger, a v1 watermark, or a changed epoch returns `unknown`; the helper does not
-create baselines, compute deltas or issue rewards. Normal eligible work may then
-continue earning through the separate work ledger. Its coverage remains partial,
-and individual game-seat usage remains unknown.
-
-`aggregateRewards` may be a callback returning the current check's policy value;
-the provider reevaluates it before every inference. Integrations should use this
-form for live work-ledger status so a retired or changed epoch fails closed.
+accrual. Ordinary dispatch works without Pet, an economy plugin, a usage service
+or a reward ledger baseline. The Agent package has no reward-source authority.
+Its responsibility is public controlled creation in Host-owned game directories;
+Host owns game-task classification, and Pet owns strict work-usage-v2 reward
+eligibility and baseline handling. No cross-plugin reward approval is required
+to dispatch an Agent. Individual game-seat token usage remains unknown.
 
 ## Recovery and verification
 
