@@ -36,6 +36,14 @@ a clean client without an existing `agents/node_modules`. Run
 `npm run check:consumer --prefix agents` to verify a fresh sibling install, frozen
 `npm ci` reinstall and strict consumer typecheck with library checking enabled.
 
+For native integration, the experimental Host checkpoint is
+`1d2636adbe239550fd70e3e82d4b43681a800833`, paired with the Protocol commit above.
+Build its SDK using the Host-owned
+[exact-source packaging guide](https://github.com/cordisx/cordisx/blob/1d2636adbe239550fd70e3e82d4b43681a800833/.agents/docs/sdk-source-packaging.md).
+The client owns its Host dependency and lockfile; this package depends only on
+Protocol. Artifact identities and validation limits are recorded in
+[Agent delivery evidence](agents-evidence.md).
+
 `dispatch(input)` creates a dispatch and starts automatic polling. `get`, `list`
 and `subscribe` expose cloned snapshots containing status and budgets, with no
 observations, pending actions or credentials. `withdraw(id, 'immediate')` aborts
