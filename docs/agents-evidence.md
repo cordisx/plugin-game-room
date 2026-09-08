@@ -29,10 +29,10 @@ not a merged release or compatible Mono baseline.
   `465c444c65eec1be8e337b94c2cf658ed536f49c`. Public-client fixtures verify controlled
   game-directory creation (no legacy fallback), exact-turn
   filtering, terminal-state confirmation, cancellation, deadline and cleanup errors.
-  The Host runtime checkpoint is `69b0146c4d4b6acd411758ae4ec3005ea74d0b89`
+  The Host runtime checkpoint is `be2403c70664ff6624671224a405e409874d59c7`
   ([draft PR 386](https://github.com/cordisx/cordisx/pull/386)). No private bridge or
   existing human task is used as a fallback.
-- The Host owner reports a complete portable SDK build and a fresh ordinary npm
+- At Host `69b0146c4d4b6acd411758ae4ec3005ea74d0b89`, the Host owner reports a complete portable SDK build and a fresh ordinary npm
   consumer install without recursive Git preparation. This Agent lane independently
   verified the supplied tarball SHA-256 values:
   CLI `42f655ad735fd430e6f455bbb2e8da31f5eb564c247a3c31bbb1e9774df131c4`;
@@ -47,6 +47,16 @@ not a merged release or compatible Mono baseline.
   this checkpoint resolves that conflict without Agent source changes or casts.
   Native execution remains paused pending an unlocked Mac and the coordinated
   verification window. These preparation checks did not invoke a model.
+- The subsequent Host `be2403c70664ff6624671224a405e409874d59c7` isolates SDK
+  build tools from an ancestor TypeScript 6 installation. This lane independently
+  verified CLI SHA-256
+  `abd300ccade96d095563f95f971164838237a376655a55b7f96bdccb3bf2dd46`;
+  Protocol remains unchanged. The Host owner reports actual Agent consumer
+  installation, typecheck, build and a single Protocol instance passing at this
+  checkpoint, plus reproducible builds with and without the outer TypeScript 6
+  environment. This lane has not repeated those consumer checks at `be2403c`.
+  The owner reports the parent `69b0146` full gate passed (318 files, 1718 tests);
+  the `be2403c` full gate remains running. Neither proves native model execution.
 - A regression verifies ordinary Agent execution with no Pet, economy or usage
   service. Reward-ledger adoption is not a dispatch gate. Host owns game-directory
   classification; Pet owns its own work-v2 reward eligibility. This package cannot
