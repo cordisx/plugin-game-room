@@ -10,9 +10,11 @@ import { HttpEconomy } from '../dist/server/economy.js'
 
 // Explicit dependency checkout: build it first. Never substitute a fixture ledger.
 assert.ok(process.env.ECONOMY_REPOSITORY, 'Set ECONOMY_REPOSITORY to the built economy checkout')
-const { Economy, createEconomyServer } = await import(pathToFileURL(
-  resolve(process.env.ECONOMY_REPOSITORY, 'dist/server/index.js'),
-).href)
+const { Economy, createEconomyServer } = await import(
+  pathToFileURL(
+    resolve(process.env.ECONOMY_REPOSITORY, 'dist/server/index.js'),
+  ).href
+)
 
 async function listen(server) {
   server.listen(0, '127.0.0.1')
@@ -38,7 +40,8 @@ test('real game and economy HTTP: multiple owned seats, consent, settlement, pur
   economy.commerce.createItem('integration', 'pet.integration-apple', 'Apple', 20, 'pet')
   const economicUrl = await listen(economicServer)
   game = createGameServer({
-    database: join(directory, 'game.sqlite'), tickMs: 0,
+    database: join(directory, 'game.sqlite'),
+    tickMs: 0,
     economy: new HttpEconomy(economicUrl, service, 'game-service'),
   })
   const gameUrl = await listen(game.server)
@@ -47,7 +50,8 @@ test('real game and economy HTTP: multiple owned seats, consent, settlement, pur
     const response = await fetch(base + '/v1' + path, {
       method: body === undefined ? 'GET' : 'POST',
       headers: {
-        'Content-Type': 'application/json', 'Idempotency-Key': key,
+        'Content-Type': 'application/json',
+        'Idempotency-Key': key,
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body: body === undefined ? undefined : JSON.stringify(body),
@@ -63,11 +67,15 @@ test('real game and economy HTTP: multiple owned seats, consent, settlement, pur
       code: economy.auth.enrollment('integration', name),
     })
     await request(economicUrl, '/rewards/grant', reward, {
-      sourceId: 'welcome', accountId: name, eventId: `welcome:${name}`, amount: 100,
+      sourceId: 'welcome',
+      accountId: name,
+      eventId: `welcome:${name}`,
+      amount: 100,
     })
     const player = await request(gameUrl, '/accounts', null, { name, password: 'integration-password-123' })
     const proof = await request(economicUrl, '/link-proofs', wallet.token, {
-      gameServiceId: 'game-service', gameAccountId: player.account.id,
+      gameServiceId: 'game-service',
+      gameAccountId: player.account.id,
     })
     await request(gameUrl, '/economy/link', player.token, { code: proof.code })
     await request(economicUrl, '/me', proof.code, undefined, 401)
@@ -76,8 +84,14 @@ test('real game and economy HTTP: multiple owned seats, consent, settlement, pur
   const [alice, bob] = players
   const packageData = {
     packageVersion: 1,
-    manifest: { id: 'integration-game', version: '1.0.0', name: 'Integration game',
-      minPlayers: 4, maxPlayers: 4, modes: ['token'] },
+    manifest: {
+      id: 'integration-game',
+      version: '1.0.0',
+      name: 'Integration game',
+      minPlayers: 4,
+      maxPlayers: 4,
+      modes: ['token'],
+    },
     rules: `globalThis.game={
       setup(ctx){return {state:{move:0,hands:ctx.seats.map((_,i)=>'seat-secret-'+i)},turn:0}},
       observe(s,i){return {hand:s.hands[i],move:s.move,legalActions:[{type:'move'}]}},
@@ -91,23 +105,32 @@ test('real game and economy HTTP: multiple owned seats, consent, settlement, pur
   assert.equal(published.reviewState, 'unreviewed')
   const consent = { packageHash: published.hash, stake: 10, policy: 'equal-winners-v1', reviewState: 'unreviewed' }
   let view = await request(gameUrl, '/rooms', alice.token, {
-    packageHash: published.hash, mode: 'token', stake: 10,
-    maxPlayers: 4, allowAgents: true, consent,
+    packageHash: published.hash,
+    mode: 'token',
+    stake: 10,
+    maxPlayers: 4,
+    allowAgents: true,
+    consent,
   })
   const roomPath = `/rooms/${view.id}`
   await request(gameUrl, roomPath + '/join', bob.token, { consent })
   const agentSeats = []
   for (const participantId of ['alice-agent-one', 'alice-agent-two']) {
     const result = await request(gameUrl, roomPath + '/agent-seats', alice.token, {
-      participantId, name: participantId, consent,
+      participantId,
+      name: participantId,
+      consent,
     })
     agentSeats.push(result.seat)
   }
   view = await request(gameUrl, roomPath, alice.token)
   assert.equal(view.seats.length, 4)
   for (const seat of view.seats) {
-    await request(gameUrl, roomPath + '/ready', seat.accountId === alice.account.id ? alice.token : bob.token,
-      { ready: true, seatId: seat.id, consent })
+    await request(gameUrl, roomPath + '/ready', seat.accountId === alice.account.id ? alice.token : bob.token, {
+      ready: true,
+      seatId: seat.id,
+      consent,
+    })
   }
   await request(gameUrl, roomPath + '/start', alice.token, {})
   await game.engine.tick()
@@ -131,7 +154,9 @@ test('real game and economy HTTP: multiple owned seats, consent, settlement, pur
   const grants = []
   for (const seat of agentSeats) {
     const grant = await request(gameUrl, roomPath + '/agent-grants', alice.token, {
-      seatId: seat.id, expiresAt: Date.now() + 60000, maxActions: 4,
+      seatId: seat.id,
+      expiresAt: Date.now() + 60000,
+      maxActions: 4,
     })
     const observation = await request(gameUrl, '/agent/observation', grant.token)
     assert.equal(observation.observation.hand, `seat-secret-${view.seats.findIndex(s => s.id === seat.id)}`)
@@ -151,7 +176,10 @@ test('real game and economy HTTP: multiple owned seats, consent, settlement, pur
   assert.equal(view.settlement, 'settled')
   for (const [player, balance] of [[alice, 110], [bob, 90]]) {
     assert.deepEqual(await request(economicUrl, '/me', player.wallet), {
-      instanceId: 'integration', accountId: player.name, available: balance, reserved: 0,
+      instanceId: 'integration',
+      accountId: player.name,
+      available: balance,
+      reserved: 0,
     })
   }
   const orderBody = { itemId: 'pet.integration-apple', quantity: 1, expectedTotal: 20 }
