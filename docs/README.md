@@ -1,6 +1,7 @@
 # Developer documentation
 
 - [Architecture and scope](architecture.md)
+- [Client development](client.md)
 - [Server API and game package contract](server-api.md)
 - [Server development](server-development.md)
 - [Shipped game packages](games.md)
