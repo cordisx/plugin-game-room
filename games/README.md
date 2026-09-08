@@ -1,6 +1,6 @@
 # Game packages
 
-Buildable, self-contained Gomoku and Texas Hold'em GamePackage v1 examples.
+Buildable Gomoku and Texas Hold'em GamePackage v1 rules and scene-v1 UI generators.
 
 - [Game rules, observations and actions](../docs/games.md)
 - [Build, validate, integrate and publish](../docs/games-authoring.md)

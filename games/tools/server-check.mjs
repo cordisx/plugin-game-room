@@ -8,7 +8,9 @@ const artifact = process.argv[2]
 if (!artifact) {
   throw Error('Usage: node tools/server-check.mjs /absolute/path/dist/server/runner.js')
 }
-const { invoke, transition } = await import(pathToFileURL(resolve(artifact)).href)
+const artifactUrl = pathToFileURL(resolve(artifact))
+const { invoke, invokeUi, transition } = await import(artifactUrl.href)
+const { parseScene } = await import(new URL('../sdk/scene.js', artifactUrl).href)
 for (const name of ['gomoku', 'holdem']) {
   const { pkg, hash } = await build(name)
   const ctx = {
@@ -36,6 +38,12 @@ for (const name of ['gomoku', 'holdem']) {
   let steps = 0
   while (!t.done) {
     const view = await run('observe', [t.state, t.turn])
+    const rendered = await invokeUi({
+      render: pkg.ui.render,
+      observation: view,
+      context: { seatIndex: t.turn, seatCount: 2, mode: ctx.mode, canAct: true },
+    })
+    parseScene(rendered.value)
     const action = name === 'gomoku'
       ? { type: 'place', x: Math.floor(steps / 2), y: steps % 2 }
       : { type: view.legalActions.some(a => a.type === 'call') ? 'call' : 'check' }

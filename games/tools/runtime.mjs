@@ -23,15 +23,14 @@ export async function invoke(rules, method, args, ctx, seed = 'fixture', cursor 
     const bytes = createHmac('sha256', seed).update(String(cursor++)).digest()
     return vm.newNumber(bytes.readUIntBE(0, 6) / 281474976710656)
   })
-  vm.setProp(vm.global, '__random', random)
+  if (method !== 'render') vm.setProp(vm.global, '__random', random)
   random.dispose()
   try {
+    const entry = method === 'render' ? 'globalThis.render' : `game[${JSON.stringify(method)}]`
     const result = vm.evalCode(
-      `Date=undefined;Math.random=undefined;${rules}\nconst ctx=${
-        JSON.stringify(ctx)
-      };ctx.random=__random;JSON.stringify(game[${JSON.stringify(method)}](...${
-        JSON.stringify(args)
-      },ctx));`,
+      `Date=undefined;Math.random=undefined;${rules}\nconst ctx=${JSON.stringify(ctx)};${
+        method === 'render' ? '' : 'ctx.random=__random;'
+      }JSON.stringify(${entry}(...${JSON.stringify(args)},ctx));`,
     )
     if (result.error) {
       const error = vm.dump(result.error)
