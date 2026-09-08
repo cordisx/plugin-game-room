@@ -46,7 +46,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: cordisx/plugin-economy
-          ref: 054e3695453ecc0d070525656650790b21cf8a75
+          ref: 7fd39969424eb32516d802101d42f536826efc3a
           path: economy
       - uses: actions/setup-node@v4
         with:
