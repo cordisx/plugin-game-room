@@ -120,3 +120,57 @@ test('opaque seat exchange never returns bearer and rejects cross-source credent
     transport.requestCredential({ source, path: '/v1/agent/observation', signal, credentialRef: grant.credentialRef }),
   )
 })
+test('public discovery enforces the streamed byte boundary and propagates abort', async () => {
+  const { createServer } = await import('node:http')
+  const { PublicDiscoveryTransport } = await import('../src/data/http.js')
+  let streamStarted!: () => void
+  const streaming = new Promise<void>(resolve => {
+    streamStarted = resolve
+  })
+  const server = createServer((request, response) => {
+    response.writeHead(200, { 'content-type': 'application/json' })
+    if (request.url === '/abort') {
+      response.write('"partial')
+      streamStarted()
+      return
+    }
+    const size = request.url === '/boundary' ? 2_000_000 : 2_000_001
+    const payload = Buffer.from(`"${'x'.repeat(size - 2)}"`)
+    let offset = 0
+    const write = () => {
+      if (response.destroyed) return
+      if (offset === payload.byteLength) {
+        response.end()
+        return
+      }
+      const end = Math.min(offset + 32768, payload.byteLength)
+      response.write(payload.subarray(offset, end))
+      offset = end
+      setImmediate(write)
+    }
+    write()
+  })
+  await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))
+  const source = {
+    id: 'stream',
+    name: 'Stream',
+    url: `http://127.0.0.1:${(server.address() as { port: number }).port}`,
+    accountId: '',
+    enabled: true,
+  }
+  const transport = new PublicDiscoveryTransport()
+  try {
+    const signal = new AbortController().signal
+    const boundary = await transport.request({ source, path: '/boundary', signal })
+    assert.equal((boundary as string).length, 1_999_998)
+    await assert.rejects(transport.request({ source, path: '/oversize', signal }), /超过大小限制/)
+    const controller = new AbortController()
+    const pending = transport.request({ source, path: '/abort', signal: controller.signal })
+    await streaming
+    controller.abort()
+    await assert.rejects(pending, (error: Error) => error.name === 'AbortError')
+  } finally {
+    server.closeAllConnections()
+    await new Promise<void>(resolve => server.close(() => resolve()))
+  }
+})
