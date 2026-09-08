@@ -8,6 +8,7 @@ import type {
   Json,
   RoomCard,
   RoomView,
+  SceneError,
   Transition,
 } from '../sdk/index.js'
 import type { Account } from './accounts.js'
@@ -24,7 +25,7 @@ export interface Room extends RoomCard {
   cursor: number
   observations: Record<string, Json>
   scenes: Record<string, Scene | null>
-  sceneErrors: Record<string, 'ui_render_failed' | null>
+  sceneErrors: Record<string, SceneError | null>
   economyAccounts: Record<string, string>
   economyTerms: FundingTerms | null
   economyOp: 'create' | 'settle' | 'cancel' | null
@@ -152,13 +153,14 @@ export class Engine {
         room.observations[room.seats[i].id] = (await this.run(room, 'observe', [room.state, i], i)).value
       } catch {
         room.observations[seatId] = null
-        room.sceneErrors[seatId] = 'ui_render_failed'
-        continue
+        this.abort(room, 'observation_failed')
+        return
       }
+      let rendered: Json
       try {
         const ui = this.packages.get(room.packageHash).ui
         requireThat(ui.format === 'scene-v1', 'unsupported_ui_format')
-        const rendered = await invokeUi({
+        rendered = (await invokeUi({
           render: ui.render,
           observation: room.observations[seatId],
           context: {
@@ -167,10 +169,16 @@ export class Engine {
             mode: room.mode,
             canAct: room.status === 'playing' && room.turn === i,
           },
-        })
-        room.scenes[seatId] = parseScene(rendered.value)
+        })).value
       } catch {
-        room.sceneErrors[seatId] = 'ui_render_failed'
+        this.abort(room, 'ui_render_failed')
+        return
+      }
+      try {
+        room.scenes[seatId] = parseScene(rendered)
+      } catch {
+        this.abort(room, 'ui_scene_invalid')
+        return
       }
     }
   }
@@ -181,7 +189,12 @@ export class Engine {
     command?: { accountId: string; seatId: string; key: string; digest: string },
     extra?: () => void,
   ): Promise<Room> {
-    await this.observations(room)
+    // Author projections run before committing a rule transition and before any
+    // settlement can be dispatched. Economic acknowledgements reuse that projection
+    // instead of running author code after an irreversible money operation.
+    if (['started', 'funded', 'action', 'timeout'].includes(kind) && ['playing', 'finished'].includes(room.status)) {
+      await this.observations(room)
+    }
     this.store.atomic(() => {
       if (expected !== null) requireThat(this.load(room.id).version === expected, 'version_conflict', 409)
       this.store.db.prepare('INSERT INTO rooms VALUES (?,?) ON CONFLICT(id) DO UPDATE SET body=excluded.body').run(
@@ -416,8 +429,10 @@ export class Engine {
       room.economyOp = 'settle'
     }
   }
-  private abort(room: Room) {
+  private abort(room: Room, sceneError: SceneError | null = null) {
     room.status = 'aborted'
+    room.scenes = Object.fromEntries(room.seats.map(seat => [seat.id, null]))
+    room.sceneErrors = Object.fromEntries(room.seats.map(seat => [seat.id, sceneError]))
     room.turn = null
     room.deadline = null
     room.result = null

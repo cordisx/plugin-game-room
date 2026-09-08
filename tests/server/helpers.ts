@@ -1,3 +1,4 @@
+import assert from 'node:assert/strict'
 import type { GamePackage, RoomView } from '../../sdk/index.js'
 import { createGameServer, type ServerOptions } from '../../server/http.js'
 export const rules = `globalThis.game={
@@ -49,7 +50,9 @@ export async function harness(options: ServerOptions = {}) {
   const bob = await register('bobby')
   const stranger = await register('charlie')
   async function room(pkg = game(), extra: Record<string, unknown> = {}) {
-    const meta = (await request('/v1/packages', alice.token, pkg)).body
+    const published = await request('/v1/packages', alice.token, pkg)
+    assert.equal(published.status, 200, JSON.stringify(published.body))
+    const meta = published.body
     const initial =
       (await request('/v1/rooms', alice.token, { packageHash: meta.hash, mode: 'score', allowAgents: true, ...extra }))
         .body as RoomView
