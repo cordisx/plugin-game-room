@@ -22,7 +22,8 @@ npm run lint
 
 `build [gomoku|holdem]` prints artifact paths and content hashes. No timestamps or
 machine paths are included in the artifact, so rebuilding unchanged sources gives
-the same identity. `validate <file...>` checks package shape and self-contained UI,
+the same identity. The repository MIT license is embedded into rules and HTML
+comments so the uploaded files retain their redistribution notice. `validate <file...>` checks package shape and self-contained UI,
 then executes setup, each seat's observation and timeout in real fresh QuickJS
 runtimes at both supported player-count boundaries. This smoke check is not a
 proof that an arbitrary author's hidden-information or settlement logic is safe.

@@ -47,10 +47,12 @@ export async function build(name, output = join(root, 'dist')) {
   if (!/^[a-z0-9-]+$/.test(name)) throw Error('Invalid source directory')
   const dir = join(root, name)
   const manifest = JSON.parse(await readFile(join(dir, 'manifest.json'), 'utf8'))
+  const license = await readFile(join(root, '../LICENSE'), 'utf8')
   const pieces = name === 'holdem' ? ['evaluate.js', 'rules.js'] : ['rules.js']
-  const rules = (await Promise.all(pieces.map(file => readFile(join(dir, file), 'utf8')))).join(
-    '\n',
-  )
+  const rules = `/*\n${license}*/\n`
+    + (await Promise.all(pieces.map(file => readFile(join(dir, file), 'utf8')))).join(
+      '\n',
+    )
   const [css, adapter, ui, body] = await Promise.all([
     readFile(join(root, 'shared/game.css'), 'utf8'),
     readFile(join(root, 'shared/adapter.js'), 'utf8'),
@@ -58,7 +60,7 @@ export async function build(name, output = join(root, 'dist')) {
     readFile(join(dir, 'body.html'), 'utf8'),
   ])
   const html =
-    `<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${manifest.name}</title><style>${css}</style><body>${body}<script>${adapter}\n${ui}</script></body></html>`
+    `<!doctype html><!--\n${license}--><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${manifest.name}</title><style>${css}</style><body>${body}<script>${adapter}\n${ui}</script></body></html>`
   const pkg = { packageVersion: 1, manifest, rules, ui: { html } }
   const hash = validate(pkg)
   await mkdir(output, { recursive: true })
