@@ -16,7 +16,7 @@
     "test": "tsx --test tests/server/*.test.ts",
     "format": "dprint fmt",
     "format:check": "dprint check",
-    "lint": "eslint server sdk tests/server",
+    "lint": "eslint server sdk tests/server deploy/*.mjs",
     "check": "npm run format:check && npm run lint && npm run typecheck && npm test && npm run build && npm run test:production",
     "test:production": "node tests/server/production-smoke.mjs"
   },
