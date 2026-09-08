@@ -17,8 +17,6 @@ export interface AgentLoopProviderOptions {
   agentLoopControl?: AgentLoopControlV1;
   providerId: string;
   executionMode?: 'ordinary' | 'strict-data-only';
-  /** Integration policy acknowledgement, not a claim that this package controls other plugins. */
-  aggregateRewards: 'disabled-or-game-excluded' | 'unknown';
   now?: () => number;
 }
 interface Context {
@@ -66,9 +64,6 @@ export function createAgentLoopProvider(options: AgentLoopProviderOptions): Agen
   function availability() {
     if (options.executionMode === 'strict-data-only') {
       return { available: false, reason: 'strict-data-only-unsupported' };
-    }
-    if (options.aggregateRewards !== 'disabled-or-game-excluded') {
-      return { available: false, reason: 'aggregate-reward-policy-unconfirmed' };
     }
     if (
       options.agentLoop?.contract !== 'cordisx.bound-agent-loop-client/v4'
