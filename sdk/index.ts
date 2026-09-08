@@ -62,8 +62,15 @@ export interface PackageMetadata {
   publisherId: string
   reviewState: 'unreviewed'
   uiUrl: string
+  uiSha256: string
+}
+export interface EconomyIdentity {
+  instanceId: string
+  gameServiceId: string
+  url: string
 }
 export interface RoomCard {
+  creatorAccountId: string
   id: string
   matchId: string
   handNo: number
@@ -84,6 +91,7 @@ export interface RoomCard {
   turn: number | null
   deadline: number | null
   result: GameResult | null
+  economyIdentity: EconomyIdentity | null
   funding: { economyUrl: string; agreementId: string; termsHash: string } | null
   settlement: 'none' | 'pending' | 'reserved' | 'settled' | 'refunded'
 }

@@ -65,6 +65,7 @@ export class Packages {
       publisherId: row.publisher_id,
       reviewState: 'unreviewed',
       uiUrl: `/v1/packages/${hash}/ui`,
+      uiSha256: digest(this.get(hash).ui.html),
     }
   }
   list() {
