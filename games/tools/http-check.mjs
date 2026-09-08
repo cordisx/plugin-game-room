@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { build } from './package.mjs'
+import { validateScene } from './scene.mjs'
 const artifact = process.argv[2]
 if (!artifact) throw Error('Usage: node tools/http-check.mjs /absolute/path/dist/server/http.js')
 const { createGameServer } = await import(pathToFileURL(resolve(artifact)).href)
@@ -51,10 +52,12 @@ try {
     for (const user of users) await request(`${path}/ready`, user.token, { ready: true })
     room = await request(`${path}/start`, users[0].token, {})
     assert.equal(room.status, 'playing')
+    validateScene(room.scene)
     let count = 0
     while (room.status === 'playing') {
       const seat = room.turn
       room = await request(path, users[seat].token)
+      validateScene(room.scene)
       const action = name === 'gomoku'
         ? { type: 'place', x: Math.floor(count / 2), y: count % 2 }
         : { type: room.observation.legalActions.some(a => a.type === 'call') ? 'call' : 'check' }
@@ -68,6 +71,7 @@ try {
         assert.equal((await request(path, users[seat].token)).version, room.version)
       }
       room = await request(`${path}/actions`, users[seat].token, payload)
+      validateScene(room.scene)
       assert.deepEqual(await request(`${path}/actions`, users[seat].token, payload), room)
       if (count++ === 0) {
         await app.close()

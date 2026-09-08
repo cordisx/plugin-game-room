@@ -33,13 +33,10 @@ export function validate(pkg) {
         )))
     || typeof pkg.rules !== 'string' || pkg.rules.length > 256 * 1024
     || !pkg.rules.includes('globalThis.game')
-    || typeof pkg.ui?.html !== 'string' || pkg.ui.html.length > 256 * 1024
-    || !pkg.ui.html.includes('<!doctype html>')
+    || pkg.ui?.format !== 'scene-v1' || typeof pkg.ui.render !== 'string'
+    || pkg.ui.render.length > 256 * 1024
   ) {
     throw Error('Invalid GamePackage v1')
-  }
-  if (/<(?:script|link|iframe|img)\b[^>]*\b(?:src|href)\s*=/i.test(pkg.ui.html)) {
-    throw Error('UI must be self-contained')
   }
   return createHash('sha256').update(canonical(pkg)).digest('hex')
 }
@@ -53,15 +50,8 @@ export async function build(name, output = join(root, 'dist')) {
     + (await Promise.all(pieces.map(file => readFile(join(dir, file), 'utf8')))).join(
       '\n',
     )
-  const [css, adapter, ui, body] = await Promise.all([
-    readFile(join(root, 'shared/game.css'), 'utf8'),
-    readFile(join(root, 'shared/adapter.js'), 'utf8'),
-    readFile(join(dir, 'ui.js'), 'utf8'),
-    readFile(join(dir, 'body.html'), 'utf8'),
-  ])
-  const html =
-    `<!doctype html><!--\n${license}--><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${manifest.name}</title><style>${css}</style><body>${body}<script>${adapter}\n${ui}</script></body></html>`
-  const pkg = { packageVersion: 1, manifest, rules, ui: { html } }
+  const render = `/*\n${license}*/\n` + await readFile(join(dir, 'render.js'), 'utf8')
+  const pkg = { packageVersion: 1, manifest, rules, ui: { format: 'scene-v1', render } }
   const hash = validate(pkg)
   await mkdir(output, { recursive: true })
   const path = join(output, `${manifest.id}-${manifest.version}.json`)
@@ -81,7 +71,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
       const pkg = JSON.parse(await readFile(path, 'utf8'))
       const hash = validate(pkg)
       await smoke(pkg)
-      console.log(`${hash}  ${path} (QuickJS setup/observe/timeout passed)`)
+      console.log(`${hash}  ${path} (QuickJS setup/observe/render/timeout passed)`)
     }
   } else throw Error('Usage: package.mjs build [gomoku|holdem] | validate <package.json>')
 }

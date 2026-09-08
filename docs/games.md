@@ -1,7 +1,9 @@
 # Example games
 
 The [server API](server-api.md) and [SDK](../sdk/index.ts) own GamePackage v1.
-These examples keep game knowledge inside uploaded packages. The server executes
+These examples keep game knowledge inside uploaded packages. Their `ui.render`
+functions run in a separate server QuickJS guest and return scene-v1 trees for
+the trusted Host renderer; no author HTML or browser JavaScript is executed. The server executes
 rules in fresh QuickJS runtimes and is the only authority for actions and results.
 
 - [Build, validate and publish a package](games-authoring.md)

@@ -1,4 +1,5 @@
 import { context, invoke } from './runtime.mjs'
+import { validateScene } from './scene.mjs'
 export async function smoke(pkg) {
   for (const count of [...new Set([pkg.manifest.minPlayers, pkg.manifest.maxPlayers])]) {
     const ctx = context(count, {
@@ -12,7 +13,15 @@ export async function smoke(pkg) {
       || (!setup.done && (!Number.isInteger(setup.turn) || setup.turn < 0 || setup.turn >= count))
     ) throw Error('Invalid setup transition')
     for (let seat = 0; seat < count; seat++) {
-      await invoke(pkg.rules, 'observe', [setup.state, seat], ctx)
+      const { value: observation } = await invoke(pkg.rules, 'observe', [setup.state, seat], ctx)
+      const uiContext = {
+        seatIndex: seat,
+        seatCount: count,
+        mode: ctx.mode,
+        canAct: setup.turn === seat && !setup.done,
+      }
+      const { value: scene } = await invoke(pkg.ui.render, 'render', [observation], uiContext)
+      validateScene(scene)
     }
     if (!setup.done) {
       await invoke(pkg.rules, 'timeout', [setup.state], { ...ctx, seatIndex: setup.turn })
