@@ -205,5 +205,59 @@ test('real game and economy HTTP: multiple owned seats, consent, settlement, pur
   const revoked = await request(gameUrl, '/agent/observation', grants[0].token, undefined, 403)
   assert.equal(revoked.error.code, 'grant_scope_changed')
   assert.equal((await request(economicUrl, `/agreements/${funding.agreementId}`, alice.wallet)).state, 'settled')
+
+  // A renderer that fails only after play starts must not turn a player's
+  // inability to act into a loss. Exercise cancellation through the real ledger.
+  const failingPackage = structuredClone(packageData)
+  failingPackage.manifest = { ...failingPackage.manifest, version: '1.0.1', minPlayers: 2, maxPlayers: 2 }
+  failingPackage.ui.render = failingPackage.ui.render.replace(
+    'if(typeof process',
+    "if(observation.move>0)throw Error('broken renderer');if(typeof process",
+  )
+  const failingPublished = await request(gameUrl, '/packages', alice.token, failingPackage)
+  const failingConsent = { ...consent, packageHash: failingPublished.hash }
+  let broken = await request(gameUrl, '/rooms', alice.token, {
+    packageHash: failingPublished.hash,
+    mode: 'token',
+    stake: 10,
+    maxPlayers: 2,
+    allowAgents: false,
+    consent: failingConsent,
+  })
+  const brokenPath = `/rooms/${broken.id}`
+  await request(gameUrl, brokenPath + '/join', bob.token, { consent: failingConsent })
+  for (const player of players) {
+    await request(gameUrl, brokenPath + '/ready', player.token, { ready: true, consent: failingConsent })
+  }
+  await request(gameUrl, brokenPath + '/start', alice.token, {})
+  await game.engine.tick()
+  broken = await request(gameUrl, brokenPath, alice.token)
+  const brokenFunding = { agreementId: broken.funding.agreementId, termsHash: broken.funding.termsHash }
+  for (const player of players) await request(economicUrl, '/reserve', player.wallet, brokenFunding)
+  await game.engine.tick()
+  broken = await request(gameUrl, brokenPath, alice.token)
+  assert.equal(broken.status, 'playing')
+  broken = await request(gameUrl, brokenPath + '/actions', alice.token, {
+    expectedVersion: broken.version,
+    idempotencyKey: 'trigger-ui-failure',
+    action: { type: 'move' },
+  })
+  assert.equal(broken.status, 'aborted')
+  assert.equal(broken.sceneError, 'ui_render_failed')
+  assert.equal(broken.scene, null)
+  await game.engine.tick()
+  await game.engine.tick()
+  broken = await request(gameUrl, brokenPath, bob.token)
+  assert.equal(broken.settlement, 'refunded')
+  assert.equal(broken.sceneError, 'ui_render_failed')
+  for (const player of players) {
+    const balance = await request(economicUrl, '/me', player.wallet)
+    assert.equal(balance.available, 90)
+    assert.equal(balance.reserved, 0)
+  }
+  assert.equal(
+    (await request(economicUrl, `/agreements/${brokenFunding.agreementId}`, alice.wallet)).state,
+    'cancelled',
+  )
   economy.store.assertConservation('integration')
 })

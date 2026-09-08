@@ -46,12 +46,15 @@ small four-seat game is an integration fixture, not the shipped game package.
 It verifies one human and two owned Agent seats against a second human, one-time
 account linking, aggregated consent and reservations, conserved payout, a shop
 purchase with response retry, and a fresh match rejecting old Agent grants.
+A second funded match has an author renderer fail after the first move; the
+server aborts it, preserves the failure reason and returns both balances exactly
+once through the real economic cancellation API.
 It also executes the author UI renderer in a separate guest and checks that its
 scene contains only the selected seat's observation. It does not run a model,
 draw the scene in a native Host or fulfill an item in Pet.
 
 Observed passing on 2026-09-09 with game server
-`88155a87cfd55949796714fa9a2f8138d1425cbb`, Agent package
-`0df25226eb747bc8dc3f735d0c629003b544c4ac`, and economy
-`2db025570fbe570d3964b2f2252ca7ff6e7fbb05`. This is component integration evidence;
+`66adc014ff790d2e204236a6c049c3720d249f82`, Agent package
+`4f23484d4ef1b47db4c6617f5daf0b63849a539b`, and economy
+`054e3695453ecc0d070525656650790b21cf8a75`. This is component integration evidence;
 native Host, final merged revisions and user acceptance remain separate gates.
