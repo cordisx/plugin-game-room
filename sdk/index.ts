@@ -1,3 +1,6 @@
+import type { Scene } from './scene.js'
+export { parseScene, sceneLimits } from './scene.js'
+export type { Scene, SceneNode, ViewContext } from './scene.js'
 export type Json = null | boolean | number | string | Json[] | { [key: string]: Json }
 export type SettlementPolicy = 'equal-winners-v1' | 'conserved-payouts-v1'
 export type Mode = 'score' | 'local-chips' | 'token'
@@ -15,7 +18,7 @@ export interface GamePackage {
   packageVersion: 1
   manifest: Manifest
   rules: string
-  ui: { html: string }
+  ui: { format: 'scene-v1'; render: string }
 }
 export interface RuleContext {
   seats: string[]
@@ -63,6 +66,7 @@ export interface PackageMetadata {
   reviewState: 'unreviewed'
   uiUrl: string
   uiSha256: string
+  uiFormat: 'scene-v1'
 }
 export interface EconomyIdentity {
   instanceId: string
@@ -98,6 +102,8 @@ export interface RoomCard {
 export interface RoomView extends RoomCard {
   selfSeatId: string
   observation: Json
+  scene: Scene | null
+  sceneError: 'ui_render_failed' | null
 }
 export interface ActionRequest {
   expectedVersion: number

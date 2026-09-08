@@ -4,7 +4,7 @@ Implemented experimental contract, owned by this repository. TypeScript exports:
 [sdk/index.ts](../sdk/index.ts). Runtime and deployment:
 [server development](server-development.md). No Host Protocol changes are implied.
 
-All paths start `/v1`; JSON except UI HTML. Errors are
+All paths start `/v1`; JSON only, including immutable UI renderer source. Errors are
 `{error:{code,message}}`; no stack or guest exception contents. Successful writes
 return 200. Bearer credentials never appear in URLs. CORS is an explicit operator
 allowlist, not authentication. Each configured source has its own URL and serverId.
@@ -13,7 +13,7 @@ allowlist, not authentication. Each configured source has its own URL and server
 
 - `GET /health` → `{ok:true}`.
 - `GET /v1/handshake` → `{protocol:"game-room/1",serverId,gamePackageVersion:1,
-  runtime:"quickjs-wasm",modes:["score","local-chips","token"],economyAvailable,
+  runtime:"quickjs-wasm",uiFormats:["scene-v1"],modes:["score","local-chips","token"],economyAvailable,
   economy:{url,gameServiceId,instanceId:string|null}|null}`.
 - `POST /v1/accounts` `{name,password}` → `{account:{id,name},token}`.
 - `POST /v1/sessions` `{name,password}` → same. Name 3–40 ASCII letters/digits,
@@ -31,7 +31,7 @@ all room seat operations and replay require an appropriate credential.
 ## Immutable packages and UI
 
 `POST /v1/packages` (human session) publishes GamePackage v1. Response metadata:
-`{hash,manifest,publisherId,reviewState:"unreviewed",uiUrl,uiSha256}`.
+`{hash,manifest,publisherId,reviewState:"unreviewed",uiUrl,uiSha256,uiFormat:"scene-v1"}`.
 `GET /v1/packages` → `{packages:[metadata]}`;
 `GET /v1/packages/:hash` → metadata. Hash is SHA-256 of recursively key-sorted
 canonical JSON of the entire package. Publisher + manifest.id + version cannot
@@ -52,7 +52,7 @@ interface GamePackage {
     description?: string
   }
   rules: string // <=256 KiB characters, classic JS assigning globalThis.game
-  ui: { html: string } // <=256 KiB characters, self-contained HTML
+  ui: { format: 'scene-v1'; render: string } // <=256 KiB classic JS source
 }
 ```
 
@@ -60,14 +60,53 @@ Default settlementPolicies is `["equal-winners-v1"]`. Whole HTTP body max 600 Ki
 Publishing validates syntax, top-level resource use and four required entry points
 inside QuickJS; it does not assert fairness or correctness of every configuration.
 
-`GET /v1/packages/:hash/ui` is immutable HTML, one-year cache and hash ETag.
-uiSha256 is SHA-256 of exact UTF-8 ui.html, separate from the package hash.
-Response CSP includes `sandbox allow-scripts`, no network, forms, external scripts,
-base URL, or same-origin privilege. Client must additionally use an iframe sandbox
-with scripts only; never load this HTML into a trusted renderer. Parent bridge is
-owned by client/game packages and supplies only seat observations and action calls,
-never credentials, Host bridges or money APIs. Self-contained data images/fonts and
-inline scripts/styles are supported. A URL is resolved against its own source.
+`GET /v1/packages/:hash/ui` returns immutable **JSON attachment**
+`{format:"scene-v1",render:string}`, one-year cache and hash ETag. uiSha256 hashes
+exact UTF-8 render source, separate from the whole-package hash. It is an immutable
+authoring resource, never a script for clients to execute. Legacy `{html}` packages
+are rejected; no HTML execution endpoint exists. This v1 is not yet released and
+there is no legacy HTML compatibility path.
+
+## Declarative scene UI
+
+Author `ui.render` assigns `globalThis.render = (observation, context) => scene`.
+Context contains exactly `{seatIndex,seatCount,mode,canAct}`. Each render runs in a
+fresh QuickJS WASM guest/worker after the seat's rule observation. Its worker payload
+has only renderer source, that seat's observation and this context: no rule source,
+private state, seeds, accounts or credentials. No platform random callback is
+registered. Native Date, random, network, filesystem, timers and WebRTC are absent.
+CPU/memory/stack/wall bounds are the same as rules; UI output max 64 KiB UTF-8.
+
+The server independently validates [Scene types and limits](../sdk/scene.ts):
+`{version:1,root:Node}`. Node exact-key union:
+
+- text: `{type:"text",text,tone?:"default"|"muted"|"accent"}`.
+- stack: `{type:"stack",direction?:"vertical"|"horizontal",children:Node[]}`.
+- grid: `{type:"grid",columns:1..19,children:Node[]}`.
+- button: `{type:"button",label,action:Json,disabled?:boolean,ariaLabel?:string}`.
+- number-action: `{type:"number-action",label,min,max,step,value,
+  action:JsonObject,valueKey:string}`. Numeric fields must be safe integers,
+  min <= value <= max, positive step, safe differences and `(value-min)%step===0`.
+  valueKey is a single ASCII identifier up to 64 characters, never a property path.
+  The trusted renderer copies the action and inserts the selected integer there.
+
+Bounds: <=1024 nodes, root depth 1 / max 16, <=400 children per container,
+text/labels/ariaLabel <=2048 characters, action <=4096 UTF-8 JSON bytes and depth
+<=16. Numeric action templates and inserted boundary/default values must fit the
+action byte bound; the renderer also revalidates actual submissions. Reject unknown
+keys/types, sparse arrays, accessors, nonfinite numbers and recursive action keys
+`__proto__`, `prototype`, `constructor`. There are no URL, raw HTML, style, image,
+script or network primitives. A text string that resembles HTML remains plain text.
+
+`RoomView.scene` contains only the current seat's validated tree, also persisted in
+its replay/command ACK. Failure returns `scene:null,sceneError:"ui_render_failed"`,
+never private state or legacy HTML. UI failure does not mutate game rules or money.
+Before play, scene and sceneError are null. Clients pass the scene to the trusted
+Host renderer as `{sequence:room.version,payload:room.scene}` and bind action events
+to the authoritative source/room/seat/version. The client never loads renderer
+JavaScript or forwards credentials into it. The renderer rejects stale/detached
+controls and validates each emitted JSON action; the server still authorizes and
+runs the rule's act method.
 
 ## Rule SDK
 
@@ -141,7 +180,7 @@ fixed in the room. A room keeps roomId but each round gets a fresh matchId/handN
 Room mutations return `RoomView` unless specified. RoomCard fields:
 `id,creatorAccountId,matchId,handNo,serverId,packageHash,manifest,mode,config,maxPlayers,allowAgents,
 turnTimeoutMs,stake,policy,reviewState,status,version,seats,turn,deadline,result,
-settlement,funding,economyIdentity`. RoomView adds `selfSeatId,observation`.
+settlement,funding,economyIdentity`. RoomView adds `selfSeatId,observation,scene,sceneError`.
 Status `waiting | funding | playing | finished | aborted`.
 Settlement `none | pending | reserved | settled | refunded`.
 Funding `{economyUrl,agreementId,termsHash}|null`; economyIdentity

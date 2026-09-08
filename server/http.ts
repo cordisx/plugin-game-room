@@ -89,6 +89,7 @@ export function createGameServer(options: ServerOptions = {}) {
           serverId: store.serverId,
           gamePackageVersion: 1,
           runtime: 'quickjs-wasm',
+          uiFormats: ['scene-v1'],
           modes: ['score', 'local-chips', 'token'],
           economyAvailable: !!options.economy,
           economy: options.economy
@@ -116,15 +117,12 @@ export function createGameServer(options: ServerOptions = {}) {
         if (parts.length === 2) json(res, 200, { packages: packages.list() })
         else if (parts.length === 3) json(res, 200, packages.metadata(parts[2]))
         else if (parts.length === 4 && parts[3] === 'ui') {
-          const html = packages.get(parts[2]).ui.html
-          res.setHeader(
-            'Content-Security-Policy',
-            "sandbox allow-scripts; default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; font-src data:; connect-src 'none'; form-action 'none'; base-uri 'none'",
-          )
+          const ui = packages.get(parts[2]).ui
+          res.setHeader('Content-Security-Policy', "sandbox; default-src 'none'")
+          res.setHeader('Content-Disposition', 'attachment; filename="scene-v1.json"')
           res.setHeader('Cache-Control', 'public, max-age=31536000, immutable')
           res.setHeader('ETag', `"${parts[2]}"`)
-          res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
-          res.end(html)
+          json(res, 200, ui)
         } else throw new ApiError(404, 'not_found')
         return
       }

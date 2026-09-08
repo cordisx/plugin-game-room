@@ -1,3 +1,4 @@
+import { parseScene, type Scene } from '../sdk/scene.js'
 import { randomBytes } from 'node:crypto'
 import type {
   ActionRequest,
@@ -14,7 +15,7 @@ import { digest } from './accounts.js'
 import { ApiError, canonical, integer, object, requireThat } from './errors.js'
 import { Store } from './store.js'
 import { Packages } from './packages.js'
-import { invoke, transition } from './runner.js'
+import { invoke, invokeUi, transition } from './runner.js'
 import { type EconomyAdapter, type FundingTerms, payouts } from './economy.js'
 
 export interface Room extends RoomCard {
@@ -22,6 +23,8 @@ export interface Room extends RoomCard {
   seed: string
   cursor: number
   observations: Record<string, Json>
+  scenes: Record<string, Scene | null>
+  sceneErrors: Record<string, 'ui_render_failed' | null>
   economyAccounts: Record<string, string>
   economyTerms: FundingTerms | null
   economyOp: 'create' | 'settle' | 'cancel' | null
@@ -118,6 +121,8 @@ export class Engine {
       ...this.card(room),
       selfSeatId: room.seats[i].id,
       observation: structuredClone(room.observations[room.seats[i].id] ?? null),
+      scene: structuredClone(room.scenes?.[room.seats[i].id] ?? null),
+      sceneError: room.sceneErrors?.[room.seats[i].id] ?? null,
     }
   }
   list(accountId?: string) {
@@ -137,11 +142,35 @@ export class Engine {
     if (room.status === 'waiting' || room.status === 'funding' || (room.status === 'aborted' && room.state === null)) {
       return
     }
+    room.scenes ??= {}
+    room.sceneErrors ??= {}
     for (let i = 0; i < room.seats.length; i++) {
+      const seatId = room.seats[i].id
+      room.scenes[seatId] = null
+      room.sceneErrors[seatId] = null
       try {
         room.observations[room.seats[i].id] = (await this.run(room, 'observe', [room.state, i], i)).value
       } catch {
-        room.observations[room.seats[i].id] = null
+        room.observations[seatId] = null
+        room.sceneErrors[seatId] = 'ui_render_failed'
+        continue
+      }
+      try {
+        const ui = this.packages.get(room.packageHash).ui
+        requireThat(ui.format === 'scene-v1', 'unsupported_ui_format')
+        const rendered = await invokeUi({
+          render: ui.render,
+          observation: room.observations[seatId],
+          context: {
+            seatIndex: i,
+            seatCount: room.seats.length,
+            mode: room.mode,
+            canAct: room.status === 'playing' && room.turn === i,
+          },
+        })
+        room.scenes[seatId] = parseScene(rendered.value)
+      } catch {
+        room.sceneErrors[seatId] = 'ui_render_failed'
       }
     }
   }
@@ -256,6 +285,8 @@ export class Engine {
       seed: randomBytes(32).toString('hex'),
       cursor: 0,
       observations: {},
+      scenes: {},
+      sceneErrors: {},
       economyAccounts: {},
       economyTerms: null,
       economyOp: null,
@@ -304,6 +335,8 @@ export class Engine {
     const old = room.version++
     const removed = room.seats.splice(seat, 1)[0]
     delete room.observations[removed.id]
+    delete room.scenes?.[removed.id]
+    delete room.sceneErrors?.[removed.id]
     if (!room.seats.some(s => s.accountId === account.id)) delete room.economyAccounts[account.id]
     if (!room.seats.length) room.status = 'aborted'
     else if (room.creatorAccountId === account.id) {
@@ -340,6 +373,8 @@ export class Engine {
     room.seed = randomBytes(32).toString('hex')
     room.cursor = 0
     room.observations = {}
+    room.scenes = {}
+    room.sceneErrors = {}
     room.funding = null
     room.economyTerms = null
     room.economyOp = null

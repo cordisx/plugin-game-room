@@ -22,7 +22,8 @@ forwarded IP headers are deliberately not trusted. An internet operator should s
 proxy limits for their real client address and scale before opening registration.
 
 `ALLOWED_ORIGINS` is a comma-separated list of exact client origins. No wildcard or
-cookies. Package HTML receives sandbox CSP independently. Sessions are sensitive:
+cookies. Uploaded UI is a server-side WASM render function; clients receive only
+validated declarative scenes, never author HTML or JavaScript. Sessions are sensitive:
 client credential storage belongs to the client's secure transport, not game UI.
 
 Optional shared Token economy configuration (all three required):
@@ -116,8 +117,8 @@ also checks the economic settled payout record against its requested allocation.
 An unexpected already-settled agreement without a matching game settlement remains
 pending for operator investigation; it is never labelled refunded or successful.
 
-The CI workflow template is `deploy/github-workflow.yml`. Installing it as
-`.github/workflows/server.yml` requires a repository credential with GitHub's
-workflow permission; the task's OAuth credential rejects workflow-path pushes.
-The template runs the complete owner gate and a Docker build on Linux. It has
-not been installed or run by this delivery.
+The installed CI workflow is `.github/workflows/server.yml`; it runs the full
+owner gate and a Docker build on Linux. The initial HTTPS OAuth push was refused
+because that credential lacks workflow permission. Existing authorized SSH access
+is used to publish the workflow; origin remains HTTPS and no credential change is
+needed. Local Docker runtime remains unavailable as recorded above.

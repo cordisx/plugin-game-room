@@ -1,7 +1,7 @@
 import type { GamePackage, PackageMetadata } from '../sdk/index.js'
 import { canonical, integer, object, requireThat } from './errors.js'
 import { digest } from './accounts.js'
-import { invoke } from './runner.js'
+import { invoke, invokeUi } from './runner.js'
 import { Store } from './store.js'
 export class Packages {
   constructor(private store: Store) {}
@@ -24,7 +24,11 @@ export class Packages {
           && m.settlementPolicies.every(x => ['equal-winners-v1', 'conserved-payouts-v1'].includes(x as string))),
     )
     requireThat(typeof input.rules === 'string' && input.rules.length <= 256 * 1024)
-    requireThat(typeof input.ui.html === 'string' && input.ui.html.length <= 256 * 1024)
+    requireThat(
+      input.ui.format === 'scene-v1' && Object.keys(input.ui).every(key => ['format', 'render'].includes(key)),
+      'unsupported_ui_format',
+    )
+    requireThat(typeof input.ui.render === 'string' && input.ui.render.length <= 256 * 1024, 'invalid_ui_renderer')
     const body = canonical(input)
     const hash = digest(body)
     const prior = this.store.db.prepare('SELECT hash FROM packages WHERE publisher_id=? AND game_id=? AND version=?')
@@ -38,6 +42,15 @@ export class Packages {
       seed: '',
       cursor: 0,
     })
+    await invokeUi(
+      {
+        render: input.ui.render,
+        observation: null,
+        context: { seatIndex: 0, seatCount: 2, mode: 'score', canAct: false },
+      },
+      {},
+      true,
+    )
     this.store.db.prepare('INSERT OR IGNORE INTO packages VALUES (?,?,?,?,?)').run(
       hash,
       publisherId,
@@ -65,7 +78,8 @@ export class Packages {
       publisherId: row.publisher_id,
       reviewState: 'unreviewed',
       uiUrl: `/v1/packages/${hash}/ui`,
-      uiSha256: digest(this.get(hash).ui.html),
+      uiSha256: digest(this.get(hash).ui.render),
+      uiFormat: 'scene-v1',
     }
   }
   list() {

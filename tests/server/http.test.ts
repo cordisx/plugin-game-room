@@ -68,7 +68,7 @@ test('two users play with seat-only views, version concurrency, idempotency and 
   assert.equal(next.body.handNo, 2)
   assert(next.body.seats.every((s: { ready: boolean }) => !s.ready))
 })
-test('sessions revoke, source namespaces, immutable package versions and sandbox HTML', async t => {
+test('sessions revoke, source namespaces, immutable package versions and non-executable scene source', async t => {
   const h = await harness()
   t.after(() => h.app.close())
   const hs = await h.request('/v1/handshake')
@@ -78,10 +78,12 @@ test('sessions revoke, source namespaces, immutable package versions and sandbox
   assert(!Object.hasOwn(meta.body, 'rules'))
   assert.equal((await h.request('/v1/packages', h.alice.token, game())).body.hash, meta.body.hash)
   const changed = game()
-  changed.ui.html = 'changed'
+  changed.ui.render += '\n// changed'
   assert.equal((await h.request('/v1/packages', h.alice.token, changed)).body.error.code, 'immutable_version')
   const html = await fetch(h.url + meta.body.uiUrl)
-  assert.match(html.headers.get('content-security-policy')!, /sandbox allow-scripts/)
+  assert.match(html.headers.get('content-type')!, /application\/json/)
+  assert.equal((await html.json()).format, 'scene-v1')
+  assert.match(html.headers.get('content-disposition')!, /attachment/)
   assert.match(html.headers.get('cache-control')!, /immutable/)
   await h.request('/v1/session', h.alice.token, undefined, 'DELETE')
   assert.equal((await h.request('/v1/me', h.alice.token)).status, 401)
