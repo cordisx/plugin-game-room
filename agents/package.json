@@ -3,7 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "exports": "./index.ts",
+  "exports": {
+    ".": "./index.ts",
+    "./file-store": "./file-store.ts"
+  },
   "scripts": {
     "test": "tsx --test test/*.test.ts",
     "typecheck": "tsc --noEmit",
@@ -14,6 +17,7 @@
   },
   "devDependencies": {
     "@cordisx/eslint-config": "github:cordisx/cordisxmono#32fa3b257cd5a7bfa0bb2d5f1012ca18665d1637",
+    "@cordisx/protocol": "github:cordisx/cordisx-protocol#8adc1aab908263e692bd56ca6165b9aeadabe4b9",
     "@types/node": "^24.0.0",
     "dprint": "^0.50.2",
     "eslint": "^9.35.0",

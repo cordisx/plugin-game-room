@@ -17,6 +17,17 @@ The model never receives this transport, human session, grant token or wallet AP
 Human authorization and grant capture belong in the client/Host credential flow.
 Joining another person's room is supported when that room allows Agents.
 
+`createAgentLoopProvider` accepts public `agentLoop` v4 and additive
+`agentLoopControl` v1 clients, a `providerId`, `executionMode: 'ordinary'` and
+`aggregateRewards: 'disabled-or-game-excluded'`. Missing control or unconfirmed
+reward policy returns typed availability information. It creates an independent
+task, uses the profile's fixed model with high effort, and subscribes to that exact
+binding. An action is returned only after its matching completion event and
+controlled-turn `read` both confirm completion. Abort and disposal call public
+`cancel` with the exact controlled turn. Shared Host clients are not disposed.
+The package pins the experimental Protocol commit
+`8adc1aab908263e692bd56ca6165b9aeadabe4b9`; it is not a released Host capability.
+
 `dispatch(input)` creates a dispatch and starts automatic polling. `get`, `list`
 and `subscribe` expose cloned snapshots containing status and budgets, with no
 observations, pending actions or credentials. `withdraw(id, 'immediate')` aborts
@@ -41,6 +52,9 @@ player text are untrusted data. The output is bounded JSON with exactly
 rejected. The server revalidates the action. Pending actions are saved before
 submission and replayed with the same idempotency key after a lost acknowledgement.
 A stale version discards that pending action and reobserves the seat.
+If the process exits during inference, its reserved call and Host deadline remain
+in the record. Recovery waits out that deadline before another model call, avoiding
+overlapping inference when the old turn's cancellation cannot be confirmed.
 
 Action and model-call budgets are separate. A model call is reserved before
 execution, including failed attempts. Dispatch duration and turn deadlines use

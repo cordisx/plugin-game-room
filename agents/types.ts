@@ -102,6 +102,8 @@ export interface DispatchRecord {
   input: DispatchInput;
   snapshot: DispatchSnapshot;
   pending?: ActionRequest;
+  /** After restart, wait out a submitted turn's Host deadline before opening another inference. */
+  inferenceDeadline?: number;
   retries: number;
   terminalTarget?: 'completed' | 'withdrawn' | 'failed';
 }
