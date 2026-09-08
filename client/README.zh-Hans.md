@@ -13,7 +13,9 @@ npm run dev:dry-run
 ```
 
 SDK 脚本以固定提交构建候选 Host/Protocol，产物与 provenance 留在忽略的 `.cache/`。
-Git 依赖准备可能需要数分钟。需要 Node 22.19+、Git、npm 与仓库内相邻的 `agents/`。
+使用 Node 24.14.1、npm 11.11.0、Git 与仓库内相邻的 `agents/` 复现已验证的归档哈希。
+脚本直接委托固定 Host 提交的源码构建 recipe，先构建并核验完整 Channel/Proxy，再打包；
+不提前对 Host 运行 npm ci，不递归安装 Git 开发依赖，每次使用新的构建目录。
 构建保留 `dist/runtime` 中完整索引 ESM/CSS 图。
 
 默认预览配置明确使用样例数据。真实使用时，通过“设置 · 数据来源 → 管理来源与 Agent 配置”

@@ -1,56 +1,50 @@
-import { createHash } from 'node:crypto'
-/** Reproduce the exact maintained Host/creator and public Protocol packages in an ignored directory. */
+/** Delegate exact-source packaging to the maintained Host recipe; no consumer-side Git prepare. */
 import { execFileSync } from 'node:child_process'
+import { createHash, randomUUID } from 'node:crypto'
 import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 const root = fileURLToPath(new URL('../', import.meta.url))
-const output = join(root, '.cache/sdk')
-const hostSha = '5101d6ec25409a65d939fb4214b4144a5eb672df'
+const hostSha = '1d2636adbe239550fd70e3e82d4b43681a800833'
 const protocolSha = '465c444c65eec1be8e337b94c2cf658ed536f49c'
+const expected = {
+  'cordisx-0.1.0-beta.2.tgz': 'fbb47a38f3dc31b1db8ffd78b8b182dae1f01ed9de5c07c27f290af95e92a274',
+  'cordisx-protocol-0.1.0-alpha.0.tgz': '9576e28592b44c589aa847f3e57c02db1731a664c5cfa5a0f1fd5c4b5a3e21c8',
+}
+const cache = join(root, '.cache')
+const output = join(cache, 'sdk')
+const source = join(cache, `cordisx-source-${hostSha.slice(0, 12)}`)
+const build = join(cache, `sdk-build-${hostSha.slice(0, 12)}-${randomUUID()}`)
 mkdirSync(output, { recursive: true })
-const run = (cmd, args, cwd) => execFileSync(cmd, args, { cwd, stdio: 'inherit' })
-function checkout(repo, sha) {
-  const target = join(root, '.cache', `${repo}-${sha.slice(0, 12)}`)
-  if (!existsSync(target)) {
-    run('git', ['clone', '--filter=blob:none', '--no-checkout', `https://github.com/cordisx/${repo}.git`, target], root)
+const run = (command, args, cwd) => execFileSync(command, args, { cwd, stdio: 'inherit' })
+const git = args => execFileSync('git', args, { cwd: source, encoding: 'utf8' }).trim()
+if (!existsSync(source)) {
+  run('git', ['clone', '--filter=blob:none', '--no-checkout', 'https://github.com/cordisx/cordisx.git', source], root)
+}
+run('git', ['fetch', 'origin', hostSha], source)
+run('git', ['checkout', '--detach', hostSha], source)
+if (git(['rev-parse', 'HEAD']) !== hostSha || git(['status', '--porcelain', '--untracked-files=no'])) {
+  throw new Error('SDK source must be the exact clean Host commit')
+}
+// The Host builder requires a nonexistent absolute output directory and archives HEAD.
+// It owns complete Channel/Proxy builds and executable modes; do not run npm ci first.
+run(process.execPath, ['scripts/prepare-sdk.mjs', build], source)
+const evidence = JSON.parse(readFileSync(join(build, 'sdk-evidence.json'), 'utf8'))
+if (
+  evidence.hostCommit !== hostSha
+  || !evidence.sources.some(input =>
+    input.location === 'node_modules/@cordisx/protocol' && input.spec.endsWith(`#${protocolSha}`)
+  )
+) {
+  throw new Error('SDK build evidence does not match the pinned inputs')
+}
+for (const [filename, hash] of Object.entries(expected)) {
+  const actual = createHash('sha256').update(readFileSync(join(build, 'packages', filename))).digest('hex')
+  if (actual !== hash || evidence.packages.find(item => item.filename === filename)?.sha256 !== actual) {
+    throw new Error(`SDK archive mismatch for ${filename}: ${actual}; expected ${hash}`)
   }
-  run('git', ['fetch', 'origin', sha], target)
-  run('git', ['checkout', '--detach', sha], target)
-  const actual = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: target, encoding: 'utf8' }).trim()
-  if (actual !== sha) throw new Error('SDK checkout mismatch')
-  return target
 }
-function pack(cwd) {
-  const metadata = JSON.parse(readFileSync(join(cwd, 'package.json'), 'utf8'))
-  const name = `${metadata.name.replace('@', '').replace('/', '-')}-${metadata.version}.tgz`
-  run('npm', ['pack', '--ignore-scripts', '--pack-destination', output], cwd)
-  return name
-}
-const protocol = checkout('cordisx-protocol', protocolSha)
-// Protocol's package allowlist contains tracked runtime/type/schema files only; no install or build is required to package it.
-pack(protocol)
-const host = checkout('cordisx', hostSha)
-run('npm', ['ci', '--ignore-scripts'], host)
-run('npm', ['run', 'build'], host)
-const hostPackage = pack(join(host, 'packages/cli'))
-copyFileSync(join(output, hostPackage), join(output, `cordisx-${hostSha.slice(0, 12)}.tgz`))
-pack(join(host, 'packages/create-cordisx-plugin'))
-console.info(
-  `SDK ready: Host ${hostSha}, Protocol ${protocolSha}. This experimental Host includes the public HTTP capability.`,
-)
-
-writeFileSync(
-  join(output, 'provenance.json'),
-  JSON.stringify(
-    {
-      hostSha,
-      protocolSha,
-      sha256: createHash('sha256').update(readFileSync(join(output, `cordisx-${hostSha.slice(0, 12)}.tgz`))).digest(
-        'hex',
-      ),
-    },
-    null,
-    2,
-  ) + '\n',
-)
+const filename = `cordisx-${hostSha.slice(0, 12)}.tgz`
+copyFileSync(join(build, 'packages/cordisx-0.1.0-beta.2.tgz'), join(output, filename))
+writeFileSync(join(output, 'sdk-evidence.json'), JSON.stringify(evidence, null, 2) + '\n')
+console.info(`SDK ready: Host ${hostSha}, Protocol ${protocolSha}, ${filename}`)
