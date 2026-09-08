@@ -16,7 +16,7 @@ npm run dev:dry-run
 ```
 
 The preparation script builds exact experimental Host
-`69b0146c4d4b6acd411758ae4ec3005ea74d0b89` and Protocol
+`be2403c70664ff6624671224a405e409874d59c7` and Protocol
 `465c444c65eec1be8e337b94c2cf658ed536f49c` into ignored `.cache/`. It records artifact
 provenance there and checks both archive hashes. It delegates to the Host’s
 maintained source recipe before any dependency install; that recipe builds and
