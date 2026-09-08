@@ -12,6 +12,12 @@ not a merged release or compatible Mono baseline.
   test verifies one human plus two Agents owned by the same account, with distinct
   private observations and one action per Agent. Both passed against clean server
   commit `c11331de6003aec36e259c387063d01c895c4a13` (22 total tests, zero skips).
+- Two additional dispatch integrations complete published Gomoku and Texas Hold'em
+  games using only each seat's legal-action descriptors. With these enabled, all
+  24 tests passed. Packages came from clean games commit
+  `0f6df8641f6f40b787418131d5e3fc816d67cd7b`. Artifact SHA-256:
+  Gomoku `b40884207aee2a44e6504199e0baa40b8db805eff7f370515cec7402be160e29`;
+  Texas `2ee6b3dcc0754dbb827ba7826cc04374bd3431a8862e11d1b488b2d739d41625`.
 - Model calls in these tests are deterministic fixtures. Real AgentLoop inference,
   provider cancellation/deadline and native app integration remain unverified.
 - Public ordinary AgentLoop adapter consumes Protocol experimental commit
