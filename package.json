@@ -3,8 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=24.14.0" },
-  "workspaces": ["packages/*", "client", "games/*", "agents"],
+  "engines": {
+    "node": ">=24.14.0"
+  },
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
     "dev:server": "tsx server/main.ts",
     "build": "tsc -p tsconfig.json",
@@ -15,7 +19,9 @@
     "lint": "eslint server sdk tests/server",
     "check": "npm run format:check && npm run lint && npm run typecheck && npm test && npm run build"
   },
-  "dependencies": { "quickjs-emscripten": "0.32.0" },
+  "dependencies": {
+    "quickjs-emscripten": "0.32.0"
+  },
   "devDependencies": {
     "@cordisx/eslint-config": "github:cordisx/cordisxmono#32fa3b257cd5a7bfa0bb2d5f1012ca18665d1637",
     "@types/node": "26.5.0",

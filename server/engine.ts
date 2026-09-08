@@ -123,7 +123,9 @@ export class Engine {
     }
   }
   private async observations(room: Room) {
-    if (room.state === null) return
+    if (room.status === 'waiting' || room.status === 'funding' || (room.status === 'aborted' && room.state === null)) {
+      return
+    }
     for (let i = 0; i < room.seats.length; i++) {
       try {
         room.observations[room.seats[i].id] = (await this.run(room, 'observe', [room.state, i], i)).value
@@ -190,7 +192,7 @@ export class Engine {
     const stake = input.stake ?? 0
     requireThat(integer(stake, input.mode === 'token' ? 1 : 0, 1000000))
     requireThat(input.mode === 'token' || stake === 0, 'stake_not_allowed')
-    const policy = input.policy ?? 'equal-winners-v1'
+    const policy = input.policy ?? pkg.manifest.settlementPolicies?.[0] ?? 'equal-winners-v1'
     requireThat((pkg.manifest.settlementPolicies ?? ['equal-winners-v1']).includes(policy), 'unsupported_policy')
     requireThat(input.allowAgents === undefined || typeof input.allowAgents === 'boolean')
     requireThat(input.mode !== 'token' || this.economy, 'economy_unavailable', 503)
@@ -283,10 +285,10 @@ export class Engine {
     const seat = this.seat(room, account.id, seatId)
     requireThat(room.status === 'waiting', 'room_started', 409)
     if (ready) this.consent(room, consent)
-    if (room.seats[seat].ready === ready) return this.view(room, account.id)
+    if (room.seats[seat].ready === ready) return this.view(room, account.id, room.seats[seat].id)
     const old = room.version++
     room.seats[seat].ready = ready
-    return this.view(await this.save(room, old, 'ready'), account.id)
+    return this.view(await this.save(room, old, 'ready'), account.id, room.seats[seat].id)
   }
   async nextMatch(account: Account, id: string) {
     const room = this.load(id)
@@ -465,6 +467,22 @@ export class Engine {
           room.funding = { economyUrl: this.economy.url, agreementId: agreement.id, termsHash: agreement.termsHash }
           if (room.economyOp === 'create') room.economyOp = null
           await this.save(room, old, 'agreement')
+        }
+        if (room.funding && !['settled', 'refunded'].includes(room.settlement)) {
+          const current = await this.economy.get(room.funding.agreementId)
+          if (current.state === 'expired' || current.state === 'cancelled') {
+            const old = room.version++
+            if (['playing', 'funding'].includes(room.status)) this.abort(room)
+            room.settlement = 'refunded'
+            room.economyOp = null
+            await this.save(room, old, 'economy_refunded')
+          } else if (current.state === 'settled' && room.economyOp !== 'settle') {
+            const old = room.version++
+            if (['playing', 'funding'].includes(room.status)) this.abort(room)
+            room.settlement = 'settled'
+            room.economyOp = null
+            await this.save(room, old, 'economy_settled')
+          }
         }
         if (room.economyOp === 'cancel' && room.funding) {
           const agreement = await this.economy.cancel(room.funding.agreementId, `${room.matchId}:cancel`)

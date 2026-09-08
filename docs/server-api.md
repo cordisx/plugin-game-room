@@ -132,8 +132,7 @@ rooms containing that account's seats, including finished history.
 }
 ```
 
-Defaults: package maxPlayers, allowAgents false, 60-second turn, stake 0, policy
-above. Turn timeout range 1 second–1 hour. Token stake positive integer <=1,000,000
+Defaults: package maxPlayers, allowAgents false, 60-second turn, stake 0, first supported manifest policy (or equal-winners-v1). Turn timeout range 1 second–1 hour. Token stake positive integer <=1,000,000
 per seat; other modes require 0. Match-local chips are game configuration/state and
 never touch wallets. Config, packageHash, manifest, mode, stakes and policy remain
 fixed in the room. A room keeps roomId but each round gets a fresh matchId/handNo.
