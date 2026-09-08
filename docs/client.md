@@ -69,7 +69,10 @@ manifest IDs from different publishers, exact package selection, two-player read
 start / action / finish, lost-ACK retry, private-state exclusion, replay, next-match
 reset and independent source outage. Other tests cover invitations, lifecycle
 fences, inert package parsing, role-scoped HTTP handles, derived grant revocation
-and multi-seat economic consent with same-key reserve recovery.
+and multi-seat economic consent with same-key reserve recovery. The separate
+lightweight security run now passes five tests, including actual HTTP streaming
+at exactly 2,000,000 bytes, rejection at 2,000,001 bytes and propagated mid-stream
+abort. This check does not start QuickJS or a native App.
 
 To include real HTTP in the client gate, build the root server and run:
 
