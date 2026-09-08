@@ -35,7 +35,17 @@
   }
   function draw(observation) {
     view = observation
-    if (!view || view.kind !== 'holdem') return
+    if (!view || view.kind !== 'holdem') {
+      document.getElementById('status').textContent = '等待本手开始'
+      document.getElementById('blinds').textContent = ''
+      document.getElementById('street').textContent = '等待发牌'
+      document.getElementById('pot').textContent = '底池 0'
+      document.getElementById('seats').replaceChildren()
+      document.getElementById('actions').replaceChildren()
+      cards(document.getElementById('board'), [null, null, null, null, null])
+      cards(document.getElementById('hole'), [null, null])
+      return
+    }
     document.getElementById('status').textContent = view.result
       ? `本手结束 · 你的筹码 ${view.players[view.selfSeat].stack}`
       : view.turn === view.selfSeat
@@ -111,5 +121,6 @@
       actions.append(button)
     }
   }
+  draw(null)
   gameAdapter.subscribe(draw)
 })()

@@ -26,7 +26,16 @@
   })
   function draw(view) {
     observation = view
-    if (view.kind !== 'gomoku') return
+    if (!view || view.kind !== 'gomoku') {
+      document.getElementById('status').textContent = '等待本手开始'
+      document.getElementById('moves').textContent = '15 × 15'
+      cells.forEach(button => {
+        button.disabled = true
+        button.dataset.stone = ''
+        button.dataset.last = 'false'
+      })
+      return
+    }
     document.getElementById('status').textContent = view.result
       ? view.result.winners.length
         ? `${view.result.winners[0] === 0 ? '黑' : '白'}方获胜${
@@ -50,5 +59,6 @@
       )
     })
   }
+  draw(null)
   gameAdapter.subscribe(draw)
 })()
