@@ -1,0 +1,10 @@
+{
+  "id": "texas-holdem",
+  "version": "1.0.0",
+  "name": "德州扑克",
+  "minPlayers": 2,
+  "maxPlayers": 8,
+  "modes": ["score", "local-chips", "token"],
+  "settlementPolicies": ["conserved-payouts-v1"],
+  "description": "单手无限注德州：盲注、完整下注、全下、边池与平分；筹码守恒。"
+}
