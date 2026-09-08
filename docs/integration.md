@@ -52,6 +52,9 @@ once through the real economic cancellation API.
 It also executes the author UI renderer in a separate guest and checks that its
 scene contains only the selected seat's observation. It does not run a model,
 draw the scene in a native Host or fulfill an item in Pet.
+It also rebuilds the shipped Gomoku and Hold’em packages from their canonical
+packaging entry, funds a two-player Token match for each, plays to completion
+and checks every resulting balance against the game payout and fixed escrow.
 
 Observed passing on 2026-09-09 with game server
 `66adc014ff790d2e204236a6c049c3720d249f82`, Agent package

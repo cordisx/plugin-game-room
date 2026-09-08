@@ -7,6 +7,7 @@ import { pathToFileURL } from 'node:url'
 import test from 'node:test'
 import { createGameServer } from '../dist/server/http.js'
 import { HttpEconomy } from '../dist/server/economy.js'
+import { build as buildGame } from '../games/tools/package.mjs'
 
 // Explicit dependency checkout: build it first. Never substitute a fixture ledger.
 assert.ok(process.env.ECONOMY_REPOSITORY, 'Set ECONOMY_REPOSITORY to the built economy checkout')
@@ -57,7 +58,7 @@ test('real game and economy HTTP: multiple owned seats, consent, settlement, pur
       body: body === undefined ? undefined : JSON.stringify(body),
     })
     const value = await response.json()
-    assert.equal(response.status, expected, `${path}: ${JSON.stringify(value)}`)
+    assert.equal(response.status, expected, `${path} ${body?.idempotencyKey ?? ''}: ${JSON.stringify(value)}`)
     return value
   }
   const players = []
@@ -259,5 +260,65 @@ test('real game and economy HTTP: multiple owned seats, consent, settlement, pur
     (await request(economicUrl, `/agreements/${brokenFunding.agreementId}`, alice.wallet)).state,
     'cancelled',
   )
+  // Exercise the actual author sources, never potentially stale built packages.
+  for (const name of ['gomoku', 'holdem']) {
+    const { pkg } = await buildGame(name, join(directory, 'published-games'))
+    const metadata = await request(gameUrl, '/packages', alice.token, pkg)
+    const terms = {
+      packageHash: metadata.hash,
+      stake: 10,
+      policy: pkg.manifest.settlementPolicies?.[0] ?? 'equal-winners-v1',
+      reviewState: 'unreviewed',
+    }
+    let match = await request(gameUrl, '/rooms', alice.token, {
+      packageHash: metadata.hash,
+      mode: 'token',
+      stake: 10,
+      policy: terms.policy,
+      maxPlayers: 2,
+      allowAgents: false,
+      consent: terms,
+    })
+    const matchPath = `/rooms/${match.id}`
+    await request(gameUrl, matchPath + '/join', bob.token, { consent: terms })
+    for (const player of players) {
+      await request(gameUrl, matchPath + '/ready', player.token, { ready: true, consent: terms })
+    }
+    const before = await Promise.all(players.map(player => request(economicUrl, '/me', player.wallet)))
+    await request(gameUrl, matchPath + '/start', alice.token, {})
+    await game.engine.tick()
+    match = await request(gameUrl, matchPath, alice.token)
+    const agreementInput = { agreementId: match.funding.agreementId, termsHash: match.funding.termsHash }
+    for (const player of players) await request(economicUrl, '/reserve', player.wallet, agreementInput)
+    await game.engine.tick()
+    match = await request(gameUrl, matchPath, alice.token)
+    let move = 0
+    while (match.status === 'playing') {
+      assert.ok(move < 100, 'shipped game must terminate within this strategy budget')
+      const player = players[match.turn]
+      match = await request(gameUrl, matchPath, player.token)
+      assert.equal(match.sceneError, null)
+      assert.ok(match.scene)
+      const action = name === 'gomoku'
+        ? { type: 'place', x: Math.floor(move / 2), y: move % 2 }
+        : { type: match.observation.legalActions.some(action => action.type === 'call') ? 'call' : 'check' }
+      match = await request(gameUrl, matchPath + '/actions', player.token, {
+        expectedVersion: match.version,
+        idempotencyKey: `${name}-token-${move++}`,
+        action,
+      })
+    }
+    assert.equal(match.status, 'finished')
+    const payouts = name === 'gomoku' ? [20, 0] : match.result.payouts
+    assert.equal(payouts.reduce((sum, amount) => sum + amount, 0), 20)
+    await game.engine.tick()
+    await game.engine.tick()
+    assert.equal((await request(gameUrl, matchPath, alice.token)).settlement, 'settled')
+    for (const [index, player] of players.entries()) {
+      const balance = await request(economicUrl, '/me', player.wallet)
+      assert.equal(balance.available, before[index].available - 10 + payouts[index])
+      assert.equal(balance.reserved, 0)
+    }
+  }
   economy.store.assertConservation('integration')
 })
