@@ -1,70 +1,93 @@
 # Game Room HTTP v1 and GamePackage v1
 
-Status: implementation contract for the first self-hosted server. Business protocol
-owned here; no Host or CordisX Protocol change is implied. All requests and responses
-are JSON except immutable UI HTML. Prefix `/v1`; errors are
-`{error:{code,message}}`. Bearer session authentication is required except health,
-handshake, registration/login, package listing/metadata/UI, and room listing.
+Implemented experimental contract, owned by this repository. TypeScript exports:
+[sdk/index.ts](../sdk/index.ts). Runtime and deployment:
+[server development](server-development.md). No Host Protocol changes are implied.
 
-## Identity, discovery and authentication
+All paths start `/v1`; JSON except UI HTML. Errors are
+`{error:{code,message}}`; no stack or guest exception contents. Successful writes
+return 200. Bearer credentials never appear in URLs. CORS is an explicit operator
+allowlist, not authentication. Each configured source has its own URL and serverId.
+
+## Discovery and authentication
 
 - `GET /health` → `{ok:true}`.
 - `GET /v1/handshake` → `{protocol:"game-room/1",serverId,gamePackageVersion:1,
-  runtime:"quickjs-wasm",modes:["score","local-chips","token"],economyAvailable}`.
+  runtime:"quickjs-wasm",modes:["score","local-chips","token"],economyAvailable,
+  economy:{url,gameServiceId}|null}`.
 - `POST /v1/accounts` `{name,password}` → `{account:{id,name},token}`.
-- `POST /v1/sessions` `{name,password}` → same shape. Password min 12 characters.
-- `GET /v1/me` → `{account:{id,name}}`; `DELETE /v1/session` revokes current token.
+- `POST /v1/sessions` `{name,password}` → same. Name 3–40 ASCII letters/digits,
+  underscore/hyphen, case-insensitive; password 12–256 characters.
+- `GET /v1/me` → `{account:{id,name,economyId?}}`.
+- `DELETE /v1/session` revokes current session → `{revoked:true}`.
 
-Account, room and seat IDs are `${serverId}:<kind>:<uuid>`. The serverId is a
-persistent UUID. Clients must retain source URL + serverId + account; never
-collapse multiple servers into one current-server identity. Package hashes are
-content identities scoped by their source server. Sessions expire after 30 days.
+Accounts, rooms, matches, seats and grants have IDs
+`${serverId}:<kind>:<uuid>`. serverId survives restart. Clients retain
+source URL + serverId + account, never one global current server. Invitations
+can encode source URL + serverId + roomId and verify handshake before joining.
+Sessions expire in 30 days. Registration, login and public reads are unauthenticated;
+all room seat operations and replay require an appropriate credential.
 
-## Packages and immutable UI
+## Immutable packages and UI
 
-`POST /v1/packages` uploads a `GamePackage` below; authenticated publisher identity
-is recorded. Response `{hash,manifest,publisherId,reviewState:"unreviewed",uiUrl}`.
-`GET /v1/packages` → `{packages:[metadata]}`; `GET /v1/packages/:hash` → metadata.
-`GET /v1/packages/:hash/ui` returns immutable HTML with sandbox CSP. Content hash
-is SHA-256 of canonical recursively key-sorted JSON of the entire package.
-Publisher + manifest.id + manifest.version is immutable; replacing the same version
-with different content returns 409. Rules source and private room state are never
-included in these public endpoints. UI must be self-contained and must run in a
-sandboxed iframe without allow-same-origin. Parent bridge must allow only a seat
-observation and validated action, never bearer tokens, Host bridges or wallet APIs.
+`POST /v1/packages` (human session) publishes GamePackage v1. Response metadata:
+`{hash,manifest,publisherId,reviewState:"unreviewed",uiUrl}`.
+`GET /v1/packages` → `{packages:[metadata]}`;
+`GET /v1/packages/:hash` → metadata. Hash is SHA-256 of recursively key-sorted
+canonical JSON of the entire package. Publisher + manifest.id + version cannot
+be overwritten with different content (`409 immutable_version`). Public endpoints
+do not return rules source or private state.
 
 ```ts
 interface GamePackage {
-  packageVersion: 1;
+  packageVersion: 1
   manifest: {
-    id: string; // lowercase [a-z0-9-], 1..64
-    version: string; // three nonnegative dot-separated integers
-    name: string;
-    minPlayers: number; // 2..8
-    maxPlayers: number; // minPlayers..8
-    modes: ("score" | "local-chips" | "token")[];
-    description?: string;
-  };
-  rules: string; // classic JS script assigning globalThis.game
-  ui: { html: string }; // self-contained HTML, no network dependencies
+    id: string // [a-z0-9-], 1..64
+    version: string // three nonnegative integers separated by dots
+    name: string // 1..100 characters
+    minPlayers: number // 2..8
+    maxPlayers: number // minPlayers..8
+    modes: ('score' | 'local-chips' | 'token')[]
+    settlementPolicies?: ('equal-winners-v1' | 'conserved-payouts-v1')[]
+    description?: string
+  }
+  rules: string // <=256 KiB characters, classic JS assigning globalThis.game
+  ui: { html: string } // <=256 KiB characters, self-contained HTML
 }
 ```
 
-Guest entry points are synchronous and JSON-only. No imports, network, file,
-process, Date, timers, native random or platform money functions are exposed.
-The SDK type definitions in `sdk/index.ts` are the authoritative TS exports.
+Default settlementPolicies is `["equal-winners-v1"]`. Whole HTTP body max 600 KiB.
+Publishing validates syntax, top-level resource use and four required entry points
+inside QuickJS; it does not assert fairness or correctness of every configuration.
+
+`GET /v1/packages/:hash/ui` is immutable HTML, one-year cache and hash ETag.
+Response CSP includes `sandbox allow-scripts`, no network, forms, external scripts,
+base URL, or same-origin privilege. Client must additionally use an iframe sandbox
+with scripts only; never load this HTML into a trusted renderer. Parent bridge is
+owned by client/game packages and supplies only seat observations and action calls,
+never credentials, Host bridges or money APIs. Self-contained data images/fonts and
+inline scripts/styles are supported. A URL is resolved against its own source.
+
+## Rule SDK
 
 ```ts
 interface RuleContext {
-  seats: string[]; // fixed seat IDs in index order
-  config: Json; // fixed room config
-  seatIndex: number | null; // acting / timed-out seat, null for setup
-  random(): number; // platform deterministic stream, [0,1), never Math.random
+  seats: string[] // fixed seat IDs in index order, never account IDs
+  config: Json // immutable room input, max 16 KiB
+  seatIndex: number | null
+  mode: 'score' | 'local-chips' | 'token'
+  stake: number // trusted per-seat stake; 0 outside token mode
+  policy: 'equal-winners-v1' | 'conserved-payouts-v1'
+  random(): number // platform stream [0,1), max 10,000 draws/invocation
 }
 interface Transition {
-  state: Json; // PRIVATE, server persistence only
-  turn: number | null;
-  done?: { winners: number[]; scores?: number[] }; // no money values
+  state: Json // PRIVATE: persistence only, never a room response
+  turn: number | null // index; null only with done
+  done?: {
+    winners: number[] // unique valid indices; [] for draw
+    scores?: number[] // finite numbers, one per seat
+    payouts?: number[] // conserved-payouts-v1 token final stacks
+  }
 }
 // globalThis.game = {
 //   setup(ctx): Transition,
@@ -74,87 +97,145 @@ interface Transition {
 // }
 ```
 
-Invalid actions should throw `Error("invalid_action")`; all act exceptions reject
-without advancing version or random stream. Resource failure on setup/timeout or
-invalid transition aborts the match; reserved funds are refunded. Observation
-exceptions fail closed and return no observation. Each invocation has a fresh
-QuickJS runtime, 16 MiB guest memory, bounded stack, CPU deadline and JSON output
-limit; host worker termination is a second time bound. Observations must implement
-the game's visibility policy. Runtime isolation cannot prove that author-written
-rules correctly conceal their own secrets; platform never substitutes full state.
+Synchronous JSON only. Fresh QuickJS WASM guest per invocation in a worker; no
+imports, network, filesystem, process, Date, timers, native random or economy API.
+16 MiB guest memory, 256 KiB stack, 100 ms interpreter deadline, 3 s whole worker
+deadline, 256 KiB JSON-character output limit. The platform HMAC random stream is
+persisted with state and cursor and never returned to clients. observe cannot draw
+randomness. Runtime limit errors fail closed; a failed action does not advance the
+random cursor. `Error("invalid_action")` rejects the action without mutation.
+Other act execution errors reject; an invalid returned transition/result aborts.
+Setup/timeout failures abort. Observation failure returns null, never full state.
 
-## Rooms, seats and actions
+`observe` is the author-owned visibility policy. Recommended observation is an
+object with `legalActions` containing JSON action templates; server always validates
+by executing `act`. Isolation does not prove an author's rules fairly distribute
+cards or keep secrets. Platform never broadcasts state, other observations, seeds
+or private action bodies. Clients do not get a generic full-state fallback.
 
-`GET /v1/rooms` → `{rooms:[RoomCard]}` (no observations).
-`POST /v1/rooms` body:
+## Rooms and consecutive matches
+
+`GET /v1/rooms` → `{rooms:[RoomCard]}`. `GET /v1/me/rooms` (human session) lists
+rooms containing that account's seats, including finished history.
+`POST /v1/rooms` creates a room and the caller's human seat:
 
 ```json
-{"packageHash":"...","mode":"score","config":{},"maxPlayers":2,
- "allowAgents":true,"turnTimeoutMs":60000,
- "stake":0,"consent":{"packageHash":"...","stake":0,
- "policy":"equal-winners-v1","reviewState":"unreviewed"}}
+{
+  "packageHash": "...",
+  "mode": "score",
+  "config": { "roomName": "Friends" },
+  "maxPlayers": 2,
+  "allowAgents": true,
+  "turnTimeoutMs": 60000,
+  "stake": 0,
+  "policy": "equal-winners-v1"
+}
 ```
 
-Response to room mutations/read is `RoomView`, not wrapped. It includes `id`,
-`serverId`, `packageHash`, `manifest`, `mode`, `config`, `maxPlayers`, `allowAgents`,
-`turnTimeoutMs`, `stake`, `policy`, `reviewState`, `status`, `version`, `seats`,
-`turn`, `deadline`, `selfSeatId`, `observation`, `result`, `settlement`.
-Status: `waiting | funding | playing | finished | aborted`.
-Settlement: `none | pending | reserved | settled | refunded`.
-Each seat: `{id,accountId,name,ready}`; turn is a seat index or null. Version starts
-at 0 and advances on successful joins, ready changes, start, action and timeout.
-A joined human controls its seat via account bearer. Nonmembers cannot read
-RoomView or replay (403); all joined seats may resume using a new session.
+Defaults: package maxPlayers, allowAgents false, 60-second turn, stake 0, policy
+above. Turn timeout range 1 second–1 hour. Token stake positive integer <=1,000,000
+per seat; other modes require 0. Match-local chips are game configuration/state and
+never touch wallets. Config, packageHash, manifest, mode, stakes and policy remain
+fixed in the room. A room keeps roomId but each round gets a fresh matchId/handNo.
 
-- `POST /v1/rooms/:id/join` `{consent?:Consent}`. Idempotent for the same account.
-- `POST /v1/rooms/:id/ready` `{ready:true}`. All seats must explicitly ready.
-- `POST /v1/rooms/:id/start` `{}`. Creator only, minPlayers reached, all ready.
-- `GET /v1/rooms/:id` retrieves the requesting seat's current observation.
-- `POST /v1/rooms/:id/actions`
-  `{expectedVersion:3,idempotencyKey:"unique-command-id",action:{...}}`.
-  Only current turn seat. Exact retry returns the original acknowledged RoomView.
-  Same key with different body is 409 `idempotency_conflict`. Stale version is
-  409 `version_conflict`. Every action is serialized and committed atomically.
-- `GET /v1/rooms/:id/replay` → `{roomId,events:[{version,kind,at,view:RoomView}]}`.
-  Replays contain that requesting seat's recorded view only; never raw state,
-  another seat's observation, seed, or private action payload.
+Room mutations return `RoomView` unless specified. RoomCard fields:
+`id,matchId,handNo,serverId,packageHash,manifest,mode,config,maxPlayers,allowAgents,
+turnTimeoutMs,stake,policy,reviewState,status,version,seats,turn,deadline,result,
+settlement,funding`. RoomView adds `selfSeatId,observation`.
+Status `waiting | funding | playing | finished | aborted`.
+Settlement `none | pending | reserved | settled | refunded`.
+Funding `{economyUrl,agreementId,termsHash}|null`. Deadlines are Unix milliseconds.
+Seat `{id,kind:"human"|"agent",participantId:string|null,accountId,name,ready}`;
+accountId is the economic owner, not a unique seat identity.
 
-Timeouts advance automatically on the server and also recover on restart. The
-room is pinned permanently to exact packageHash, rules, config, stakes and policy.
-A new package version cannot change an existing room. `local-chips` is explicitly
-match-local, has no wallet effects; game config/observation carries its chips.
+- `POST /rooms/:id/join` `{consent?}` adds one human seat per account; retry returns it.
+- `POST /rooms/:id/agent-seats` `{participantId,name,consent?}` adds a new Agent seat
+  owned by the human caller. Requires waiting/allowAgents/capacity; same owner +
+  participantId is idempotent. No human seat is necessary. Returns `{seat,view}`.
+- `POST /rooms/:id/ready` `{ready:true,seatId?,consent?}` readies an owned seat.
+- `POST /rooms/:id/leave` `{seatId?}` removes an owned waiting seat → `{left:true}`.
+  Creator passes to a remaining owner; empty rooms abort. No in-game seat removal.
+- `POST /rooms/:id/start` `{}` creator only, enough seats and every seat ready.
+- `GET /rooms/:id?seatId=...` returns an owned seat's current view.
+- `POST /rooms/:id/actions` `{expectedVersion,idempotencyKey,action}` controls the
+  caller's human seat (or first owned seat when no human seat exists).
+- `POST /rooms/:id/next-match` `{}` creator only after finished/aborted and explicit
+  settled/refunded/none. Generates a new matchId, increments handNo, clears state,
+  funding and readiness. Never reuses an escrow identity or random stream.
+- `GET /rooms/:id/replay?seatId=...` → `{roomId,events:[{version,kind,at,view}]}`.
+  Each event's view contains matchId. History includes successive matches and only
+  the selected owned seat's recorded observations, never raw action/state/seed.
 
-## Token consent and economic adapter
+Optional seatId always checks owner. Default selects human seat, then first owned
+seat. Each Agent should use its grant API instead of a human bearer. Nonmembers
+receive 403 for views/replay. Versions increase monotonically across the room,
+including next-match and economic status events. Exact action retries return the
+original committed RoomView; idempotency is scoped to room + **seat**, persists
+across restarts, and keys should be unique across matches. Different body under the
+same key → 409 idempotency_conflict; stale version → 409 version_conflict; other
+seat's turn → 403 not_your_turn. Expired turn rejects; server tick executes timeout.
+Concurrent mutations serialize and commit state, replay, command ACK and grant
+budget atomically. Each room commit also checks the expected persisted version.
 
-Token is virtual entertainment currency, no fiat. Unreviewed games are permitted.
-For token mode, creator and each joiner must send exact Consent above; stake is a
-positive safe integer, bounded by server policy. Clients present hash/version,
-review state, stake and settlement policy before consent. Agents cannot invent
-consent or call economy mutation. Score/local-chips never call the economy.
-Without a configured adapter token room creation returns 503 `economy_unavailable`.
+## Token consent, linking and recovery
 
-`EconomyAdapter` (`server/economy.ts`) performs trusted server-to-server calls:
-`reserveMatch({operationId,matchId,packageHash,policy,stake,seats:[{seatId,accountId}]})`,
-`settleMatch({operationId,matchId,payouts:[{accountId,amount}]})`,
-`refundMatch({operationId,matchId})`. Each returns `{status:"applied"}`; no game
-code receives this interface. Reserve is all-or-nothing across seats and escrow;
-operations MUST be durable and idempotent by operationId, including after a lost
-response. The adapter owns account mapping to the shared economy. The built-in
-HTTP adapter uses `POST /v1/game-escrow/{reserve,settle,refund}` with service bearer.
-An unavailable economy leaves an explicit durable pending operation for recovery;
-never report a success or issue a second economically distinct operation.
+Token coins are virtual entertainment currency, with no fiat/cash paths. Unreviewed
+packages are permitted. Creation/join/Agent-seat addition and ready require exact
+`consent:{packageHash,stake,policy,reviewState:"unreviewed"}` for token mode.
+Each human sees the game version/hash, review state, per-seat stake and policy.
+Without economy configuration token creation fails 503 economy_unavailable.
 
-The fixed equal-winners-v1 policy splits total escrow across unique winning seats;
-integer remainder follows ascending seat index. Empty winners return each stake.
-The server validates winners and scores; package code cannot choose arbitrary
-payouts or mint. On runtime abort it requests refund (including reserve-response
-ambiguity), never settlement. Economic outage does not erase the match result.
+The game server never receives the user's economic bearer. From handshake obtain
+`economy.url` and `gameServiceId`. User contacts economy directly:
+`POST /v1/link-proofs {gameServiceId,gameAccountId}` with their economy session and
+Idempotency-Key. They send resulting short-lived opaque code to the game server:
+`POST /v1/economy/link {code}`. Server redeems it using its own service credential,
+verifies service/account audience, and saves only economic accountId. A `token`
+field is rejected. A link cannot change while that owner has active token rooms;
+two game accounts on one server cannot link the same economic account.
 
-## UI bridge and Agent integration boundary
+Starting token mode persists funding terms before creating the economic agreement.
+All seats owned by one account aggregate into one participant's amount and
+participantIds (seat IDs), included in economy termsHash. Each owner then explicitly
+reserves through **economy's** `/v1/reserve {agreementId,termsHash}` with their own
+session after seeing the total stake and covered seats. The game server cannot
+reserve. It starts rules only after every participant reserved.
 
-The server returns uiUrl in package metadata; clients resolve it against that
-server's base URL. RoomView observations and actions are plain JSON. A separately
-scoped Agent capability API may be added without changing human endpoints; do not
-forward a human bearer into an Agent environment. Agent grants require owner
-consent, exact room/seat scope, expiration and action budget. `allowAgents` is
-metadata until that grant API is implemented; it is not authority to access seats.
+`equal-winners-v1` splits the entire pot equally among unique winners; remainder in
+ascending seat order; empty winners return each stake. `conserved-payouts-v1` accepts
+one nonnegative safe-integer final amount per seat and requires exact sum = total
+escrow. These outputs aggregate per owner for settlement. Games never mint or
+choose nonparticipant recipients. Economic agreements use a conserved-payouts
+policy and bind game hash; the game platform additionally enforces the selected
+room policy. The wallet discloses the server's allocation authority.
+
+`server/economy.ts` adapts the economy owner's `/agreements`, `/agreements/:id`,
+`/settle`, `/cancel`, `/link-proofs/redeem`. Creation/cancel/settle use distinct
+stable matchId-based idempotency keys. Persisted pending operations retry after
+outages or restart; economic failure never pretends success. Invalid runtime results
+abort and request refunds, including partially reserved matches. Funding window is
+10 minutes, match ceiling 23 hours, escrow expiry 24 hours from start request.
+The economy is the authority for expired refunds; game never extends a term.
+
+## Scoped Agent grants
+
+`POST /rooms/:id/agent-grants` (human session)
+`{seatId,expiresAt,maxActions}` →
+`{grantId,token,serverId,roomId,matchId,seatId,accountId,expiresAt,maxActions}`.
+Caller must own the exact seat, room allowAgents, match active, expiry <=24h and
+budget 1..10,000 actions. Separate seats owned by one human get separate grants,
+observations, replay entries, command scopes and budgets.
+
+Only grant bearer authenticates:
+
+- `GET /v1/agent/observation` → exact scoped seat's RoomView.
+- `POST /v1/agent/actions` `{expectedVersion,idempotencyKey,action}` → that view.
+- `POST /v1/agent/revoke` `{}` → `{revoked:true}`, idempotent even after expiry.
+
+Human owner can `DELETE /rooms/:id/agent-grants/:grantId`. Revocation/expiry/next
+match checks precede actions, including retries. Error codes: grant_revoked,
+grant_expired, grant_scope_changed, grant_budget_exhausted (403), invalid_grant
+(401). An exact accepted retry consumes no additional budget. Budget consumption
+and room mutation commit together. Only token hash persists; lost tokens must be
+revoked/reissued. Trusted Agent transport holds the token; model context never
+receives it. A grant cannot authenticate human, package, replay or money endpoints.
