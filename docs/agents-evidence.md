@@ -54,7 +54,10 @@ not a merged release or compatible Mono baseline.
   Protocol remains unchanged. The Host owner reports actual Agent consumer
   installation, typecheck, build and a single Protocol instance passing at this
   checkpoint, plus reproducible builds with and without the outer TypeScript 6
-  environment. This lane has not repeated those consumer checks at `be2403c`.
+  environment. This lane then upgraded its existing isolated smoke consumer to
+  `be2403c` and independently passed installation, full typecheck, production
+  build and `npm ls` with one shared Protocol instance. Configuration was unchanged;
+  the earlier dry-run was not repeated. No native application or model was started.
   The owner reports the parent `69b0146` full gate passed (318 files, 1718 tests);
   the `be2403c` full gate remains running. Neither proves native model execution.
 - A regression verifies ordinary Agent execution with no Pet, economy or usage
