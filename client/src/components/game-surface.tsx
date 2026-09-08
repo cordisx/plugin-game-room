@@ -40,6 +40,8 @@ export function GameSurface(
   useEffect(() => {
     const controller = new AbortController()
     lifecycle.current = controller
+    setRecovery(null)
+    setRecovering(false)
     let active = true
     let pending = false
     published.current = -1

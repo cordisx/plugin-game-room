@@ -10,7 +10,7 @@ not user acceptance or a released Host capability.
 Follow [reproduction](../client/README.md): `prepare-sdk.mjs` fetches exact Host
 `5101d6ec25409a65d939fb4214b4144a5eb672df` and Protocol
 `465c444c65eec1be8e337b94c2cf658ed536f49c`, builds/packs into ignored `.cache`, and
-records SHA256 provenance. Expected provider Host tarball SHA256:
+records SHA256 provenance. Provider-supplied Host tarball SHA256 (not yet a clean-build equivalence claim):
 `638477682bf0de2ce2ba5c1b6f793ffbc46b4e238324b17ba39fcb28e8164dc2`.
 The relative package dependency avoids machine paths. Sibling Agents are materialized
 with `install-links=true`; its own exact Protocol dependency is preserved.
@@ -90,7 +90,15 @@ native installed-generation lifecycle, real-model dispatch and real-wallet UI
 funding are separately tracked; no sample screenshot proves those outcomes.
 The old preview entry was retracted after a fresh-window navigation failure; do not
 use “open Manager manually” as acceptance. Unified Host includes its fix and is
-awaiting fresh-entry verification. The owner stopped its isolated preview and
-recursive dependency-install processes to reduce load; no running preview is
-currently advertised. SDK preparation still needs the shared portable Channel
-bootstrap fix before clean-machine reproducibility can be claimed.
+awaiting fresh-entry verification. The owner stopped its recursive dependency
+install trees, then restarted the sole lightweight Playground at
+`http://127.0.0.1:43129/` using existing dependencies, Host source `5101d6e` and the
+provider experimental dist. Homepage and source-runtime requests return HTTP 200.
+This is HTTP readiness only: Mac lock blocked CUA, so fresh clicks/screenshots wait
+for unlock. No existing user App was restarted.
+
+Independent tar comparison verified all 2057 files have identical contents between
+the provider SDK and the fresh Linux SDK; only `dist/src/cli.js` mode differs
+(0755 versus 0644). Final consumer lock updates await the Host owner’s unified
+executable-mode fix and complete Channel preparation recipe. The client does not
+commit a separate archive-mode workaround.

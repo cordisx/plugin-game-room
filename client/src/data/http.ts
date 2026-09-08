@@ -32,8 +32,26 @@ export class PublicDiscoveryTransport implements HttpTransport {
       headers: { Accept: 'application/json' },
     })
     if (!response.ok) throw new Error(`来源返回 HTTP ${response.status}`)
-    const text = await response.text()
-    if (text.length > 2_000_000) throw new Error('来源响应超过大小限制')
+    const reader = response.body?.getReader()
+    if (!reader) throw new Error('来源响应为空')
+    const decoder = new TextDecoder()
+    let text = ''
+    let bytes = 0
+    try {
+      while (true) {
+        const part = await reader.read()
+        if (part.done) break
+        bytes += part.value.byteLength
+        if (bytes > 2_000_000) {
+          await reader.cancel()
+          throw new Error('来源响应超过大小限制')
+        }
+        text += decoder.decode(part.value, { stream: true })
+      }
+      text += decoder.decode()
+    } finally {
+      reader.releaseLock()
+    }
     return request.format === 'text' ? text : JSON.parse(text)
   }
   dispose() {}
