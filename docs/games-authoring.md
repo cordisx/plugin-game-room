@@ -72,9 +72,9 @@ or failed observations may be `null`; return a simple waiting scene with no
 old cards or actions. Derive all display state from these inputs.
 
 Return `{version:1,root:node}` using the public
-[`@cordisx/protocol/restricted-content/v1`](https://github.com/cordisx/cordisx-protocol/blob/main/types/restricted-content.v1.d.ts)
-scene contract. The initial compatible experimental Protocol revision is
-`4cc3d20`; the source reference, not this guide, owns exact node fields and limits.
+[`@cordisx/protocol/restricted-content/v1`](https://github.com/cordisx/cordisx-protocol/blob/465c444c65eec1be8e337b94c2cf658ed536f49c/types/restricted-content.v1.d.ts)
+scene contract. The current experimental Protocol reference is
+`465c444c65eec1be8e337b94c2cf658ed536f49c`; the source reference, not this guide, owns exact node fields and limits.
 Available primitives are text, stack, grid, button and number-action. The Host
 owns rendering, styling, layout and native controls. No game-specific Host node
 or game allowlist is required.
