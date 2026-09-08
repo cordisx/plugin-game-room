@@ -98,6 +98,7 @@ test('durable room, sessions, randomness and timeout recover after process resta
   t.after(() => rmSync(dir, { recursive: true, force: true }))
   const database = join(dir, 'state.sqlite')
   const h = await harness({ database, now: () => now })
+  t.after(() => h.app.server.listening ? h.app.close() : undefined)
   const room = await h.room(game(), { turnTimeoutMs: 1000 })
   const serverId = h.app.store.serverId
   const original = h.app.engine.load(room.id)

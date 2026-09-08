@@ -71,10 +71,19 @@ class EconomyDouble implements EconomyAdapter {
     this.agreement!.reservations = this.terms!.participants.map(p => p.accountId)
   }
 }
-async function tokenRoom(h: Awaited<ReturnType<typeof harness>>, source = rules, policy = 'equal-winners-v1') {
+async function tokenRoom(
+  h: Awaited<ReturnType<typeof harness>>,
+  source = rules,
+  policy = 'equal-winners-v1',
+  render?: string,
+) {
   await h.request('/v1/economy/link', h.alice.token, { code: 'eco-alice' })
   await h.request('/v1/economy/link', h.bob.token, { code: 'eco-bob' })
-  const meta = (await h.request('/v1/packages', h.alice.token, game(source))).body
+  const pkg = game(source)
+  if (render) pkg.ui.render = render
+  const published = await h.request('/v1/packages', h.alice.token, pkg)
+  assert.equal(published.status, 200, JSON.stringify(published.body))
+  const meta = published.body
   const consent = { packageHash: meta.hash, stake: 10, policy, reviewState: 'unreviewed' }
   const created = await h.request('/v1/rooms', h.alice.token, {
     packageHash: meta.hash,
@@ -145,6 +154,7 @@ test('settlement applied but response lost survives restart with same operation 
   const economy = new EconomyDouble()
   const database = join(dir, 'game.sqlite')
   const h = await harness({ economy, database })
+  t.after(() => h.app.server.listening ? h.app.close() : undefined)
   const { room } = await tokenRoom(h)
   economy.reserveAll()
   await h.app.engine.serial(() => h.app.engine.tick())
@@ -210,19 +220,16 @@ test('economic account link refuses raw user bearer and verifies proof audience'
     'economy_identity_mismatch',
   )
 })
-test('malicious timeout and observation failure never expose state and refund escrow', async t => {
+test('malicious rule timeout aborts and refunds escrow', async t => {
   let now = 1000000
   const economy = new EconomyDouble()
   const h = await harness({ economy, now: () => now })
   t.after(() => h.app.close())
-  const source = rules.replace(
-    "return {hand:s.hands[i],n:s.n,legalActions:[{type:'move'}]}",
-    "throw Error('observation-failed')",
-  ).replace('return {state:s,turn:null,done:{winners:[1-ctx.seatIndex]}}', 'while(true){}')
+  const source = rules.replace('return {state:s,turn:null,done:{winners:[1-ctx.seatIndex]}}', 'while(true){}')
   const { room } = await tokenRoom(h, source)
   economy.reserveAll()
   await h.app.engine.serial(() => h.app.engine.tick())
-  assert.equal(h.app.engine.view(h.app.engine.load(room.id), h.alice.account.id).observation, null)
+  assert.notEqual(h.app.engine.view(h.app.engine.load(room.id), h.alice.account.id).scene, null)
   now += 1001
   await h.app.engine.serial(() => h.app.engine.tick())
   assert.equal(h.app.engine.load(room.id).status, 'aborted')
@@ -247,6 +254,7 @@ test('persistent economic instance pin rejects reused account IDs on another ins
   t.after(() => rmSync(dir, { recursive: true, force: true }))
   const database = join(dir, 'state.sqlite')
   const h = await harness({ economy, database })
+  t.after(() => h.app.server.listening ? h.app.close() : undefined)
   assert.equal((await h.request('/v1/economy/link', h.alice.token, { code: 'same-account' })).status, 200)
   const account = h.app.accounts.authenticate(h.alice.token)
   await h.app.close()
@@ -301,4 +309,140 @@ test('a settled ACK with different payouts is never reported as successful', asy
     h.app.engine.serial(() => h.app.engine.nextMatch(h.app.accounts.authenticate(h.alice.token), room.id)),
     /settlement_pending/,
   )
+})
+for (
+  const failure of [
+    {
+      name: 'mid-match guest exception',
+      at: 1,
+      code: 'throw Error("renderer failure")',
+      reason: 'ui_render_failed',
+      agent: false,
+    },
+    {
+      name: 'mid-match guest timeout through Agent action',
+      at: 1,
+      code: 'while(true){}',
+      reason: 'ui_render_failed',
+      agent: true,
+    },
+    {
+      name: 'mid-match invalid scene',
+      at: 1,
+      code: 'return {version:1,root:{type:"iframe"}}',
+      reason: 'ui_scene_invalid',
+      agent: false,
+    },
+    {
+      name: 'invalid final scene before settlement',
+      at: 2,
+      code: 'return {version:1,root:{type:"iframe"}}',
+      reason: 'ui_scene_invalid',
+      agent: false,
+    },
+  ]
+) {
+  test(`${failure.name} aborts, refunds once, blocks actions/timeouts and allows next match`, async t => {
+    let now = 1000000
+    const economy = new EconomyDouble()
+    const h = await harness({ economy, now: () => now })
+    t.after(() => h.app.close())
+    const render =
+      `globalThis.render=(observation)=>{if(observation.n>=${failure.at}){${failure.code}} return {version:1,root:{type:'text',text:observation.hand}}}`
+    const { room, path, consent } = await tokenRoom(h, rules, 'equal-winners-v1', render)
+    economy.reserveAll()
+    await h.app.engine.serial(() => h.app.engine.tick())
+    let current = h.app.engine.load(room.id)
+    const originalMatchId = current.matchId
+    let actor = h.alice
+    let endpoint = path + '/actions'
+    let credential = actor.token
+    if (failure.at === 2) {
+      const first = await h.request(endpoint, credential, {
+        expectedVersion: current.version,
+        idempotencyKey: 'first-good',
+        action: { type: 'move' },
+      })
+      assert.equal(first.body.status, 'playing')
+      actor = h.bob
+      credential = actor.token
+      current = h.app.engine.load(room.id)
+    }
+    if (failure.agent) {
+      const seat = current.seats.find(s => s.accountId === actor.account.id)!
+      const grant = await h.request(path + '/agent-grants', actor.token, {
+        seatId: seat.id,
+        expiresAt: now + 60000,
+        maxActions: 2,
+      })
+      assert.equal(grant.status, 200)
+      credential = grant.body.token
+      endpoint = '/v1/agent/actions'
+    }
+    const input = { expectedVersion: current.version, idempotencyKey: 'ui-fault', action: { type: 'move' } }
+    const failed = await h.request(endpoint, credential, input)
+    assert.equal(failed.status, 200)
+    assert.equal(failed.body.status, 'aborted')
+    assert.equal(failed.body.sceneError, failure.reason)
+    assert.equal(failed.body.scene, null)
+    assert.equal(failed.body.deadline, null)
+    assert.equal(failed.body.result, null)
+    assert.equal(failed.body.settlement, 'pending')
+    assert.equal(h.app.engine.load(room.id).economyOp, 'cancel')
+    for (const seat of current.seats) {
+      const view = h.app.engine.view(h.app.engine.load(room.id), seat.accountId, seat.id)
+      assert.equal(view.scene, null)
+      assert.equal(view.sceneError, failure.reason)
+    }
+    assert.equal((await h.request(path + '/next-match', h.alice.token, {})).body.error.code, 'settlement_pending')
+    economy.loseCancel = true
+    now += 2000
+    await h.app.engine.serial(() => h.app.engine.tick())
+    assert.equal(h.app.engine.load(room.id).settlement, 'pending')
+    await h.app.engine.serial(() => h.app.engine.tick())
+    await h.app.engine.serial(() => h.app.engine.tick())
+    assert.equal(h.app.engine.load(room.id).settlement, 'refunded')
+    assert.equal(economy.actualRefunds, 1)
+    assert.equal(economy.settleCalls.length, 0)
+    assert.equal(h.app.engine.view(h.app.engine.load(room.id), actor.account.id).sceneError, failure.reason)
+    assert.equal(
+      (await h.request(endpoint, credential, { ...input, idempotencyKey: 'stale-after-refund' })).body.error.code,
+      'not_playing',
+    )
+    assert.deepEqual((await h.request(endpoint, credential, input)).body, failed.body)
+    const replay = (await h.request(path + '/replay', h.alice.token)).body
+    assert.equal(replay.events.at(-1).view.sceneError, failure.reason)
+    const next = (await h.request(path + '/next-match', h.alice.token, {})).body
+    assert.equal(next.status, 'waiting')
+    assert.equal(next.sceneError, null)
+    assert.notEqual(next.matchId, originalMatchId)
+    for (const user of [h.alice, h.bob]) {
+      assert.equal((await h.request(path + '/ready', user.token, { ready: true, consent })).status, 200)
+    }
+    assert.equal((await h.request(path + '/start', h.alice.token, {})).body.status, 'funding')
+    economy.reserveAll()
+    await h.app.engine.serial(() => h.app.engine.tick())
+    assert.equal(h.app.engine.load(room.id).status, 'playing')
+    assert.equal(h.app.engine.view(h.app.engine.load(room.id), h.alice.account.id).sceneError, null)
+  })
+}
+test('failed authoritative observation also aborts and refunds instead of leaving an unplayable seat', async t => {
+  const economy = new EconomyDouble()
+  const h = await harness({ economy })
+  t.after(() => h.app.close())
+  const source = rules.replace(
+    "return {hand:s.hands[i],n:s.n,legalActions:[{type:'move'}]}",
+    "throw Error('observation-failed')",
+  )
+  const { room } = await tokenRoom(h, source)
+  economy.reserveAll()
+  await h.app.engine.serial(() => h.app.engine.tick())
+  const aborted = h.app.engine.view(h.app.engine.load(room.id), h.alice.account.id)
+  assert.equal(aborted.status, 'aborted')
+  assert.equal(aborted.observation, null)
+  assert.equal(aborted.sceneError, 'observation_failed')
+  await h.app.engine.serial(() => h.app.engine.tick())
+  assert.equal(h.app.engine.load(room.id).settlement, 'refunded')
+  assert.equal(economy.actualRefunds, 1)
+  assert.equal(economy.actualSettlements, 0)
 })

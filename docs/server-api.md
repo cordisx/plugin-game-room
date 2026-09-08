@@ -99,8 +99,21 @@ keys/types, sparse arrays, accessors, nonfinite numbers and recursive action key
 script or network primitives. A text string that resembles HTML remains plain text.
 
 `RoomView.scene` contains only the current seat's validated tree, also persisted in
-its replay/command ACK. Failure returns `scene:null,sceneError:"ui_render_failed"`,
-never private state or legacy HTML. UI failure does not mutate game rules or money.
+its replay/command ACK. A UI guest exception/resource limit (`ui_render_failed`),
+invalid scene (`ui_scene_invalid`) or failed seat observation (`observation_failed`)
+aborts the current match for every seat. All scenes become null with the failure
+code in sceneError, the turn/deadline/result are cleared, and Token mode durably
+requests cancellation/refund instead of settlement. Score/local-chips also end the
+match. An author's valid scene displaying a business error is not a runtime failure.
+Normal network disconnection does not invoke this failure path.
+
+Projection completes before committing each authoritative transition, including
+the final result, so a failed final scene cannot dispatch settlement. Economic
+settled/refunded acknowledgements reuse the committed projection and never rerun
+author UI after a funds operation. The failure reason persists through refund and
+replay. Further actions/timeouts cannot advance an aborted match; exact command
+retries return their original historical ACK without any new execution. Once the
+refund is confirmed, next-match clears failure/readiness and creates new terms.
 Before play, scene and sceneError are null. Clients pass the scene to the trusted
 Host renderer as `{sequence:room.version,payload:room.scene}` and bind action events
 to the authoritative source/room/seat/version. The client never loads renderer
@@ -145,7 +158,7 @@ persisted with state and cursor and never returned to clients. observe cannot dr
 randomness. Runtime limit errors fail closed; a failed action does not advance the
 random cursor. `Error("invalid_action")` rejects the action without mutation.
 Other act execution errors reject; an invalid returned transition/result aborts.
-Setup/timeout failures abort. Observation failure returns null, never full state.
+Setup/timeout/observation failures abort. Observation failure returns null, never full state.
 
 `observe` is the author-owned visibility policy. Recommended observation is an
 object with `legalActions` containing JSON action templates; server always validates
