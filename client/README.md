@@ -6,7 +6,7 @@ route tabs, controls, configuration forms and page lifetime.
 
 ## Reproduce the candidate
 
-Requires Node 22.19+ (Node 24 is used by integration), Git and npm. From `client/`:
+Use Node 24.14.1 and npm 11.11.0 for the verified archive hashes, plus Git. From `client/`:
 
 ```sh
 node scripts/prepare-sdk.mjs
@@ -16,11 +16,13 @@ npm run dev:dry-run
 ```
 
 The preparation script builds exact experimental Host
-`5101d6ec25409a65d939fb4214b4144a5eb672df` and Protocol
+`69b0146c4d4b6acd411758ae4ec3005ea74d0b89` and Protocol
 `465c444c65eec1be8e337b94c2cf658ed536f49c` into ignored `.cache/`. It records artifact
-provenance there. The package dependency uses a relative tarball path; no developer
-machine path or SDK binary is committed. Git dependency preparation can take
-several minutes. The owning sibling `../agents` must be present; `.npmrc` materializes
+provenance there and checks both archive hashes. It delegates to the Host’s
+maintained source recipe before any dependency install; that recipe builds and
+verifies bundled Channel/Proxy dependencies without recursive Git preparation.
+Each run uses a new disposable output directory. The package dependency uses a
+relative tarball path; no developer machine path or SDK binary is committed. The owning sibling `../agents` must be present; `.npmrc` materializes
 it with its declared dependencies for independent installation.
 
 `cordisx/vite` retains the complete indexed ESM/CSS graph in `dist/runtime`.
