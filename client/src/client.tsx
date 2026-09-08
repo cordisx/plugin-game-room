@@ -2,13 +2,19 @@ import type { Context } from '@deepseek-ai/cordis'
 import Schema from '@deepseek-ai/schemastery'
 import { defineReactPage, lazy, Suspense } from 'cordisx/react'
 import {
-  CORDISX_MANAGER_CONTENT_NAVIGATION_SCHEMA_V1,
+  CORDISX_MANAGER_CONTENT_NAVIGATION_SCHEMA_V5,
   CORDISX_PAGE_SCHEMA_V3,
   CORDISX_PLUGIN_MANIFEST_SCHEMA_V1,
   CORDISX_ROUTE_SCHEMA_V2,
   type CordisXPluginManifestV1,
 } from 'cordisx/contracts'
 import { LivePort } from './data/live.js'
+import { HostHttpTransport } from './data/host-http.js'
+import type { AgentLoopProviderOptions, AgentProfile } from '@cordisx/game-room-agents'
+import type { AgentLoopControlV1 } from '@cordisx/protocol/agent-loop-control/v1'
+import type { BoundAgentLoopClient } from '@cordisx/protocol/agent-loop/v4'
+import type { HttpClientV1 } from '@cordisx/protocol/plugin-http/v1'
+import type { RestrictedContentV1 } from '@cordisx/protocol/restricted-content/v1'
 import { PublicDiscoveryTransport } from './data/http.js'
 import type { Source } from './data/model.js'
 import { SamplePort } from './data/sample.js'
@@ -21,9 +27,19 @@ export const manifest = {
   name: 'Game Room',
   capabilities: [],
 } as const satisfies CordisXPluginManifestV1
-export const inject = ['i18n', 'pages', 'routes', 'slots', 'managerContent', 'commands']
+export const inject = ['i18n', 'pages', 'routes', 'slots', 'managerContent']
 export const Config = Schema.object({
   sample: Schema.boolean().default(false).description('样例数据预览；不运行真实游戏或改变余额。'),
+  providerId: Schema.string().default('').description('Agent 提供方 ID'),
+  agentProfiles: Schema.array(
+    Schema.object({
+      id: Schema.string().required(),
+      name: Schema.string().required(),
+      gameIds: Schema.array(Schema.string()).default([]),
+      personality: Schema.string().default(''),
+      model: Schema.string().required(),
+    }),
+  ).default([]).description('我的 Agent'),
   sources: Schema.array(Schema.object({
     id: Schema.string().required().description('服务器 ID（握手返回）'),
     name: Schema.string().required().description('来源名称'),
@@ -44,30 +60,66 @@ const pages = {
   personal: '个人',
   replay: '回放',
   settings: '数据来源',
+  publish: '发布游戏包',
+  funding: '投入确认',
+  configuration: '来源与 Agent 配置',
 }
-export function apply(ctx: Context, config: { sample?: boolean; sources?: Source[] } = {}): void {
-  const port = config.sample ? new SamplePort() : new LivePort(config.sources ?? [], new PublicDiscoveryTransport())
+export function apply(
+  ctx: Context,
+  config: { sample?: boolean; sources?: Source[]; agentProfiles?: AgentProfile[]; providerId?: string } = {},
+): void {
+  const port = config.sample
+    ? new SamplePort()
+    : new LivePort(config.sources ?? [], new PublicDiscoveryTransport(), config.agentProfiles ?? [])
   const runtime: ClientRuntime = {
     port,
     navigate: page => {
       void ctx.routes.navigate({ id: page })
     },
   }
+  if (!config.sample && port instanceof LivePort) {
+    ctx.inject(['http'], child => {
+      const transport = new HostHttpTransport((child as Context & { http: HttpClientV1 }).http)
+      port.setHttp(transport)
+      child.effect(() => () => {
+        transport.dispose()
+        port.setHttp(new PublicDiscoveryTransport())
+      })
+    })
+  }
+  if (port instanceof LivePort) {
+    ctx.inject(['agentLoop', 'agentLoopControl'], child => {
+      const capabilities = child as Context & { agentLoop: BoundAgentLoopClient; agentLoopControl: AgentLoopControlV1 }
+      port.configureAgents({
+        agentLoop: capabilities.agentLoop,
+        agentLoopControl: capabilities.agentLoopControl,
+        providerId: config.providerId ?? '',
+        executionMode: 'ordinary',
+      })
+    })
+  }
+  ctx.inject(['restrictedContent'], child => {
+    runtime.restrictedContent = (child as Context & { restrictedContent: RestrictedContentV1 }).restrictedContent
+    child.effect(() => () => {
+      runtime.restrictedContent = undefined
+    })
+  })
   const dispose: (() => void)[] = []
-  ctx.effect(() => () => {
-    port.dispose()
+  ctx.effect(() => async () => {
+    await port.dispose()
     for (const release of dispose.reverse()) release()
   })
   ctx.i18n.define({
     namespace: name,
     locale: 'zh-CN',
     default: true,
-    messages: Object.fromEntries(Object.entries(pages).map(([id, title]) => [id, title])),
+    messages: { ...Object.fromEntries(Object.entries(pages).map(([id, title]) => [id, title])), sidebar: '游戏大厅' },
   })
   ctx.i18n.define({
     namespace: name,
     locale: 'en',
     messages: {
+      sidebar: 'Game lobby',
       lobby: 'Lobby',
       agents: 'My Agents',
       dispatch: 'Dispatch',
@@ -113,11 +165,12 @@ export function apply(ctx: Context, config: { sample?: boolean; sources?: Source
     )
     const top = ['lobby', 'agents', 'dispatch'].includes(id)
     dispose.push(ctx.managerContent.register({
-      $schema: CORDISX_MANAGER_CONTENT_NAVIGATION_SCHEMA_V1,
-      schemaVersion: 1,
+      $schema: CORDISX_MANAGER_CONTENT_NAVIGATION_SCHEMA_V5,
+      schemaVersion: 5,
       id,
       route: { id },
       header: { title: { kind: 'route' } },
+      ...(id === 'configuration' ? { body: { kind: 'plugin-config-form' as const, namespace: name } } : {}),
       ...(top
         ? { tabs: ['lobby', 'agents', 'dispatch'].map(id => ({ id, route: { id } })) }
         : { parentRoute: { id: id === 'agent' ? 'agents' : id === 'replay' ? 'personal' : 'lobby' } }),
@@ -132,16 +185,10 @@ export function apply(ctx: Context, config: { sample?: boolean; sources?: Source
     }, { route: { id: 'lobby' } }),
   )
   dispose.push(
-    ctx.commands.register(
-      { id: 'open-lobby', title: { key: 'lobby', fallback: '大厅' } },
-      () => ctx.routes.navigate({ id: 'lobby' }),
-    ),
-  )
-  dispose.push(
     ctx.slots.register({ name: 'sidebar.navigation.items', id: 'open', group: 'utility', order: 95 }, {
-      label: { key: 'lobby', fallback: '棋牌' },
+      label: { key: 'sidebar', fallback: '游戏大厅' },
       icon: 'host:info',
-      command: { id: 'open-lobby' },
+      route: { id: 'lobby' },
     }),
   )
 }

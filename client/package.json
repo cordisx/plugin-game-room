@@ -21,23 +21,25 @@
   },
   "scripts": {
     "build": "vite build && tsc -p tsconfig.json --emitDeclarationOnly",
-    "check": "npm run format:check && npm run lint && npm run typecheck && npm test && npm run build",
+    "check": "npm run format:check && npm run lint && npm run typecheck && npm test && npm run build && npm run check:artifact",
     "dev": "cordisx dev ./src/client.tsx",
     "dev:dry-run": "cordisx dev --config ./cordisx.config.json --dry-run",
     "test": "tsx --test test/*.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "format": "dprint fmt",
     "format:check": "dprint check",
-    "lint": "eslint . && stylelint \"src/**/*.css\""
+    "lint": "eslint . && stylelint \"src/**/*.css\"",
+    "check:artifact": "node scripts/check-artifact.mjs"
   },
   "devDependencies": {
     "@cordisx/eslint-config": "github:cordisx/cordisxmono#c63c2e8c2ba7e11502934a52ad2ce3734e804cdc",
+    "@cordisx/protocol": "github:cordisx/cordisx-protocol#465c444c65eec1be8e337b94c2cf658ed536f49c",
     "@deepseek-ai/cordis": "4.0.1",
     "@deepseek-ai/schemastery": "3.18.1",
     "@projectwallace/stylelint-plugin": "0.7.0",
     "@types/react": "^19.2.18",
     "@typescript-eslint/parser": "8.69.0",
-    "cordisx": "file:/tmp/game-client-host-b75fa2c",
+    "cordisx": "file:.cache/sdk/cordisx-5101d6ec2540.tgz",
     "dprint": "0.57.1",
     "esbuild": "^0.28.2",
     "eslint": "9.39.4",
@@ -48,5 +50,8 @@
   },
   "engines": {
     "node": ">=22.19"
+  },
+  "dependencies": {
+    "@cordisx/game-room-agents": "file:../agents"
   }
 }

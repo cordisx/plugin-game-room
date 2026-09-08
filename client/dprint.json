@@ -1,6 +1,6 @@
 {
   "extends": "https://raw.githubusercontent.com/cordisx/cordisxmono/c63c2e8c2ba7e11502934a52ad2ce3734e804cdc/tooling/quality/dprint/code.json",
   "plugins": ["https://plugins.dprint.dev/g-plane/malva-v0.16.0.wasm"],
-  "includes": ["src/**/*.{ts,tsx,css}", "test/**/*.ts", "*.{json,ts,mjs,md}"],
-  "excludes": ["node_modules/**", "dist/**", "package-lock.json"]
+  "includes": ["src/**/*.{ts,tsx,css}", "test/**/*.ts", "scripts/*.mjs", "*.{json,ts,mjs,md}"],
+  "excludes": ["node_modules/**", "dist/**", ".cache/**", "package-lock.json"]
 }

@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { useState } from 'cordisx/react'
+import { useEffect, useState } from 'cordisx/react'
 import { Button, EmptyState, SearchField, Select } from 'cordisx/ui'
 import type { Agent, Balance, CreateRoom, Dispatch, History, Room, Seat, Source, SourceState } from '../data/model.js'
 import { consentFor, economyLabel, encodeInvitation } from '../data/model.js'
@@ -13,12 +13,19 @@ export function CreateRoomPanel(
   const available = states.filter(state => state.state === 'online')
   const [sourceId, setSourceId] = useState(available[0]?.source.id ?? '')
   const source = available.find(state => state.source.id === sourceId)
-  const [gameId, setGameId] = useState(source?.snapshot?.games[0]?.id ?? '')
-  const game = source?.snapshot?.games.find(game => game.id === gameId)
+  const [gameId, setGameId] = useState(source?.snapshot?.games[0]?.packageHash ?? '')
+  const game = source?.snapshot?.games.find(game => game.packageHash === gameId)
   const [name, setName] = useState('朋友来一局')
   const [mode, setMode] = useState<CreateRoom['mode']>('score')
   const [stake, setStake] = useState('100')
   const [agents, setAgents] = useState(true)
+  const [accepted, setAccepted] = useState(false)
+  useEffect(() => {
+    setAccepted(false)
+  }, [sourceId, gameId, mode, stake])
+  useEffect(() => {
+    if (game && !game.modes.includes(mode)) setMode(game.modes[0] ?? 'score')
+  }, [game, mode])
   return (
     <div className='gr-detail'>
       <label className='gr-field'>
@@ -28,7 +35,7 @@ export function CreateRoomPanel(
           options={available.map(state => ({ value: state.source.id, label: state.source.name }))}
           onChange={value => {
             setSourceId(value)
-            setGameId(available.find(state => state.source.id === value)?.snapshot?.games[0]?.id ?? '')
+            setGameId(available.find(state => state.source.id === value)?.snapshot?.games[0]?.packageHash ?? '')
           }}
         />
       </label>
@@ -40,8 +47,8 @@ export function CreateRoomPanel(
           aria-label='创建房间玩法'
           value={gameId}
           options={(source?.snapshot?.games ?? []).map(game => ({
-            value: game.id,
-            label: `${game.name} · v${game.version}`,
+            value: game.packageHash,
+            label: `${game.name} · v${game.version} · ${game.publisherId} · ${game.packageHash.slice(0, 8)}`,
           }))}
           onChange={setGameId}
         />
@@ -50,7 +57,7 @@ export function CreateRoomPanel(
         经济模式<Select
           aria-label='经济模式'
           value={mode}
-          options={['score', 'local-chips', 'token'].map(value => ({
+          options={(game?.modes ?? ['score']).map(value => ({
             value,
             label: economyLabel(value as CreateRoom['mode']),
           }))}
@@ -68,18 +75,37 @@ export function CreateRoomPanel(
       <label className='gr-check'>
         <input type='checkbox' checked={agents} onChange={event => setAgents(event.target.checked)} />允许 Agent
       </label>
+      {game && (
+        <div className='gr-record'>
+          <strong>{game.name} · v{game.version} · {game.publisherId}</strong>
+          <span className='gr-code'>{game.packageHash}</span>
+          <span>作者自制 · 未审核 · {game.policies.join(' / ')}</span>
+          <p className='gr-muted'>{game.description}</p>
+        </div>
+      )}
+      {mode === 'token' && (
+        <label className='gr-check'>
+          <input
+            type='checkbox'
+            checked={accepted}
+            onChange={event => setAccepted(event.target.checked)}
+          />我同意该固定版本、每席位投入与结算政策
+        </label>
+      )}
       <Button
         variant='primary'
-        disabled={busy || !source || !game || !name.trim()
+        disabled={busy || !source || !game || !name.trim() || (mode === 'token' && !accepted)
           || (mode === 'token' && (!Number.isSafeInteger(Number(stake)) || Number(stake) <= 0))}
         onClick={() =>
           create(sourceId, {
             name: name.trim(),
-            gameId,
+            gameId: game!.id,
+            packageHash: game!.packageHash,
             gameVersion: game!.version,
             mode,
             stake: mode === 'token' ? Number(stake) : 0,
             allowAgents: agents,
+            consentAccepted: accepted,
           })}
       >
         创建并查看规则
@@ -99,6 +125,10 @@ export function PreparePanel(
 ): ReactElement {
   const [consented, setConsented] = useState(false)
   const terms = consentFor(seat.room)
+  const termsKey = JSON.stringify([seat.matchId, terms])
+  useEffect(() => {
+    setConsented(false)
+  }, [termsKey])
   return (
     <div className='gr-detail'>
       <div className='gr-detail-row'>
@@ -122,7 +152,7 @@ export function PreparePanel(
         <p className='gr-muted'>{terms.settlement}</p>
         {terms.mode === 'token' && <span>Token 为虚拟娱乐币。自制玩法的审核状态仅作信息披露。</span>}
       </div>
-      {!seat.ready
+      {!seat.ready && (!seat.status || seat.status === 'waiting')
         ? (
           <>
             <label className='gr-check'>
@@ -141,11 +171,18 @@ export function PreparePanel(
           </>
         )
         : (
-          <div className='gr-isolation-seat'>
-            <strong>已准备，等待其他席位</strong>
-            <span className='gr-muted'>
-              {sample ? '样例预览不运行真实游戏或冻结 Token' : '对局开始后加载此座位的隔离游戏界面'}
-            </span>
+          <div className='gr-source-notice' role='status'>
+            {sample
+              ? '样例：已准备，不运行真实游戏或冻结 Token'
+              : seat.status === 'playing'
+              ? '对局进行中'
+              : seat.status === 'funding'
+              ? '等待各账户确认投入'
+              : seat.status === 'finished'
+              ? '本局已结束'
+              : seat.status === 'aborted'
+              ? '本局已中止'
+              : '已准备，等待其他席位'}
           </div>
         )}
     </div>
@@ -183,7 +220,12 @@ export function AgentPanel(
   )
   const [key, setKey] = useState('')
   const [budget, setBudget] = useState('30')
+  const [accepted, setAccepted] = useState(false)
   const room = compatible.find(room => `${room.sourceId}/${room.id}` === key)
+  const roomTerms = JSON.stringify(room && consentFor(room))
+  useEffect(() => {
+    setAccepted(false)
+  }, [key, roomTerms])
   return (
     <div className='gr-detail'>
       <div className='gr-detail-row'>
@@ -210,10 +252,25 @@ export function AgentPanel(
       <label className='gr-field'>
         最多动作次数<SearchField aria-label='最多动作次数' value={budget} onChange={setBudget} inputMode='numeric' />
       </label>
-      <p className='gr-muted'>Agent 仅接收当前席位观察和合法动作。达到动作预算后停止派遣。</p>
+      <p className='gr-muted'>
+        为 Agent 新增独立席位与普通任务，只将该席位观察提供给模型。达到预算后停止派遣；本轮不因模型 Token 消耗铸币。
+      </p>
+      {room && (
+        <div className='gr-record'>
+          <strong>{room.name} · {room.game.publisherId} · v{room.game.version}</strong>
+          <span className='gr-code'>{room.game.packageHash}</span>
+          <span>{room.review} · {economyLabel(room.mode)} · 新增席位投入 {room.stake}</span>
+          <span>{room.settlement}</span>
+          <p>{room.rules}</p>
+        </div>
+      )}
+      <label className='gr-check'>
+        <input type='checkbox' checked={accepted} onChange={event => setAccepted(event.target.checked)} />我授权新增此
+        Agent 席位并同意上述规则与投入
+      </label>
       <Button
         variant='primary'
-        disabled={busy || !room || agent.status !== 'idle' || !Number.isSafeInteger(Number(budget))
+        disabled={busy || !accepted || !room || agent.status !== 'idle' || !Number.isSafeInteger(Number(budget))
           || Number(budget) < 1}
         onClick={() => dispatch(room!, Number(budget))}
       >
@@ -237,9 +294,13 @@ export function DispatchPanel(
           <strong>{agents.find(agent => agent.id === run.agentId)?.name ?? run.agentId}</strong>
           <span>来源 {run.sourceId} · 房间 {run.roomId}</span>
           <span className='gr-muted'>
-            {run.state === 'running' ? '对局中' : run.state === 'withdrawn' ? '已撤回' : '已完成'} · 动作 {run.turns} /
-            {' '}
-            {run.budget}
+            {run.state === 'running'
+              ? '运行中'
+              : run.state === 'withdrawn'
+              ? '已撤回'
+              : run.state === 'failed'
+              ? '失败'
+              : '已完成'} · 动作 {run.turns} / {run.budget} · 模型调用 {run.modelCalls ?? 0} · {run.detail}
           </span>
           <Button disabled={busy || run.state !== 'running'} onClick={() => withdraw(run)}>撤回 Agent</Button>
         </div>
@@ -267,7 +328,8 @@ export function PersonalPanel(
           <div className='gr-detail-copy'>
             <strong>{record.roomName} · {record.result}</strong>
             <span className='gr-muted'>
-              {record.gameName} · {record.sourceId} · {new Date(record.completedAt).toLocaleDateString()}
+              {record.gameName} · {record.sourceId} ·{' '}
+              {record.completedAt ? new Date(record.completedAt).toLocaleDateString() : '时间未提供'}
             </span>
           </div>
           <Button onClick={() => replay(record)}>回放</Button>

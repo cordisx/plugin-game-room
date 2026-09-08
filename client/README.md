@@ -1,21 +1,38 @@
 # Game Room client
 
-A CordisX plugin for a multi-source game lobby, personal Agents, dispatch,
-source-bound invitations and explicit rules/economy consent. Host owns headers,
-route tabs, controls and page lifetime. Product views occupy `manager.content`.
+A CordisX plugin for a multi-source lobby, author-published games, personal Agents,
+seat-scoped dispatch, replay and explicit virtual Token funding. Host owns headers,
+route tabs, controls, configuration forms and page lifetime.
 
-The independent `client/` package was generated with the maintained creator at
-Host `b75fa2c6f9563924feca271242e2709c136033a3`. Production uses `cordisx/vite`
-and retains the complete indexed ESM/CSS graph in `dist/runtime`.
+## Reproduce the candidate
 
-- `npm run check`: formatting, source/CSS lint, types, behavior tests, build.
-- `npm run dev:dry-run`: validate the configured source without opening an App.
-- `cordisx.config.json`: explicitly labelled sample-data Playground composition.
+Requires Node 22.19+ (Node 24 is used by integration), Git and npm. From `client/`:
 
-Current development SDK is a local baseline build. This is a development
-checkpoint, not a portable release, native verification or user acceptance.
-The live HTTP adapter consumes the owning `docs/server-api.md`; secure login,
-isolated uploaded UI and Agent execution require the corresponding Host services.
-No uploaded game code is imported into the trusted renderer.
+```sh
+node scripts/prepare-sdk.mjs
+npm ci --ignore-scripts
+npm run check
+npm run dev:dry-run
+```
 
-[Client guide](../docs/client.md) · [Architecture](../docs/architecture.md)
+The preparation script builds exact experimental Host
+`5101d6ec25409a65d939fb4214b4144a5eb672df` and Protocol
+`465c444c65eec1be8e337b94c2cf658ed536f49c` into ignored `.cache/`. It records artifact
+provenance there. The package dependency uses a relative tarball path; no developer
+machine path or SDK binary is committed. Git dependency preparation can take
+several minutes. The owning sibling `../agents` must be present; `.npmrc` materializes
+it with its declared dependencies for independent installation.
+
+`cordisx/vite` retains the complete indexed ESM/CSS graph in `dist/runtime`.
+`cordisx.config.json` is a labelled **sample-data** Playground composition. It is
+not proof of native installed-plugin or real-model execution.
+
+For live operation configure `sample:false`, sources and Agent profiles through
+the Host configuration form. Connect each game account and economic account
+separately through Host's secure credential prompt. Server operators provision
+accounts/sessions using the [server API](../docs/server-api.md). Bearers never enter
+plugin config, model context, game package or scene payload. Imported author code
+runs only in the server runner; the client publishes validated declarative scenes
+through public `restrictedContent`.
+
+[Client implementation and evidence](../docs/client.md) · [Architecture](../docs/architecture.md)

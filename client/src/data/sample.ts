@@ -11,9 +11,29 @@ import type {
   SourceSnapshot,
 } from './model.js'
 import type { GameRoomPort } from './port.js'
-const games = [
-  { id: 'holdem', name: '德州扑克', version: '1.0.0', icon: '♠', description: '隐藏手牌 · 无限注德州' },
-  { id: 'gomoku', name: '五子棋', version: '1.0.0', icon: '◉', description: '公开棋盘 · 五子连珠' },
+const games: import('./model.js').Game[] = [
+  {
+    id: 'holdem',
+    name: '德州扑克',
+    version: '1.0.0',
+    icon: '♠',
+    description: '隐藏手牌 · 无限注德州',
+    packageHash: 'sample-holdem',
+    publisherId: '示例作者',
+    modes: ['score', 'local-chips', 'token'],
+    policies: ['conserved-payouts-v1'],
+  },
+  {
+    id: 'gomoku',
+    name: '五子棋',
+    version: '1.0.0',
+    icon: '◉',
+    description: '公开棋盘 · 五子连珠',
+    packageHash: 'sample-gomoku',
+    publisherId: '示例作者',
+    modes: ['score', 'local-chips', 'token'],
+    policies: ['equal-winners-v1'],
+  },
 ]
 export class SamplePort implements GameRoomPort {
   readonly kind = 'sample' as const
