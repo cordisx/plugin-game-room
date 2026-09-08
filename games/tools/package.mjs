@@ -19,14 +19,22 @@ export function canonical(value) {
 export function validate(pkg) {
   const m = pkg.manifest
   if (
-    pkg.packageVersion !== 1 || !m || !/^[a-z0-9-]{1,64}$/.test(m.id)
-    || !/^\d+\.\d+\.\d+$/.test(m.version) || typeof m.name !== 'string' || !m.name.trim()
+    pkg.packageVersion !== 1 || !m || typeof m.id !== 'string' || !/^[a-z0-9-]{1,64}$/.test(m.id)
+    || typeof m.version !== 'string' || !/^\d{1,8}\.\d{1,8}\.\d{1,8}$/.test(m.version)
+    || typeof m.name !== 'string' || !m.name.trim() || m.name.length > 100
     || !Number.isInteger(m.minPlayers) || !Number.isInteger(m.maxPlayers) || m.minPlayers < 2
     || m.maxPlayers > 8 || m.maxPlayers < m.minPlayers
     || !Array.isArray(m.modes) || !m.modes.length
     || m.modes.some(mode => !['score', 'local-chips', 'token'].includes(mode))
-    || typeof pkg.rules !== 'string' || !pkg.rules.includes('globalThis.game')
-    || typeof pkg.ui?.html !== 'string' || !pkg.ui.html.includes('<!doctype html>')
+    || (m.settlementPolicies !== undefined
+      && (!Array.isArray(m.settlementPolicies) || !m.settlementPolicies.length
+        || m.settlementPolicies.some(policy =>
+          !['equal-winners-v1', 'conserved-payouts-v1'].includes(policy)
+        )))
+    || typeof pkg.rules !== 'string' || pkg.rules.length > 256 * 1024
+    || !pkg.rules.includes('globalThis.game')
+    || typeof pkg.ui?.html !== 'string' || pkg.ui.html.length > 256 * 1024
+    || !pkg.ui.html.includes('<!doctype html>')
   ) {
     throw Error('Invalid GamePackage v1')
   }

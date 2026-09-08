@@ -41,3 +41,15 @@ test('vertical and both diagonal wins', async () => {
     assert.deepEqual(t.done.winners, [0])
   }
 })
+test('full board without any five-in-line ends in a draw', async () => {
+  const board = Array.from(
+    { length: 225 },
+    (_, i) => ((i % 15 + 2 * Math.floor(i / 15)) % 4 < 2 ? 0 : 1),
+  )
+  const turn = board[224]
+  board[224] = null
+  const state = { board, turn, moves: 224, lastMove: null, result: null }
+  const t = (await run('act', [state, { type: 'place', x: 14, y: 14 }], turn)).value
+  assert.equal(t.turn, null)
+  assert.deepEqual(t.done.winners, [])
+})

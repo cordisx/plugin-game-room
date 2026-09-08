@@ -31,6 +31,9 @@ body {
 .board {
   display: grid;
   grid-template-columns: repeat(15, 1fr);
+  width: 100%;
+  max-width: max(240px, calc(100dvh - 150px));
+  justify-self: center;
   aspect-ratio: 1;
   border: 1px solid #677b68;
   background: #a18b61;
@@ -38,9 +41,11 @@ body {
   overflow: hidden;
 }
 .point {
-  border: 1px solid #695d454d;
+  border: 0;
   border-radius: 0;
-  background: transparent;
+  background:
+    linear-gradient(#695d45, #695d45) center / 100% 1px no-repeat,
+    linear-gradient(#695d45, #695d45) center / 1px 100% no-repeat;
   padding: 0;
   min-width: 0;
   aspect-ratio: 1;
