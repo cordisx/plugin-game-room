@@ -29,18 +29,24 @@ not a merged release or compatible Mono baseline.
   `465c444c65eec1be8e337b94c2cf658ed536f49c`. Public-client fixtures verify controlled
   game-directory creation (no legacy fallback), exact-turn
   filtering, terminal-state confirmation, cancellation, deadline and cleanup errors.
-  The Host runtime checkpoint is `1d2636adbe239550fd70e3e82d4b43681a800833`
+  The Host runtime checkpoint is `69b0146c4d4b6acd411758ae4ec3005ea74d0b89`
   ([draft PR 386](https://github.com/cordisx/cordisx/pull/386)). No private bridge or
   existing human task is used as a fallback.
 - The Host owner reports a complete portable SDK build and a fresh ordinary npm
   consumer install without recursive Git preparation. This Agent lane independently
   verified the supplied tarball SHA-256 values:
-  CLI `fbb47a38f3dc31b1db8ffd78b8b182dae1f01ed9de5c07c27f290af95e92a274`;
+  CLI `42f655ad735fd430e6f455bbb2e8da31f5eb564c247a3c31bbb1e9774df131c4`;
   Protocol `9576e28592b44c589aa847f3e57c02db1731a664c5cfa5a0f1fd5c4b5a3e21c8`.
-  See the Host-owned [source packaging guide](https://github.com/cordisx/cordisx/blob/1d2636adbe239550fd70e3e82d4b43681a800833/.agents/docs/sdk-source-packaging.md)
+  See the Host-owned [source packaging guide](https://github.com/cordisx/cordisx/blob/69b0146c4d4b6acd411758ae4ec3005ea74d0b89/.agents/docs/sdk-source-packaging.md)
   for the reproducible build and `sdk-evidence.json` inputs. The Host full gate was
   still running at this checkpoint; native and real-provider verification remain
-  pending. Local cold installs and native runs are paused by resource coordination.
+  pending. This Agent lane also verified ordinary npm installation, full smoke-plugin
+  typecheck, production build, a valid dependency tree with one shared Protocol
+  instance, and `cordisx dev --dry-run` readiness against this SDK. The earlier SDK
+  bundled a second Protocol instance and failed the real consumer's branded types;
+  this checkpoint resolves that conflict without Agent source changes or casts.
+  Native execution remains paused pending an unlocked Mac and the coordinated
+  verification window. These preparation checks did not invoke a model.
 - A regression verifies ordinary Agent execution with no Pet, economy or usage
   service. Reward-ledger adoption is not a dispatch gate. Host owns game-directory
   classification; Pet owns its own work-v2 reward eligibility. This package cannot
