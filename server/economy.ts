@@ -9,7 +9,7 @@ export interface Agreement {
 export interface FundingTerms {
   matchId: string
   game: { id: string; version: string; digest: string; reviewStatus: string }
-  participants: { accountId: string; amount: number }[]
+  participants: { accountId: string; amount: number; participantIds: string[] }[]
   settlementPolicy: { kind: 'conserved-payouts' }
   expiresAt: number
 }

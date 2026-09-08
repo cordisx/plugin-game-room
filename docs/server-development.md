@@ -3,8 +3,10 @@
 Requires Node.js >=24.14 (node:sqlite and worker type stripping in development).
 Install with `npm ci`; `npm run check` formats/checks maintained server/SDK/tests,
 checks shared ESLint policy, compiles, runs behavioral tests, and builds to dist.
-The root is a workspace host for future independent client/games/agents packages;
-server TypeScript scope deliberately does not pull their build graphs in.
+The root owns server dependencies and only the `packages/*` workspace namespace.
+Client/games/agents remain independent packages with their own locks; use their
+explicit `npm --prefix <directory>` commands. Server TypeScript deliberately does
+not pull their build graphs in.
 
 ```sh
 npm ci
