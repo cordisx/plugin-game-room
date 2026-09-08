@@ -5,6 +5,10 @@ Owner branch: `codex/game-agents`. This is an experimental source checkpoint,
 not a merged release or compatible Mono baseline.
 
 - Independent agents package: typecheck, dprint and shared ESLint policy passed.
+- Clean sibling `file:../agents` consumption uses `install-links=true` and installs
+  Protocol as a production dependency. The consumer smoke copies source without
+  any owner `node_modules`, installs, removes installed packages, performs frozen
+  `npm ci`, and typechecks the public API with `skipLibCheck: false`.
 - Twenty public adapter, lifecycle, HTTP projection and durable file-store tests passed.
 - Real ephemeral HTTP/SQLite/QuickJS integration passed against the server owner's
   developing checkout, covering a scoped grant, seat-only observation, lost

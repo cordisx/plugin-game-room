@@ -1,7 +1,7 @@
 {
   "lineWidth": 100,
   "typescript": { "quoteStyle": "preferSingle", "semiColons": "always" },
-  "includes": ["**/*.ts", "*.json", "*.mjs", "../docs/agents*.md"],
+  "includes": ["**/*.ts", "*.json", "**/*.mjs", "../docs/agents*.md"],
   "excludes": ["node_modules", "package-lock.json"],
   "plugins": [
     "https://plugins.dprint.dev/typescript-0.95.11.wasm",
