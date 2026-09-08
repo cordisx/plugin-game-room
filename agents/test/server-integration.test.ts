@@ -22,6 +22,7 @@ test('one human and two Agents owned by the same account keep distinct seat obse
     timeout(s,ctx){return {state:s,turn:null,done:{winners:[]}}}
   }`);
   pkg.manifest.maxPlayers = 3;
+  assert.equal(pkg.ui.format, 'scene-v1');
   const published = await h.request('/v1/packages', h.alice.token, pkg);
   const created = await h.request('/v1/rooms', h.alice.token, {
     packageHash: published.body.hash,
@@ -131,12 +132,14 @@ test('one human and two Agents owned by the same account keep distinct seat obse
 test('real HTTP grant + authoritative QuickJS game + lost ACK + isolated dispatch', {
   skip: !serverRoot,
 }, async t => {
-  const { harness } = await import(
+  const { harness, game } = await import(
     pathToFileURL(resolve(serverRoot!, 'tests/server/helpers.ts')).href
   );
   const h = await harness();
   t.after(() => h.app.close());
-  const room = await h.room();
+  const pkg = game();
+  assert.equal(pkg.ui.format, 'scene-v1');
+  const room = await h.room(pkg);
   const response = await h.request(`/v1/rooms/${room.id}/agent-grants`, h.alice.token, {
     seatId: room.selfSeatId,
     expiresAt: Date.now() + 60000,

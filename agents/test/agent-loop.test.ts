@@ -3,6 +3,7 @@ import type {
   AgentLoopControlV1,
 } from '@cordisx/protocol/agent-loop-control/v1';
 import type {
+  AgentLoopCreateOrBindResult,
   AgentLoopEventPage,
   AgentLoopTaskBinding,
   BoundAgentLoopClient,
@@ -43,16 +44,8 @@ function fixture() {
   const targets = new Map<string, AgentLoopControlledTurnV1>();
   const loop = {
     contract: 'cordisx.bound-agent-loop-client/v4',
-    async createOrBind(input: { commandId: string; definition: unknown; }) {
-      creates.push(input);
-      const binding = {
-        binding: { bindingId: input.commandId, generation: 1 },
-        task: `opaque-${input.commandId}`,
-        state: 'active',
-        definition: input.definition,
-      } as AgentLoopTaskBinding;
-      bindings.set(input.commandId, binding);
-      return { status: 'accepted', binding };
+    async createOrBind() {
+      throw Error('must use controlled creation with Host-owned game cwd');
     },
     async subscribe(binding: AgentLoopTaskBinding) {
       let ended = false;
@@ -120,6 +113,17 @@ function fixture() {
   } as unknown as BoundAgentLoopClient;
   const control: AgentLoopControlV1 = {
     contract: 'cordisx.agent-loop-control/v1',
+    async create(input) {
+      creates.push(input);
+      const binding = {
+        binding: { bindingId: input.commandId, generation: 1 },
+        task: `opaque-${input.commandId}`,
+        state: 'active',
+        definition: input.definition,
+      } as AgentLoopTaskBinding;
+      bindings.set(input.commandId, binding);
+      return { status: 'accepted', binding } as AgentLoopCreateOrBindResult;
+    },
     async submit(input) {
       sends.push(input);
       const target = {
@@ -165,7 +169,7 @@ function fixture() {
   };
 }
 
-test('public adapter creates distinct ordinary tasks and requires exact turn plus authoritative completion', async () => {
+test('public adapter uses controlled game-cwd creation and exact turn plus authoritative completion', async () => {
   const f = fixture();
   const provider = createAgentLoopProvider(f.options);
   const [a, b] = await Promise.all([provider.act(request('a')), provider.act(request('b'))]);
@@ -181,6 +185,18 @@ test('public adapter creates distinct ordinary tasks and requires exact turn plu
   assert.ok(JSON.stringify(f.creates).includes('selected-model'));
   await provider.dispose('a');
   await provider.dispose('b');
+});
+
+test('an older control client without controlled creation never falls back to legacy task creation', async () => {
+  const f = fixture();
+  const old = { ...f.options.agentLoopControl, create: undefined } as unknown as AgentLoopControlV1;
+  const provider = createAgentLoopProvider({ ...f.options, agentLoopControl: old });
+  assert.deepEqual(provider.availability(), {
+    available: false,
+    reason: 'ordinary-turn-control-unavailable',
+  });
+  await assert.rejects(provider.act(request()), /ordinary-turn-control-unavailable/);
+  assert.equal(f.creates.length, 0);
 });
 
 test('abort calls public cancellation for the exact active turn and disposes the subscription', async () => {

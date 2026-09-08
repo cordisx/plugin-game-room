@@ -17,7 +17,7 @@
     "check": "npm run typecheck && npm run test && npm run format:check && npm run lint"
   },
   "dependencies": {
-    "@cordisx/protocol": "github:cordisx/cordisx-protocol#8adc1aab908263e692bd56ca6165b9aeadabe4b9"
+    "@cordisx/protocol": "github:cordisx/cordisx-protocol#dbc494ed11f566a962ab1525cddee3645759b794"
   },
   "devDependencies": {
     "@cordisx/eslint-config": "github:cordisx/cordisxmono#32fa3b257cd5a7bfa0bb2d5f1012ca18665d1637",

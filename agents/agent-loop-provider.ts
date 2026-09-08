@@ -59,7 +59,7 @@ function definition(request: ModelRequest, providerId: string): AgentDefinition 
   };
 }
 
-/** Public AgentLoop v4 creation/events plus additive ordinary-turn control v1. No private fallback. */
+/** Public controlled creation/turns plus AgentLoop v4 events. No private fallback. */
 export function createAgentLoopProvider(options: AgentLoopProviderOptions): AgentProvider {
   const contexts = new Map<string, Context>();
   const now = options.now ?? Date.now;
@@ -73,6 +73,7 @@ export function createAgentLoopProvider(options: AgentLoopProviderOptions): Agen
     if (
       options.agentLoop?.contract !== 'cordisx.bound-agent-loop-client/v4'
       || options.agentLoopControl?.contract !== 'cordisx.agent-loop-control/v1'
+      || typeof options.agentLoopControl.create !== 'function'
     ) {
       return { available: false, reason: 'ordinary-turn-control-unavailable' };
     }
@@ -106,10 +107,10 @@ export function createAgentLoopProvider(options: AgentLoopProviderOptions): Agen
       check();
       const def = definition(request, options.providerId);
       if (!context.binding) {
-        const created = await loop.createOrBind({
+        const created = await control.create({
           ...base,
           type: 'create-or-bind',
-          commandId: `${request.contextId}:create`,
+          commandId: `${request.contextId}:game-create-v1`,
           definition: def.identity,
           definitions: [def],
           target: { mode: 'create' },
