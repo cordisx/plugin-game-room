@@ -108,22 +108,32 @@ test('HTTP scene is seat-private and persisted; legacy HTML is rejected and UI r
   assert.match(resource.headers.get('content-type')!, /application\/json/)
   assert.equal((await resource.json()).format, 'scene-v1')
 })
-test('malicious UI output fails closed without breaking authoritative play or exposing state', async t => {
+test('malicious UI output aborts score and local-chips matches without exposing state', async t => {
+  for (const mode of ['score', 'local-chips']) {
+    const h = await harness()
+    t.after(() => h.app.close())
+    const pkg = game()
+    pkg.ui.render = 'globalThis.render=()=>({version:1,root:{type:"text",text:"oops",url:"https://attacker"}})'
+    const room = await h.room(pkg, { mode })
+    assert.equal(room.status, 'aborted')
+    assert.equal(room.scene, null)
+    assert.equal(room.sceneError, 'ui_scene_invalid')
+    assert.equal(room.result, null)
+    assert.equal(room.deadline, null)
+    const response = await h.request(`/v1/rooms/${room.id}/actions`, h.alice.token, {
+      expectedVersion: room.version,
+      idempotencyKey: 'cannot-play',
+      action: { type: 'move' },
+    })
+    assert.equal(response.body.error.code, 'not_playing')
+  }
+})
+test('a valid author scene showing a business error does not abort the match', async t => {
   const h = await harness()
   t.after(() => h.app.close())
   const pkg = game()
-  pkg.ui.render = 'globalThis.render=()=>({version:1,root:{type:"text",text:"oops",url:"https://attacker"}})'
+  pkg.ui.render = 'globalThis.render=()=>({version:1,root:{type:"text",text:"This move is not available"}})'
   const room = await h.room(pkg)
   assert.equal(room.status, 'playing')
-  assert.equal(room.scene, null)
-  assert.equal(room.sceneError, 'ui_render_failed')
-  assert.equal((room.observation as { hand: string }).hand, 'private-0')
-  const response = await h.request(`/v1/rooms/${room.id}/actions`, h.alice.token, {
-    expectedVersion: room.version,
-    idempotencyKey: 'still-play',
-    action: { type: 'move' },
-  })
-  assert.equal(response.status, 200)
-  assert.equal(response.body.version, room.version + 1)
-  assert.equal(response.body.scene, null)
+  assert.equal(room.sceneError, null)
 })

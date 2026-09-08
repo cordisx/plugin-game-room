@@ -99,11 +99,12 @@ export interface RoomCard {
   funding: { economyUrl: string; agreementId: string; termsHash: string } | null
   settlement: 'none' | 'pending' | 'reserved' | 'settled' | 'refunded'
 }
+export type SceneError = 'ui_render_failed' | 'ui_scene_invalid' | 'observation_failed'
 export interface RoomView extends RoomCard {
   selfSeatId: string
   observation: Json
   scene: Scene | null
-  sceneError: 'ui_render_failed' | null
+  sceneError: SceneError | null
 }
 export interface ActionRequest {
   expectedVersion: number
