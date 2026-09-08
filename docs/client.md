@@ -8,11 +8,11 @@ not user acceptance or a released Host capability.
 
 `client/` is an independent npm package generated from the maintained Host creator.
 Follow [reproduction](../client/README.md): `prepare-sdk.mjs` fetches exact Host
-`1d2636adbe239550fd70e3e82d4b43681a800833` and Protocol
+`69b0146c4d4b6acd411758ae4ec3005ea74d0b89` and Protocol
 `465c444c65eec1be8e337b94c2cf658ed536f49c`, builds/packs into ignored `.cache`, and
 checks the expected archive hashes against `sdk-evidence.json`. Final candidate
 Host archive SHA256:
-`fbb47a38f3dc31b1db8ffd78b8b182dae1f01ed9de5c07c27f290af95e92a274`.
+`42f655ad735fd430e6f455bbb2e8da31f5eb564c247a3c31bbb1e9774df131c4`.
 Protocol archive SHA256:
 `9576e28592b44c589aa847f3e57c02db1731a664c5cfa5a0f1fd5c4b5a3e21c8`.
 The wrapper invokes the Host’s `scripts/prepare-sdk.mjs` with a new absolute output
@@ -71,11 +71,11 @@ max-lines policy run in the independent client gate.
 
 ## Verification record
 
-With final Host `1d2636a`, `npm --prefix client run check` passes formatting,
+With release-candidate Host `69b0146`, `npm --prefix client run check` passes formatting,
 source/CSS lint, typecheck, 11 behavior tests (one real-server test explicitly
 skipped), build and verification of all four indexed runtime files.
 `dev:dry-run` also passes. Existing-client installation of the complete SDK took
-four seconds, with no recursive Git build. The wrapper passed syntax checking;
+two seconds, with no recursive Git build. The wrapper passed syntax checking;
 its full clean-source execution and actual archive hashes are a Linux CI gate.
 
 An earlier eleven-test run passed, including
@@ -117,8 +117,15 @@ This is HTTP readiness only: Mac lock blocked CUA, so fresh clicks/screenshots w
 for unlock. No existing user App was restarted.
 
 The superseded H510 archive mismatch was traced to executable metadata alone.
-H1d2636a now fixes entry modes in its build and bundles complete Channel, Proxy
-and Protocol dependencies. Client lock and preparation consume that single
-maintained recipe; no consumer-side archive-mode override or incomplete bootstrap
-package is used. Local final-candidate checks and fresh Linux CI results are
-reported separately from browser/native acceptance.
+H69b0146 fixes entry modes, bundles complete Channel/Proxy, and resolves Protocol
+from one shared root package. The client, Agent adapter and Host all deduplicate
+to exact P465, verified by the lock and targeted `npm ls`; no type cast or private
+implementation bypass is used. Client preparation delegates to the maintained
+recipe without consumer-side archive-mode overrides.
+
+The broader `npm ls --all` still flags an existing React peer range:
+`valtio` → `use-sync-external-store@1.2.0` declares React 16–18 while this SDK uses
+React 19.2.8. This is separate from the corrected Protocol and bundled-package
+identity; it has been reported to Host ownership, with no local override applied.
+Local candidate checks and fresh Linux CI results remain separate from
+browser/native acceptance.
