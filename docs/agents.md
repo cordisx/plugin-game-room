@@ -18,9 +18,8 @@ Human authorization and grant capture belong in the client/Host credential flow.
 Joining another person's room is supported when that room allows Agents.
 
 `createAgentLoopProvider` accepts public `agentLoop` v4 and additive
-`agentLoopControl` v1 clients, a `providerId`, `executionMode: 'ordinary'` and
-`aggregateRewards: 'disabled-or-game-excluded'`. Missing control or unconfirmed
-reward policy returns typed availability information. It calls
+`agentLoopControl` v1 clients, a `providerId` and optional
+`executionMode: 'ordinary'`. Missing control returns typed availability information. It calls
 `agentLoopControl.create` to create an independent task in a fresh Host-owned game
 working directory, uses the profile's fixed model with high effort, and subscribes
 to that exact v4 binding. A control client missing `create` is unavailable; there
@@ -28,7 +27,7 @@ is no fallback to legacy task creation in the user's workspace. An action is ret
 controlled-turn `read` both confirm completion. Abort and disposal call public
 `cancel` with the exact controlled turn. Shared Host clients are not disposed.
 The package pins the experimental Protocol commit
-`dbc494ed11f566a962ab1525cddee3645759b794`; it is not a released Host capability.
+`465c444c65eec1be8e337b94c2cf658ed536f49c`; it is not a released Host capability.
 Protocol is a package dependency because exported TypeScript source references its
 types. When a sibling client uses `file:../agents`, commit `install-links=true` in
 the client's `.npmrc` and regenerate its lockfile. npm's default local symlink does
@@ -81,9 +80,12 @@ ordinary turn cancellation and Host-enforced deadlines; unsubscribing alone does
 not cancel model work.
 
 Game inference rewards are disabled (`rewardEnabled: false`), with no deferred
-accrual. Before enabling ordinary play, the integrator must ensure any other
-profile-aggregate Token reward source is paused or reliably excludes these turns.
-The dispatch service cannot alter another plugin's economic policy.
+accrual. Ordinary dispatch works without Pet, an economy plugin, a usage service
+or a reward ledger baseline. The Agent package has no reward-source authority.
+Its responsibility is public controlled creation in Host-owned game directories;
+Host owns game-task classification, and Pet owns strict work-usage-v2 reward
+eligibility and baseline handling. No cross-plugin reward approval is required
+to dispatch an Agent. Individual game-seat token usage remains unknown.
 
 ## Recovery and verification
 

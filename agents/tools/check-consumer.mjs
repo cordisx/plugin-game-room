@@ -54,7 +54,7 @@ try {
     `
 import { createAgentLoopProvider, createDispatchService, createSeatHttpTransport,
   type AgentLoopProviderOptions } from '@cordisx/game-room-agents';
-const options: AgentLoopProviderOptions = { providerId: 'test', aggregateRewards: 'unknown' };
+const options: AgentLoopProviderOptions = { providerId: 'test' };
 const provider = createAgentLoopProvider(options);
 const transport = createSeatHttpTransport({ async request() { return { status: 503, body: {} }; } });
 const service = createDispatchService({ provider, transport, automatic: false });
