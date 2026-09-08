@@ -118,7 +118,9 @@ An unexpected already-settled agreement without a matching game settlement remai
 pending for operator investigation; it is never labelled refunded or successful.
 
 The installed CI workflow is `.github/workflows/server.yml`; it runs the full
-owner gate and a Docker build on Linux. The initial HTTPS OAuth push was refused
+owner gate, Docker build and constrained container smoke on Linux. The container
+smoke verifies HTTP, writable SQLite and compiled rule/UI WASM workers with an
+unprivileged user and read-only root filesystem. The initial HTTPS OAuth push was refused
 because that credential lacks workflow permission. Existing authorized SSH access
 is used to publish the workflow; origin remains HTTPS and no credential change is
 needed. Local Docker runtime remains unavailable as recorded above.
