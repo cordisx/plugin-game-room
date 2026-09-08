@@ -8,6 +8,20 @@ concurrency:
   group: integration-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  client:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.14.1
+      - run: npm ci --ignore-scripts && npm run build
+      - run: node scripts/prepare-sdk.mjs
+        working-directory: client
+      - run: npm ci --ignore-scripts && npm run check && npm run dev:dry-run && npm run check:artifact
+        working-directory: client
+        env:
+          GAME_ROOM_SERVER_MODULE: ${{ github.workspace }}/dist/server/http.js
   games-and-agents:
     runs-on: ubuntu-latest
     steps:
