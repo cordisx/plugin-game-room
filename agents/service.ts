@@ -65,9 +65,14 @@ export function createDispatchService(options: DispatchServiceOptions) {
   async function stop(entry: Entry, target: 'completed' | 'withdrawn' | 'failed', reason?: string) {
     entry.record.terminalTarget = target;
     await save(entry, 'withdrawing', reason);
-    await provider.dispose(entry.record.input.id);
     const signal = AbortSignal.timeout(10000);
-    await transport.revoke(entry.record.input.grant, signal);
+    const cleanup = await Promise.allSettled([
+      provider.dispose(entry.record.input.id),
+      transport.revoke(entry.record.input.grant, signal),
+    ]);
+    if (cleanup.some(result => result.status === 'rejected')) {
+      throw new DispatchError('cleanup_pending');
+    }
     delete entry.record.pending;
     await save(entry, target);
   }
@@ -114,6 +119,14 @@ export function createDispatchService(options: DispatchServiceOptions) {
         }
         return;
       }
+      if (record.inferenceDeadline !== undefined) {
+        if (now() < record.inferenceDeadline) {
+          await save(entry, 'waiting', 'awaiting_provider_deadline');
+          return;
+        }
+        delete record.inferenceDeadline;
+        await save(entry);
+      }
       const view = await transport.observe(input.grant, controller.signal);
       active();
       validateView(view, input);
@@ -148,6 +161,7 @@ export function createDispatchService(options: DispatchServiceOptions) {
       timeout = setTimeout(() => controller.abort(), deadline - now());
       const requestId = `${input.id}:${view.version}:${snapshot.modelCallsUsed + 1}`;
       snapshot.modelCallsUsed++;
+      record.inferenceDeadline = deadline;
       await save(entry, 'thinking');
       active();
       const text = await provider.act({
@@ -164,6 +178,7 @@ export function createDispatchService(options: DispatchServiceOptions) {
       active();
       if (now() >= deadline) throw new DispatchError('turn_deadline');
       const action = parseAction(text, requestId, view.version, input.budget.maxOutputBytes);
+      delete record.inferenceDeadline;
       record.pending = { expectedVersion: view.version, idempotencyKey: requestId, action };
       record.retries = 0;
       await save(entry, 'submitting');
@@ -291,7 +306,11 @@ export function createDispatchService(options: DispatchServiceOptions) {
       entry.controller?.abort();
       entry.record.terminalTarget = 'withdrawn';
       await save(entry, 'withdrawing');
-      await provider.dispose(id);
+      // Revoke immediately even if provider cancellation is temporarily unavailable.
+      await Promise.allSettled([
+        provider.dispose(id),
+        transport.revoke(entry.record.input.grant, AbortSignal.timeout(10000)),
+      ]);
       await entry.running;
       await tick(id);
     },

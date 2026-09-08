@@ -171,7 +171,7 @@ test('immediate withdrawal aborts the model and never accepts its late output', 
   await running;
   assert.equal(s.get(f.input.id).status, 'withdrawn');
   assert.equal(f.submissions.length, 0);
-  assert.equal(f.revoked(), 1);
+  assert.ok(f.revoked() >= 1);
   await s.close();
 });
 
@@ -200,6 +200,28 @@ test('sleep recovery rechecks absolute deadline without calling the model', asyn
   assert.equal(s.get(f.input.id).reason, 'dispatch_deadline');
   assert.equal(f.requests.length, 0);
   await s.close();
+});
+
+test('restart during inference waits for its persisted Host deadline before another model call', async () => {
+  const f = fixture();
+  const original = createDispatchService(f.options);
+  await original.dispatch(f.input);
+  const [record] = await f.store.load();
+  record.snapshot.status = 'thinking';
+  record.snapshot.modelCallsUsed = 1;
+  record.inferenceDeadline = 5000;
+  await original.close();
+  await f.store.save(record);
+  const restored = createDispatchService(f.options);
+  await restored.restore();
+  await restored.tick(f.input.id);
+  assert.equal(f.requests.length, 0);
+  assert.equal(restored.get(f.input.id).reason, 'awaiting_provider_deadline');
+  f.advance(4001);
+  await restored.tick(f.input.id);
+  assert.equal(f.requests.length, 1);
+  assert.equal(restored.get(f.input.id).modelCallsUsed, 2);
+  await restored.close();
 });
 
 test('model budget is reserved before calling; stale server version clears pending and reobserves', async () => {
@@ -237,9 +259,9 @@ test('malformed/cross-turn action envelope and unavailable provider fail closed'
 
 test('revocation outage remains cleanup_pending and resume retries cleanup only', async () => {
   const f = fixture();
-  let attempts = 0;
+  let offline = true;
   f.transport.revoke = async () => {
-    if (++attempts <= 3) throw new DispatchError('network_unavailable', true);
+    if (offline) throw new DispatchError('network_unavailable', true);
   };
   const s = createDispatchService(f.options);
   await s.dispatch(f.input);
@@ -248,10 +270,28 @@ test('revocation outage remains cleanup_pending and resume retries cleanup only'
   await s.tick(f.input.id);
   assert.equal(s.get(f.input.id).status, 'paused');
   assert.equal(s.get(f.input.id).reason, 'cleanup_pending');
+  offline = false;
   await s.resume(f.input.id);
   await s.tick(f.input.id);
   assert.equal(s.get(f.input.id).status, 'withdrawn');
   assert.equal(f.requests.length, 0);
+  await s.close();
+});
+
+test('provider cancellation failure cannot prevent server grant revocation', async () => {
+  const f = fixture();
+  f.provider.dispose = async () => {
+    throw new DispatchError('provider_cancel_unavailable');
+  };
+  const s = createDispatchService(f.options);
+  await s.dispatch(f.input);
+  await s.withdraw(f.input.id, 'immediate');
+  assert.ok(f.revoked() >= 1);
+  assert.equal(s.get(f.input.id).status, 'withdrawing');
+  assert.equal(s.get(f.input.id).reason, 'cleanup_pending');
+  f.provider.dispose = async () => {};
+  await s.tick(f.input.id);
+  assert.equal(s.get(f.input.id).status, 'withdrawn');
   await s.close();
 });
 
