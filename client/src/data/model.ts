@@ -24,6 +24,7 @@ export type Room = {
   sourceId: string
   name: string
   game: Game
+  owned?: boolean
   occupied: number
   capacity: number
   state: 'waiting' | 'playing' | 'finished'

@@ -18,11 +18,15 @@ export class SourceAggregator {
     await Promise.allSettled(states.map(async (state, index) => {
       const controller = new AbortController()
       this.controllers.push(controller)
-      const timer = setTimeout(() => controller.abort(new Error('来源响应超时')), this.timeoutMs)
+      let timer: ReturnType<typeof setTimeout> | undefined
       const abort = new Promise<never>((_, reject) =>
         controller.signal.addEventListener('abort', () => reject(controller.signal.reason), { once: true })
       )
       try {
+        // Human authorization is cancellable, but is not network latency.
+        await Promise.race([this.port.prepareSource?.(state.source, controller.signal), abort])
+        controller.signal.throwIfAborted()
+        timer = setTimeout(() => controller.abort(new Error('来源响应超时')), this.timeoutMs)
         const snapshot = await Promise.race([this.port.list(state.source, controller.signal), abort])
         states[index] = {
           source: state.source,

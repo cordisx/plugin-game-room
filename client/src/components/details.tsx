@@ -1,6 +1,8 @@
+import { TextInput } from './text-input.js'
+import { Symbol } from './icons.js'
 import type { ReactElement } from 'react'
 import { useEffect, useState } from 'cordisx/react'
-import { Button, EmptyState, SearchField, Select } from 'cordisx/ui'
+import { Button, EmptyState, Select } from 'cordisx/ui'
 import type { Agent, Balance, CreateRoom, Dispatch, History, Room, Seat, Source, SourceState } from '../data/model.js'
 import { consentFor, economyLabel, encodeInvitation } from '../data/model.js'
 export function CreateRoomPanel(
@@ -40,7 +42,7 @@ export function CreateRoomPanel(
         />
       </label>
       <label className='gr-field'>
-        房间名称<SearchField aria-label='房间名称' value={name} onChange={setName} />
+        房间名称<TextInput aria-label='房间名称' value={name} onChange={setName} />
       </label>
       <label className='gr-field'>
         玩法<Select
@@ -68,7 +70,7 @@ export function CreateRoomPanel(
         <>
           <p className='gr-muted'>虚拟娱乐 Token。仅在所选来源关联的经济实例结算；房间创建后须逐人确认并投入。</p>
           <label className='gr-field'>
-            每席位投入<SearchField aria-label='每席位投入' inputMode='numeric' value={stake} onChange={setStake} />
+            每席位投入<TextInput aria-label='每席位投入' inputMode='numeric' value={stake} onChange={setStake} />
           </label>
         </>
       )}
@@ -193,7 +195,9 @@ export function AgentsPanel({ agents, select }: { agents: Agent[]; select: (agen
     <div className='gr-detail'>
       {agents.map(agent => (
         <div className='gr-detail-row' key={agent.id}>
-          <span className='gr-avatar'>{agent.avatar}</span>
+          <span className='gr-avatar'>
+            <Symbol name='agent' size={24} />
+          </span>
           <div className='gr-detail-copy'>
             <strong>{agent.name}</strong>
             <span className='gr-muted'>{agent.description}</span>
@@ -229,7 +233,9 @@ export function AgentPanel(
   return (
     <div className='gr-detail'>
       <div className='gr-detail-row'>
-        <span className='gr-avatar'>{agent.avatar}</span>
+        <span className='gr-avatar'>
+          <Symbol name='agent' size={24} />
+        </span>
         <div className='gr-detail-copy'>
           <strong>{agent.name}</strong>
           <span>{agent.description}</span>
@@ -250,7 +256,7 @@ export function AgentPanel(
         />
       </label>
       <label className='gr-field'>
-        最多动作次数<SearchField aria-label='最多动作次数' value={budget} onChange={setBudget} inputMode='numeric' />
+        最多动作次数<TextInput aria-label='最多动作次数' value={budget} onChange={setBudget} inputMode='numeric' />
       </label>
       <p className='gr-muted'>
         为 Agent 新增独立席位与普通任务，只将该席位观察提供给模型。达到预算后停止派遣；本轮不因模型 Token 消耗铸币。

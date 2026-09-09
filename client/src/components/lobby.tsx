@@ -3,8 +3,26 @@ import { Button, EmptyState, SearchField, Select } from 'cordisx/ui'
 import type { Agent, Dispatch, Filters, Room, SourceState } from '../data/model.js'
 import { economyLabel, filterRooms, roomKey } from '../data/model.js'
 import '../styles/lobby.css'
+import { GameIcon, Symbol } from './icons.js'
 export function Lobby(
-  { states, filters, setFilters, agents, dispatches, join, create, invite, agentDetail, navigate }: {
+  {
+    connected,
+    refresh,
+    busy,
+    states,
+    filters,
+    setFilters,
+    agents,
+    dispatches,
+    join,
+    create,
+    invite,
+    agentDetail,
+    navigate,
+  }: {
+    connected: (sourceId: string) => boolean
+    refresh: () => void
+    busy: boolean
     states: SourceState[]
     filters: Filters
     setFilters: (filters: Filters) => void
@@ -17,7 +35,9 @@ export function Lobby(
     navigate: (page: string) => void
   },
 ): ReactElement {
-  const rooms = filterRooms(states, filters)
+  const rooms = filterRooms(states, filters).sort((a, b) =>
+    ['waiting', 'playing', 'finished'].indexOf(a.state) - ['waiting', 'playing', 'finished'].indexOf(b.state)
+  )
   const games = [...new Map(states.flatMap(state => state.snapshot?.games ?? []).map(game => [game.id, game])).values()]
   return (
     <div className='gr-lobby'>
@@ -31,8 +51,11 @@ export function Lobby(
               value={filters.search}
               onChange={search => setFilters({ ...filters, search })}
             />
+            <Button disabled={busy} onClick={refresh}>刷新</Button>
             <Button onClick={invite}>邀请加入</Button>
-            <Button variant='primary' onClick={create}>＋ 创建房间</Button>
+            <Button variant='primary' onClick={create}>
+              <Symbol name='plus' />创建房间
+            </Button>
           </div>
         </div>
         <div className='gr-filter-row' aria-label='玩法筛选'>
@@ -41,7 +64,7 @@ export function Lobby(
             aria-pressed={!filters.gameId}
             onClick={() => setFilters({ ...filters, gameId: '' })}
           >
-            ▦ 全部
+            <Symbol name='grid' />全部
           </Button>
           {games.map(game => (
             <Button
@@ -50,7 +73,8 @@ export function Lobby(
               aria-pressed={filters.gameId === game.id}
               onClick={() => setFilters({ ...filters, gameId: game.id })}
             >
-              {game.icon} {game.name}
+              <GameIcon id={game.id} size={18} />
+              {game.name}
             </Button>
           ))}
         </div>
@@ -95,6 +119,8 @@ export function Lobby(
             {rooms.map(room => (
               <RoomCard
                 key={roomKey(room)}
+                connected={connected(room.sourceId)}
+                busy={busy}
                 room={room}
                 sourceName={states.find(state => state.source.id === room.sourceId)?.source.name ?? room.sourceId}
                 join={() => join(room)}
@@ -115,39 +141,55 @@ export function Lobby(
       <aside className='gr-agents-panel' aria-label='我的 Agent'>
         <div className='gr-panel-title'>
           <h2 className='gr-section-title'>我的 Agent</h2>
-          <Button variant='ghost' onClick={() => navigate('agents')}>管理 →</Button>
+          <Button variant='ghost' onClick={() => navigate('agents')}>管理</Button>
         </div>
-        {agents.map(agent => {
-          const run = dispatches.find(run => run.agentId === agent.id && run.state === 'running')
-          const room = states.flatMap(state => state.snapshot?.rooms ?? []).find(room =>
-            room.id === run?.roomId && room.sourceId === run?.sourceId
-          )
-          return (
-            <div className='gr-agent-row' key={agent.id}>
-              <span className='gr-avatar' aria-hidden='true'>{agent.avatar}</span>
-              <div className='gr-agent-copy'>
-                <strong>{agent.name}</strong>
-                <span className={agent.status === 'playing' ? 'gr-status' : 'gr-muted'}>
-                  {agent.status === 'playing' ? '● 对局中' : '● 空闲'}
+        <div className='gr-agent-results'>
+          {agents.map(agent => {
+            const run = dispatches.find(run => run.agentId === agent.id && run.state === 'running')
+            const room = states.flatMap(state => state.snapshot?.rooms ?? []).find(room =>
+              room.id === run?.roomId && room.sourceId === run?.sourceId
+            )
+            return (
+              <div className='gr-agent-row' key={agent.id}>
+                <span className='gr-avatar' aria-hidden='true'>
+                  <Symbol name='agent' size={24} />
                 </span>
-                <p className='gr-agent-subtitle'>{room?.name ?? '随时准备加入新对局'}</p>
+                <div className='gr-agent-copy'>
+                  <strong>{agent.name}</strong>
+                  <span className={agent.status === 'playing' ? 'gr-status' : 'gr-muted'}>
+                    {agent.status === 'playing' ? '● 对局中' : '● 空闲'}
+                  </span>
+                  <p className='gr-agent-subtitle'>{room?.name ?? '随时准备加入新对局'}</p>
+                </div>
+                <Button onClick={() => agentDetail(agent)}>{agent.status === 'playing' ? '查看' : '派遣'}</Button>
               </div>
-              <Button onClick={() => agentDetail(agent)}>{agent.status === 'playing' ? '查看' : '派遣'}</Button>
-            </div>
-          )
-        })}
-        {agents.length === 0 && <p className='gr-muted'>尚未添加 Agent</p>}
-        <Button variant='ghost' onClick={() => navigate('agents')}>⊕ 管理 Agent</Button>
+            )
+          })}
+          {agents.length === 0 && <p className='gr-muted'>尚未添加 Agent</p>}
+          <Button variant='ghost' onClick={() => navigate('agents')}>
+            <Symbol name='plus' />管理 Agent
+          </Button>
+        </div>
       </aside>
     </div>
   )
 }
-function RoomCard({ room, sourceName, join }: { room: Room; sourceName: string; join: () => void }): ReactElement {
+function RoomCard(
+  { room, sourceName, join, busy, connected }: {
+    room: Room
+    sourceName: string
+    join: () => void
+    busy: boolean
+    connected: boolean
+  },
+): ReactElement {
   const available = room.state === 'waiting' && room.occupied < room.capacity && room.compatible
   return (
     <article className='gr-room-card'>
       <div className='gr-room-heading'>
-        <span className='gr-game-icon' data-game={room.game.id} aria-hidden='true'>{room.game.icon}</span>
+        <span className='gr-game-icon' data-game={room.game.id} aria-hidden='true'>
+          <GameIcon id={room.game.id} />
+        </span>
         <div className='gr-room-name'>
           <h3>{room.name}</h3>
           <span className='gr-muted'>{room.game.name}</span>
@@ -158,8 +200,10 @@ function RoomCard({ room, sourceName, join }: { room: Room; sourceName: string; 
         </span>
       </div>
       <div className='gr-room-meta'>
-        <span>⌂ {sourceName} · #{room.id.split(':').at(-1)?.slice(0, 8)}</span>
-        <span className='gr-tag'>{room.allowAgents ? '真人与 Agent' : '仅真人'}</span>
+        <span>
+          <Symbol name='source' size={14} /> {sourceName} · #{room.id.split(':').at(-1)?.slice(0, 8)}
+        </span>
+        <span className='gr-tag'>{room.allowAgents ? '可派遣 Agent' : '不支持派遣'}</span>
       </div>
       <div className='gr-room-bottom'>
         <div className='gr-occupants'>
@@ -171,8 +215,22 @@ function RoomCard({ room, sourceName, join }: { room: Room; sourceName: string; 
           <span>{room.occupied} / {room.capacity}</span>
         </div>
         <span className='gr-economy'>{economyLabel(room.mode)}{room.stake > 0 ? ` · ${room.stake}` : ''}</span>
-        <Button disabled={!room.compatible} title={room.compatibilityReason} onClick={join}>
-          {available ? '加入' : '恢复我的席位'}
+        <Button
+          disabled={busy || !room.compatible || (connected && !available && !room.owned)}
+          title={room.compatibilityReason}
+          onClick={join}
+        >
+          {!connected && !available
+            ? '连接账户查看'
+            : room.owned
+            ? '恢复席位'
+            : available
+            ? '加入'
+            : room.state === 'playing'
+            ? '进行中'
+            : room.state === 'finished'
+            ? '已结束'
+            : '已满员'}
         </Button>
       </div>
     </article>

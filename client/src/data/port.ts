@@ -12,11 +12,13 @@ import type {
 } from './model.js'
 /** Internal boundary, not a published server protocol. Adapters must bind every operation to one source. */
 export interface GameRoomPort {
+  prepareSource?(source: Source, signal: AbortSignal): Promise<void>
   capabilities?(): { account: boolean; agent: { available: boolean; reason?: string } }
   connectEconomy?(sourceId: string, signal: AbortSignal): Promise<void>
   linkEconomy?(sourceId: string, signal: AbortSignal): Promise<void>
   quote?(seat: Seat, signal: AbortSignal): Promise<import('./economy.js').FundingQuote>
   reserve?(seat: Seat, quote: import('./economy.js').FundingQuote, signal: AbortSignal): Promise<void>
+  isConnected?(sourceId: string): boolean
   connect?(sourceId: string): Promise<void>
   publish?(sourceId: string, document: Record<string, unknown>, digest: string, signal: AbortSignal): Promise<void>
   refreshSeat?(seat: Seat, signal: AbortSignal): Promise<Seat>

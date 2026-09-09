@@ -1,8 +1,8 @@
 {
   "version": 1,
   "playground": {
-    "name": "Game Room \u00b7 \u7ec4\u4ef6\u9884\u89c8",
-    "description": "\u771f\u5b9e\u63d2\u4ef6\u7ec4\u4ef6\uff0c\u6837\u4f8b\u6570\u636e\uff0c\u975e\u539f\u751f App \u9a8c\u6536",
+    "name": "Game Room",
+    "description": "连接真实游戏服务 · 浏览器预览",
     "pluginBundleFixture": true,
     "reviewNavigationItem": "game-room:open"
   },
@@ -13,7 +13,16 @@
       "entry": "./src/client.tsx",
       "enabled": true,
       "config": {
-        "sample": true
+        "sample": false,
+        "sources": [
+          {
+            "id": "f0d3930b-9436-4dd6-b3d6-3fb534c314d2",
+            "name": "本地试玩服务",
+            "url": "http://127.0.0.1:8790",
+            "accountId": "",
+            "enabled": true
+          }
+        ]
       }
     }
   ]

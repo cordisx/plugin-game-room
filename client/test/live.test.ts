@@ -28,6 +28,7 @@ const fixture = {
 class TestTransport implements HttpTransport {
   tokens = new Map<string, string>()
   dropNextAction = false
+  async connect() {}
   async request(request: HttpRequest): Promise<unknown> {
     const response = await fetch(new URL(request.path, request.source.url), {
       method: request.method ?? 'GET',
@@ -108,6 +109,9 @@ test('real two-server HTTP: exact packages, two-player match, lost ACK, replay, 
     }
     const port = new LivePort(sources, transport)
     const bob = new LivePort([bobSource], bobTransport)
+    await port.connect(sources[0]!.id)
+    await bob.connect(bobSource.id)
+    assert.equal(port.isConnected(sources[0]!.id), true)
     const catalog = await port.list(sources[0]!, signal)
     assert.equal(catalog.compatible, true)
     assert.equal(catalog.games.length, 2)

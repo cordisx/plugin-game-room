@@ -22,14 +22,15 @@
   "scripts": {
     "build": "vite build && tsc -p tsconfig.json --emitDeclarationOnly",
     "check": "npm run format:check && npm run lint && npm run typecheck && npm test && npm run build && npm run check:artifact",
-    "dev": "cordisx dev ./src/client.tsx",
+    "dev": "cordisx dev --config ./cordisx.config.json",
     "dev:dry-run": "cordisx dev --config ./cordisx.config.json --dry-run",
     "test": "tsx --test test/*.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "format": "dprint fmt",
     "format:check": "dprint check",
     "lint": "eslint . && stylelint \"src/**/*.css\"",
-    "check:artifact": "node scripts/check-artifact.mjs"
+    "check:artifact": "node scripts/check-artifact.mjs",
+    "dev:sample": "cordisx dev --config ./cordisx.sample.config.json"
   },
   "devDependencies": {
     "@cordisx/eslint-config": "github:cordisx/cordisxmono#c63c2e8c2ba7e11502934a52ad2ce3734e804cdc",
@@ -52,6 +53,7 @@
     "node": ">=22.19"
   },
   "dependencies": {
-    "@cordisx/game-room-agents": "file:../agents"
+    "@cordisx/game-room-agents": "file:../agents",
+    "reicon": "1.2.1"
   }
 }
