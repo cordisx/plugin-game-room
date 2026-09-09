@@ -57,3 +57,53 @@
   gap: 4px;
   margin-left: auto;
 }
+
+@container game-room (max-width: 680px) {
+  .gr-page-header {
+    display: grid;
+    grid-template-areas:
+      "brand utilities"
+      "navigation navigation";
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px 12px;
+    padding: 12px 14px;
+  }
+
+  .gr-page-brand {
+    grid-area: brand;
+    min-width: 0;
+  }
+
+  .gr-page-navigation {
+    display: grid;
+    grid-area: navigation;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: 100%;
+    min-width: 0;
+  }
+
+  .gr-page-navigation > button {
+    min-width: 0;
+    justify-content: center;
+  }
+
+  .gr-page-utilities {
+    grid-area: utilities;
+    margin-left: 0;
+  }
+}
+
+@container game-room (max-width: 420px) {
+  .gr-page-navigation-label,
+  .gr-page-utility-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+}

@@ -5,10 +5,10 @@ import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 const root = fileURLToPath(new URL('../', import.meta.url))
-const hostSha = 'be2403c70664ff6624671224a405e409874d59c7'
+const hostSha = '58a9e54b50d41a1ed58aaca555f73a4352822948'
 const protocolSha = '465c444c65eec1be8e337b94c2cf658ed536f49c'
 const expected = {
-  'cordisx-0.1.0-beta.2.tgz': 'abd300ccade96d095563f95f971164838237a376655a55b7f96bdccb3bf2dd46',
+  'cordisx-0.1.0-beta.2.tgz': '0cad81ca70afdb919c5d4b56e69499675030ff8bc0bb85e1a2643a1c5211e8dd',
   'cordisx-protocol-0.1.0-alpha.0.tgz': '9576e28592b44c589aa847f3e57c02db1731a664c5cfa5a0f1fd5c4b5a3e21c8',
 }
 const cache = join(root, '.cache')

@@ -8,11 +8,11 @@ not user acceptance or a released Host capability.
 
 `client/` is an independent npm package generated from the maintained Host creator.
 Follow [reproduction](../client/README.md): `prepare-sdk.mjs` fetches exact Host
-`be2403c70664ff6624671224a405e409874d59c7` and Protocol
+`58a9e54b50d41a1ed58aaca555f73a4352822948` and Protocol
 `465c444c65eec1be8e337b94c2cf658ed536f49c`, builds/packs into ignored `.cache`, and
 checks the expected archive hashes against `sdk-evidence.json`. Final candidate
 Host archive SHA256:
-`abd300ccade96d095563f95f971164838237a376655a55b7f96bdccb3bf2dd46`.
+`0cad81ca70afdb919c5d4b56e69499675030ff8bc0bb85e1a2643a1c5211e8dd`.
 Protocol archive SHA256:
 `9576e28592b44c589aa847f3e57c02db1731a664c5cfa5a0f1fd5c4b5a3e21c8`.
 The wrapper invokes the Host’s `scripts/prepare-sdk.mjs` with a new absolute output
@@ -35,9 +35,10 @@ Manager. No private routing or Host selectors are used.
 ## Live boundaries
 
 - `data/aggregate.ts` publishes each source independently, bounds timeouts and fences
-  obsolete/disposed results. Human Host authorization is a cancellable preflight
-  outside the network timeout. Offline/incompatible sources remain visible with a
-  direct refresh action.
+  obsolete/disposed results. Exact origins in raw user or project configuration receive
+  a Host-owned credential-free connection without another prompt. Other origins still
+  require cancellable Host authorization outside the network timeout. Offline or
+  incompatible sources remain visible with a direct refresh action.
 - `data/live.ts` consumes authoritative HTTP v1. Catalog selection binds source and
   package hash, including publisher and version; same-id packages do not collide.
   Invitations bind exact origin/server/room. Join connects a signed-out account
@@ -47,7 +48,9 @@ Manager. No private routing or Host selectors are used.
 - `data/host-http.ts` uses public authorize/request/exchange. Game and economy use
   separate opaque connections even at one origin. Derived Agent credentials stay
   in Host; exchanges return redacted metadata and handles. Requests forward abort
-  and deadlines; grant revocation invalidates the local derived handle.
+  and deadlines; grant revocation invalidates the local derived handle. Public discovery
+  uses a `none` connection, while account, Agent and economy operations retain separate
+  bearer-scoped Host connections.
 - `data/package-upload.ts` parses/hash-checks JSON without evaluating author source.
   Server QuickJS produces scene-v1. `GameSurface` only publishes through public
   restrictedContent. Trusted closures bind server/room/match/seat/version; author
