@@ -11,15 +11,19 @@ test('generic action payload accepts author JSON without allowing non-JSON or un
   assert.throws(() => validateActionData({ run: () => 1 }))
   assert.throws(() => validateActionData('x'.repeat(5000)))
 })
-test('Host HTTP isolates role connections sharing one origin and forwards abort/deadline', async () => {
+test('Host HTTP separates configured public discovery from bearer-scoped account requests', async () => {
   const used: HttpConnectionV1[] = []
+  const authorized: HttpConnectionV1['credential'][] = []
   let sequence = 0
   const client: HttpClientV1 = {
     contract: 'cordisx.http-client/v1',
-    authorize: async ({ origin, credential }) => ({
-      status: 'accepted',
-      value: { contract: 'cordisx.http-connection/v1', id: String(++sequence), origin, credential },
-    }),
+    authorize: async ({ origin, credential }) => {
+      authorized.push(credential)
+      return {
+        status: 'accepted',
+        value: { contract: 'cordisx.http-connection/v1', id: String(++sequence), origin, credential },
+      }
+    },
     exchange: async () => ({ status: 'unavailable', code: 'unsupported' }),
     request: async request => {
       used.push(request.connection)
@@ -33,12 +37,19 @@ test('Host HTTP isolates role connections sharing one origin and forwards abort/
   const transport = new HostHttpTransport(client)
   const game = { id: 'game', name: 'game', url: 'http://127.0.0.1:8787', accountId: 'alice', enabled: true }
   const economy = { ...game, id: 'economy:game', accountId: '' }
+  const signal = new AbortController().signal
+  await transport.prepare(game, signal)
+  await transport.request({ source: game, path: '/v1/handshake', signal })
   await transport.connect(game, 'bearer')
   await transport.connect(economy, 'bearer')
   for (const source of [game, economy]) {
-    await transport.request({ source, path: '/v1/me', authenticated: true, signal: new AbortController().signal })
+    await transport.request({ source, path: '/v1/me', authenticated: true, signal })
   }
-  assert.notEqual(used[0]!.id, used[1]!.id)
+  assert.deepEqual(authorized, ['none', 'bearer', 'bearer'])
+  assert.equal(used[0]!.credential, 'none')
+  assert.equal(used[1]!.credential, 'bearer')
+  assert.equal(used[2]!.credential, 'bearer')
+  assert.notEqual(used[1]!.id, used[2]!.id)
   transport.dispose()
   await assert.rejects(
     transport.request({ source: game, path: '/v1/me', authenticated: true, signal: new AbortController().signal }),

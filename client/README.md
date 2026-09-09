@@ -16,7 +16,7 @@ npm run dev:dry-run
 ```
 
 The preparation script builds exact experimental Host
-`be2403c70664ff6624671224a405e409874d59c7` and Protocol
+`ce9c575c2e50063f7dab237cd8944e87423cbbee` and Protocol
 `465c444c65eec1be8e337b94c2cf658ed536f49c` into ignored `.cache/`. It records artifact
 provenance there and checks both archive hashes. It delegates to the Host’s
 maintained source recipe before any dependency install; that recipe builds and
@@ -33,8 +33,10 @@ ID/origin in the Host configuration form. The server ID must match its handshake
 mode does not play games. Browser previews do not prove native or model execution.
 
 For live operation configure `sample:false`, sources and Agent profiles through
-the Host configuration form. Connect each game account and economic account
-separately through Host's secure credential prompt. Clicking Join while signed out
+the Host configuration form. Host connects exact origins explicitly present in raw
+user or project configuration for public discovery without another prompt. Connect
+each game account and economic account separately through Host's secure credential
+prompt. Clicking Join while signed out
 opens that prompt and continues the same join after `/v1/me` validates the account. Server operators provision
 accounts/sessions using the [server API](../docs/server-api.md). Bearers never enter
 plugin config, model context, game package or scene payload. Imported author code
