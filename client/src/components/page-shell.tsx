@@ -34,17 +34,19 @@ export function PageShell(
             <Button
               key={item.id}
               variant={page === item.id ? 'primary' : 'ghost'}
+              aria-label={item.label}
               aria-current={page === item.id ? 'page' : undefined}
               onClick={() => navigate(item.id)}
             >
               <Symbol name={item.icon} />
-              {item.label}
+              <span className='gr-page-navigation-label'>{item.label}</span>
             </Button>
           ))}
         </nav>
         <div className='gr-page-utilities'>
           <Button variant='ghost' aria-label='个人 · 资产与战绩' onClick={() => navigate('personal')}>
-            <Symbol name='personal' />个人
+            <Symbol name='personal' />
+            <span className='gr-page-utility-label'>个人</span>
           </Button>
           <Button
             variant='ghost'

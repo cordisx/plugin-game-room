@@ -11,6 +11,7 @@
   min-height: 0;
   overflow: hidden;
   box-sizing: border-box;
+  container: game-room / inline-size;
 }
 .gr-muted {
   color: var(--gr-muted);
