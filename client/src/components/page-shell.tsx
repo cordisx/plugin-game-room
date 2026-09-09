@@ -25,10 +25,6 @@ export function PageShell(
   return (
     <div className='gr-root'>
       <header className='gr-page-header'>
-        <div className='gr-page-brand'>
-          <Symbol name='game' size={23} />
-          <strong>游戏大厅</strong>
-        </div>
         <nav className='gr-page-navigation' aria-label='游戏导航'>
           {navigation.map(item => (
             <Button
