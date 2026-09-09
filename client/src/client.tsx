@@ -39,7 +39,7 @@ export const manifest = {
     },
   }],
 } as const satisfies CordisXPluginManifestV11
-export const inject = ['i18n', 'pages', 'routes', 'slots', 'managerContent']
+export const inject = ['i18n', 'pages', 'routes', 'slots', 'managerContent', 'commands']
 export const Config = Schema.object({
   sample: Schema.boolean().default(false).description('样例数据预览；不运行真实游戏或改变余额。'),
   providerId: Schema.string().default('').description('Agent 提供方 ID'),
@@ -144,6 +144,14 @@ export function apply(
       settings: 'Data sources',
     },
   })
+  for (const id of ['personal', 'settings'] as const) {
+    dispose.push(
+      ctx.commands.register(
+        { id: `open-${id}`, title: { key: id, fallback: pages[id] } },
+        () => ctx.routes.navigate({ id }),
+      ),
+    )
+  }
   for (const [id, title] of Object.entries(pages)) {
     dispose.push(
       ctx.pages.register(
@@ -154,7 +162,23 @@ export function apply(
           title: { key: id, fallback: title },
           description: { key: 'description', fallback: '多人游戏与 Agent 对局' },
           icon: 'host:layers',
-          chrome: id === 'configuration' ? 'standard' : 'body-only',
+          chrome: 'standard',
+          ...(id === 'configuration' ? {} : {
+            headerActions: [
+              {
+                id: 'personal',
+                label: { key: 'personal', fallback: '个人' },
+                icon: 'host:history' as const,
+                command: { id: 'open-personal' },
+              },
+              {
+                id: 'settings',
+                label: { key: 'settings', fallback: '数据来源' },
+                icon: 'host:settings' as const,
+                command: { id: 'open-settings' },
+              },
+            ],
+          }),
         },
         defineReactPage(() => (
           <Suspense fallback={null}>
@@ -171,7 +195,9 @@ export function apply(
         path: id === 'configuration' ? '/manager/extensions/game-room/configuration' : `/main/game-room/${id}`,
         outlet: id === 'configuration' ? 'manager.content' : 'main',
         page: id,
-        title: { key: id, fallback: title },
+        title: ['lobby', 'agents', 'dispatch'].includes(id)
+          ? { key: 'sidebar', fallback: '游戏大厅' }
+          : { key: id, fallback: title },
         description: { key: 'description', fallback: '多人游戏与 Agent 对局' },
       }),
     )
