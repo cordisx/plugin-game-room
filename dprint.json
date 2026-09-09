@@ -1,0 +1,19 @@
+{
+  "extends": "https://raw.githubusercontent.com/cordisx/cordisxmono/32fa3b257cd5a7bfa0bb2d5f1012ca18665d1637/tooling/quality/dprint/code.json",
+  "includes": [
+    "server/**/*.ts",
+    "sdk/**/*.ts",
+    "tests/server/**/*.{ts,mjs}",
+    "docs/server*.md",
+    "package.json",
+    "tsconfig.json",
+    "eslint.config.mjs",
+    "dprint.json",
+    "deploy/*.mjs"
+  ],
+  "excludes": [
+    "node_modules",
+    "dist",
+    "package-lock.json"
+  ]
+}
