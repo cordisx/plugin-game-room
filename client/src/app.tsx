@@ -1,3 +1,4 @@
+import type { NotificationsV1 } from 'cordisx/contracts'
 import { TextInput } from './components/text-input.js'
 import type { ReactElement } from 'cordisx/react'
 import { useEffect, useState } from 'cordisx/react'
@@ -24,6 +25,7 @@ import type { FundingQuote } from './data/economy.js'
 import './styles/foundation.css'
 import { PageShell } from './components/page-shell.js'
 export type ClientRuntime = {
+  notifications?: NotificationsV1
   port: GameRoomPort
   restrictedContent?: RestrictedContentV1
   navigate: (page: string) => void
@@ -47,7 +49,6 @@ export function GameRoomPage({ page, runtime }: { page: string; runtime: ClientR
     agents: false,
   })
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState('')
   const [invitation, setInvitation] = useState('')
   const [, renderSeat] = useState(0)
   const [epoch, setEpoch] = useState(0)
@@ -80,15 +81,27 @@ export function GameRoomPage({ page, runtime }: { page: string; runtime: ClientR
     if (!['prepare', 'funding'].includes(page) || !runtime.seat?.seatId || !port.refreshSeat) return
     const polling = new AbortController()
     let timer: ReturnType<typeof setTimeout> | undefined
+    let disconnected = false
+    let connectionNotice: ReturnType<NotificationsV1['show']> | undefined
     const poll = async () => {
       try {
         const next = await port.refreshSeat!(runtime.seat!, polling.signal)
+        disconnected = false
+        connectionNotice?.dismiss()
+        connectionNotice = undefined
         if (!polling.signal.aborted && (next.version ?? 0) >= (runtime.seat?.version ?? 0)) {
           runtime.seat = next
           renderSeat(epoch => epoch + 1)
         }
-      } catch (error) {
-        if (!polling.signal.aborted) setError(error instanceof Error ? error.message : '对局连接中断')
+      } catch {
+        if (!polling.signal.aborted && !disconnected) {
+          connectionNotice = runtime.notifications?.show({
+            kind: 'match.connection-failed',
+            type: 'error',
+            message: '对局连接中断，请重新连接',
+          })
+        }
+        disconnected = true
       } finally {
         if (!polling.signal.aborted) timer = setTimeout(poll, 1500)
       }
@@ -118,11 +131,16 @@ export function GameRoomPage({ page, runtime }: { page: string; runtime: ClientR
   const run = (operation: (signal: AbortSignal) => Promise<void>) => {
     if (busy) return
     setBusy(true)
-    setError('')
     void operation(controller.signal).then(() => {
       if (!controller.signal.aborted) setEpoch(epoch => epoch + 1)
-    }).catch(error => {
-      if (!controller.signal.aborted) setError(error instanceof Error ? error.message : '操作失败')
+    }).catch(() => {
+      if (!controller.signal.aborted) {
+        runtime.notifications?.show({
+          kind: 'operation.failed',
+          type: 'error',
+          message: '操作未完成，请检查连接后重试',
+        })
+      }
     }).finally(() => {
       if (!controller.signal.aborted) setBusy(false)
     })
@@ -146,7 +164,6 @@ export function GameRoomPage({ page, runtime }: { page: string; runtime: ClientR
           样例数据 · 真实插件组件预览 · 不连接服务器、不运行模型、不改变余额
         </div>
       )}
-      {error && <div className='gr-error' role='alert'>{error}</div>}
       {page === 'lobby' && (
         <Lobby
           connected={sourceId => port.kind === 'sample' || port.isConnected?.(sourceId) === true}

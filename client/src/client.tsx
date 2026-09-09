@@ -39,7 +39,7 @@ export const manifest = {
     },
   }],
 } as const satisfies CordisXPluginManifestV11
-export const inject = ['i18n', 'pages', 'routes', 'slots', 'managerContent', 'commands']
+export const inject = ['notifications', 'i18n', 'pages', 'routes', 'slots', 'managerContent', 'commands']
 export const Config = Schema.object({
   sample: Schema.boolean().default(false).description('样例数据预览；不运行真实游戏或改变余额。'),
   providerId: Schema.string().default('').description('Agent 提供方 ID'),
@@ -84,6 +84,7 @@ export function apply(
     ? new SamplePort()
     : new LivePort(config.sources ?? [], new PublicDiscoveryTransport(), config.agentProfiles ?? [])
   const runtime: ClientRuntime = {
+    notifications: ctx.notifications,
     port,
     navigate: page => {
       void ctx.routes.navigate({ id: page })

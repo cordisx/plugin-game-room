@@ -44,3 +44,7 @@ runs only in the server runner; the client publishes validated declarative scene
 through public `restrictedContent`.
 
 [Client implementation and evidence](../docs/client.md) · [Architecture](../docs/architecture.md)
+
+## Notification feedback
+
+See [operation notifications and candidate SDK setup](../.agents/docs/notifications.md).
