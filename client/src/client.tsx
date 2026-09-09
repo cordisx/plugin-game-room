@@ -4,9 +4,9 @@ import { defineReactPage, lazy, Suspense } from 'cordisx/react'
 import {
   CORDISX_MANAGER_CONTENT_NAVIGATION_SCHEMA_V5,
   CORDISX_PAGE_SCHEMA_V3,
-  CORDISX_PLUGIN_MANIFEST_SCHEMA_V1,
+  CORDISX_PLUGIN_MANIFEST_SCHEMA_V11,
   CORDISX_ROUTE_SCHEMA_V2,
-  type CordisXPluginManifestV1,
+  type CordisXPluginManifestV11,
 } from 'cordisx/contracts'
 import { LivePort } from './data/live.js'
 import { HostHttpTransport } from './data/host-http.js'
@@ -21,12 +21,24 @@ import { SamplePort } from './data/sample.js'
 import type { ClientRuntime } from './app.js'
 export const name = 'game-room'
 export const manifest = {
-  $schema: CORDISX_PLUGIN_MANIFEST_SCHEMA_V1,
-  schemaVersion: 1,
+  $schema: CORDISX_PLUGIN_MANIFEST_SCHEMA_V11,
+  schemaVersion: 11,
   id: name,
   name: 'Game Room',
-  capabilities: [],
-} as const satisfies CordisXPluginManifestV1
+  services: [],
+  capabilities: [{
+    name: 'ui.extension-points.render',
+    required: true,
+    scope: {
+      extensionPoints: [
+        'sidebar.navigation.items',
+        'main',
+        'manager.settings.navigation-items',
+        'manager.content',
+      ],
+    },
+  }],
+} as const satisfies CordisXPluginManifestV11
 export const inject = ['i18n', 'pages', 'routes', 'slots', 'managerContent']
 export const Config = Schema.object({
   sample: Schema.boolean().default(false).description('样例数据预览；不运行真实游戏或改变余额。'),
