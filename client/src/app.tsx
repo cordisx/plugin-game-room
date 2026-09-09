@@ -155,8 +155,6 @@ export function GameRoomPage({ page, runtime }: { page: string; runtime: ClientR
           states={states}
           filters={filters}
           setFilters={setFilters}
-          agents={agents}
-          dispatches={dispatches}
           join={room =>
             run(async signal => {
               await ensureAccount(room.sourceId, signal)
@@ -170,8 +168,6 @@ export function GameRoomPage({ page, runtime }: { page: string; runtime: ClientR
             })}
           create={() => navigate('create')}
           invite={() => navigate('invite')}
-          agentDetail={selectAgent}
-          navigate={navigate}
         />
       )}
       {page === 'create' && <Button variant='ghost' onClick={() => navigate('publish')}>导入 / 发布自制游戏包</Button>}

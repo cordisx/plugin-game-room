@@ -1,22 +1,14 @@
 .gr-page-header {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 16px;
-  padding: 14px 20px;
+  gap: 12px;
+  padding: 10px 20px;
   border-bottom: 1px solid var(--gr-border);
   flex: none;
-}
-.gr-page-brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  white-space: nowrap;
 }
 .gr-page-navigation {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
   gap: 4px;
 }
 .gr-page-context {
@@ -61,17 +53,10 @@
 @container game-room (max-width: 680px) {
   .gr-page-header {
     display: grid;
-    grid-template-areas:
-      "brand utilities"
-      "navigation navigation";
+    grid-template-areas: "navigation utilities";
     grid-template-columns: minmax(0, 1fr) auto;
-    gap: 10px 12px;
-    padding: 12px 14px;
-  }
-
-  .gr-page-brand {
-    grid-area: brand;
-    min-width: 0;
+    gap: 8px;
+    padding: 8px 14px;
   }
 
   .gr-page-navigation {
