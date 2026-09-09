@@ -1,0 +1,61 @@
+name: Cross-service integration
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: integration-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  client:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.14.1
+      - run: npm ci --ignore-scripts && npm run build
+      - run: node scripts/prepare-sdk.mjs
+        working-directory: client
+      - run: npm ci --ignore-scripts && npm run check && npm run dev:dry-run && npm run check:artifact
+        working-directory: client
+        env:
+          GAME_ROOM_SERVER_MODULE: ${{ github.workspace }}/dist/server/http.js
+  games-and-agents:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.14.1
+      - run: npm ci --ignore-scripts && npm run build
+      - run: npm ci --ignore-scripts && npm run check
+        working-directory: games
+      - run: npm ci --ignore-scripts && npm run check && npm run check:consumer
+        working-directory: agents
+        env:
+          GAME_ROOM_SERVER_SOURCE: ${{ github.workspace }}
+          GAME_ROOM_PACKAGES: ${{ github.workspace }}/games/dist
+  economy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: game
+      - uses: actions/checkout@v4
+        with:
+          repository: cordisx/plugin-economy
+          ref: ce058c9ed530277897b7c0bcaa7c9d433f946908
+          path: economy
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.14.1
+      - run: npm ci --ignore-scripts && npm run build
+        working-directory: economy
+      - run: npm ci --ignore-scripts && npm run build
+        working-directory: game
+      - run: node --test integration/economy.test.mjs
+        working-directory: game
+        env:
+          ECONOMY_REPOSITORY: ${{ github.workspace }}/economy

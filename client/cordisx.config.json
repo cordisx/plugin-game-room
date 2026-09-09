@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "playground": {
+    "name": "Game Room",
+    "description": "连接真实游戏服务 · 浏览器预览",
+    "pluginBundleFixture": true,
+    "reviewNavigationItem": "game-room:open"
+  },
+  "providers": [],
+  "plugins": [
+    {
+      "id": "game-room",
+      "entry": "./src/client.tsx",
+      "enabled": true,
+      "config": {
+        "sample": false,
+        "sources": [
+          {
+            "id": "f0d3930b-9436-4dd6-b3d6-3fb534c314d2",
+            "name": "本地试玩服务",
+            "url": "http://127.0.0.1:8790",
+            "accountId": "",
+            "enabled": true
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,94 @@
+.gr-page-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--gr-border);
+  flex: none;
+}
+.gr-page-navigation {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.gr-page-context {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 20px;
+  flex: none;
+}
+.gr-page-context h1 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+.gr-page-body {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 16px;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  padding: 20px;
+  overflow: auto;
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+}
+.gr-page-body-lobby {
+  container-type: inline-size;
+  container-name: game-lobby;
+  overflow: hidden;
+  scrollbar-gutter: auto;
+}
+
+.gr-page-utilities {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+
+@container game-room (max-width: 680px) {
+  .gr-page-header {
+    display: grid;
+    grid-template-areas: "navigation utilities";
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    padding: 8px 14px;
+  }
+
+  .gr-page-navigation {
+    display: grid;
+    grid-area: navigation;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: 100%;
+    min-width: 0;
+  }
+
+  .gr-page-navigation > button {
+    min-width: 0;
+    justify-content: center;
+  }
+
+  .gr-page-utilities {
+    grid-area: utilities;
+    margin-left: 0;
+  }
+}
+
+@container game-room (max-width: 420px) {
+  .gr-page-navigation-label,
+  .gr-page-utility-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+}

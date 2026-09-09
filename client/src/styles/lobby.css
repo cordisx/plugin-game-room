@@ -1,0 +1,284 @@
+.gr-lobby {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+.gr-room-area {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.gr-room-toolbar {
+  flex-wrap: wrap;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.gr-room-actions {
+  flex-wrap: wrap;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.gr-filter-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 8px;
+  border: 1px solid var(--gr-border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--gr-surface) 45%, transparent);
+}
+.gr-room-search {
+  flex: 0 1 280px;
+  min-width: 240px;
+  max-width: 320px;
+}
+.gr-room-search > * {
+  width: 100%;
+}
+.gr-game-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+}
+.gr-filter-chip[data-active="true"] {
+  background: color-mix(in srgb, var(--gr-text) 9%, transparent);
+}
+.gr-source-summary {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  color: var(--gr-muted);
+}
+.gr-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #27d996;
+  flex: none;
+}
+.gr-source-notice {
+  padding: 8px 12px;
+  border: 1px solid var(--gr-border);
+  border-radius: 8px;
+  color: var(--gr-muted);
+}
+.gr-room-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-content: start;
+  gap: 12px;
+}
+.gr-room-card {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border: 1px solid var(--gr-border);
+  border-radius: 8px;
+  padding: 12px;
+  background: color-mix(in srgb, var(--gr-surface) 42%, transparent);
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+.gr-room-card:hover {
+  border-color: color-mix(in srgb, var(--gr-text) 18%, transparent);
+  background: color-mix(in srgb, var(--gr-surface) 72%, transparent);
+}
+.gr-room-card:focus-within {
+  border-color: var(--cx-primary, #82a8ff);
+}
+.gr-room-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.gr-game-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex: none;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--gr-text) 7%, transparent);
+  color: var(--gr-text);
+}
+.gr-game-icon[data-game*="gomoku"] {
+  color: #5f6f62;
+  background: color-mix(in srgb, #718675 13%, transparent);
+}
+.gr-game-icon[data-game*="holdem"] {
+  color: #8b665d;
+  background: color-mix(in srgb, #a9786c 13%, transparent);
+}
+.gr-room-name {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+.gr-room-name h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.gr-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+  font-size: 12px;
+}
+.gr-room-heading > .gr-status {
+  margin-left: auto;
+}
+.gr-status[data-state="waiting"] {
+  color: var(--cx-success, #2ca66f);
+}
+.gr-status[data-state="waiting"] .gr-dot {
+  background: currentColor;
+}
+.gr-status[data-state="playing"] {
+  color: var(--cx-warning, #b77a21);
+}
+.gr-status[data-state="playing"] .gr-dot {
+  background: currentColor;
+}
+.gr-status[data-state="finished"] {
+  color: var(--gr-muted);
+}
+.gr-status[data-state="finished"] .gr-dot {
+  background: currentColor;
+}
+.gr-room-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: var(--gr-muted);
+  font-size: 12px;
+}
+.gr-tag {
+  border-radius: 5px;
+  padding: 3px 6px;
+  background: color-mix(in srgb, var(--gr-text) 6%, transparent);
+  white-space: nowrap;
+}
+.gr-room-bottom {
+  flex-wrap: wrap;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.gr-occupants {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+}
+.gr-player-stack {
+  display: flex;
+  padding-right: 3px;
+}
+.gr-player {
+  display: grid;
+  place-items: center;
+  width: 25px;
+  height: 25px;
+  margin-right: -3px;
+  border-radius: 50%;
+  border: 2px solid var(--gr-surface);
+  background: #b6ccb4;
+  color: #2c3c30;
+  font-size: 12px;
+}
+.gr-player[data-index="1"] {
+  background: #e6d4d0;
+  color: #68544c;
+}
+.gr-player[data-index="2"] {
+  background: #e1c597;
+  color: #5c4329;
+}
+.gr-economy {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--gr-muted);
+}
+.gr-result-count {
+  margin: 16px 0 0;
+  color: var(--gr-muted);
+  font-size: 12px;
+}
+.gr-room-results {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+}
+@container game-lobby (max-width: 1080px) {
+  .gr-room-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container game-lobby (max-width: 740px) {
+  .gr-room-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .gr-source-summary {
+    margin-left: 0;
+  }
+}
+
+@container game-lobby (max-width: 680px) {
+  .gr-room-toolbar {
+    align-items: flex-start;
+  }
+
+  .gr-room-search {
+    flex: 1 1 100%;
+    min-width: 0;
+    max-width: none;
+  }
+}
+
+@container game-lobby (max-width: 420px) {
+  .gr-room-toolbar,
+  .gr-room-actions {
+    width: 100%;
+  }
+
+  .gr-room-actions > button {
+    flex: 1;
+  }
+
+  .gr-filter-toolbar {
+    align-items: stretch;
+  }
+
+  .gr-game-filters {
+    flex: 1 1 100%;
+  }
+
+  .gr-source-summary {
+    flex: 1 1 auto;
+  }
+}
