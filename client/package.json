@@ -40,7 +40,7 @@
     "@projectwallace/stylelint-plugin": "0.7.0",
     "@types/react": "^19.2.18",
     "@typescript-eslint/parser": "8.69.0",
-    "cordisx": "file:.cache/sdk/cordisx-ce9c575c2e50.tgz",
+    "cordisx": "file:.cache/sdk/cordisx-58a9e54b50d4.tgz",
     "dprint": "0.57.1",
     "esbuild": "^0.28.2",
     "eslint": "9.39.4",

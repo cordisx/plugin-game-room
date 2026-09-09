@@ -8,11 +8,11 @@ not user acceptance or a released Host capability.
 
 `client/` is an independent npm package generated from the maintained Host creator.
 Follow [reproduction](../client/README.md): `prepare-sdk.mjs` fetches exact Host
-`ce9c575c2e50063f7dab237cd8944e87423cbbee` and Protocol
+`58a9e54b50d41a1ed58aaca555f73a4352822948` and Protocol
 `465c444c65eec1be8e337b94c2cf658ed536f49c`, builds/packs into ignored `.cache`, and
 checks the expected archive hashes against `sdk-evidence.json`. Final candidate
 Host archive SHA256:
-`7122ab3dc1bb9dd99905a511bb3c596c9b1880a6c88e681ca1d701c1c9623933`.
+`0cad81ca70afdb919c5d4b56e69499675030ff8bc0bb85e1a2643a1c5211e8dd`.
 Protocol archive SHA256:
 `9576e28592b44c589aa847f3e57c02db1731a664c5cfa5a0f1fd5c4b5a3e21c8`.
 The wrapper invokes the Host’s `scripts/prepare-sdk.mjs` with a new absolute output
