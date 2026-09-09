@@ -42,6 +42,8 @@ one-time proof, never a user economic session. See the [API](server-api.md).
 Absent economic configuration is a working score/local-chips server and token
 operations explicitly return unavailable.
 
+For a prefilled real local review environment, use the [demo preview recipe](server-preview.md).
+
 ## Persistence and recovery
 
 SQLite WAL, FULL synchronous commits and atomic state/event/command writes provide
