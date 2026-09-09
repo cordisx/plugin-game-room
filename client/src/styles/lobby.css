@@ -37,6 +37,14 @@
   border-radius: 8px;
   background: color-mix(in srgb, var(--gr-surface) 45%, transparent);
 }
+.gr-room-search {
+  flex: 0 1 280px;
+  min-width: 240px;
+  max-width: 320px;
+}
+.gr-room-search > * {
+  width: 100%;
+}
 .gr-game-filters {
   display: flex;
   flex-wrap: wrap;
@@ -70,7 +78,7 @@
 }
 .gr-room-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   align-content: start;
   gap: 12px;
 }
@@ -106,6 +114,14 @@
   border-radius: 8px;
   background: color-mix(in srgb, var(--gr-text) 7%, transparent);
   color: var(--gr-text);
+}
+.gr-game-icon[data-game*="gomoku"] {
+  color: #5f6f62;
+  background: color-mix(in srgb, #718675 13%, transparent);
+}
+.gr-game-icon[data-game*="holdem"] {
+  color: #8b665d;
+  background: color-mix(in srgb, #a9786c 13%, transparent);
 }
 .gr-room-name {
   display: flex;
@@ -216,10 +232,17 @@
   scrollbar-gutter: stable;
   overscroll-behavior: contain;
 }
-@container game-lobby (max-width: 800px) {
+@container game-lobby (max-width: 1080px) {
+  .gr-room-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container game-lobby (max-width: 740px) {
   .gr-room-grid {
     grid-template-columns: minmax(0, 1fr);
   }
+
   .gr-source-summary {
     margin-left: 0;
   }
@@ -230,8 +253,10 @@
     align-items: flex-start;
   }
 
-  .gr-filter-toolbar > :first-child {
+  .gr-room-search {
     flex: 1 1 100%;
+    min-width: 0;
+    max-width: none;
   }
 }
 
