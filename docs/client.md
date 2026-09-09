@@ -26,19 +26,24 @@ with `install-links=true`; its own exact Protocol dependency is preserved.
 `cordisx/vite` emits indexed entry, lazy app chunks and CSS. Initial registration
 has no imported page stylesheet. Runtime React comes only from `cordisx/react`.
 
-Host owns Header, three top-level tabs (Lobby, My Agents, Dispatch), controls,
-configuration, outer padding and Manager scrolling. Client owns room results and
-right Agent panel. History, balances, replay and funding are child routes. Sources
-are simultaneous inputs, with no global current-server switch. Sidebar uses the
-distinct label “游戏大厅”.
+The sidebar opens `/main/game-room/lobby` in `main` with the public `body-only`
+page contract, following the chatroom precedent. Plugin-owned header navigation
+has three main destinations: Lobby, My Agents and Dispatch. Personal and settings
+are separate utility actions. Only the source/Agent configuration form remains in
+Manager. No private routing or Host selectors are used.
 
 ## Live boundaries
 
 - `data/aggregate.ts` publishes each source independently, bounds timeouts and fences
-  obsolete/disposed results. Offline and incompatible sources remain visible.
+  obsolete/disposed results. Human Host authorization is a cancellable preflight
+  outside the network timeout. Offline/incompatible sources remain visible with a
+  direct refresh action.
 - `data/live.ts` consumes authoritative HTTP v1. Catalog selection binds source and
   package hash, including publisher and version; same-id packages do not collide.
-  Invitations bind exact origin/server/room. Existing owned seats resume by GET.
+  Invitations bind exact origin/server/room. Join connects a signed-out account
+  through Host capture and resumes the original operation after `/v1/me`. Resume
+  buttons require authenticated `/v1/me/rooms` evidence; full or completed rooms
+  without that evidence cannot claim an owned seat.
 - `data/host-http.ts` uses public authorize/request/exchange. Game and economy use
   separate opaque connections even at one origin. Derived Agent credentials stay
   in Host; exchanges return redacted metadata and handles. Requests forward abort
@@ -62,76 +67,55 @@ distinct label “游戏大厅”.
   Model token counts are not treated as currency or fabricated billing evidence.
   Cleanup withdraws active runs, closes the service and releases component mounts.
 
-## CSS
+## CSS and icons
 
-Foundation and lobby styles own only `gr-*` DOM. Semantic tokens derive from public
-`--cx-*` tokens. Main layout collapses below 1120px and room cards below 720px.
-Host controls have no selector overrides. dprint/Malva, Stylelint and shared ESLint
-max-lines policy run in the independent client gate.
+`foundation.css` owns shared plugin primitives and public `--cx-*` tokens;
+`page-shell.css` owns the body-only viewport, header and one scroll body for detail,
+Agent, dispatch and settings pages; `lobby.css` owns fixed filters and separate room
+and Agent result scrollers. The lobby uses an 800px **container** breakpoint so
+Host sidebar width is accounted for. The narrow layout retains the dedicated My
+Agents route. Cards wrap without splitting button labels.
 
-## Verification record
+`components/icons.tsx` uses fixed, bundled Reicon 1.2.1 SVG assets, the same maintained
+library already used by Host. Server-provided markup and emoji are not used for
+lobby/Agent illustrations. Plugin CSS targets only owned `gr-*` presentation.
+dprint/Malva, Stylelint and shared ESLint enforce formatting and source size.
 
-With release-candidate Host `be2403c`, `npm --prefix client run check` passes formatting,
-source/CSS lint, typecheck, 11 behavior tests (one real-server test explicitly
-skipped), build and verification of all four indexed runtime files.
-`dev:dry-run` also passes. Existing-client installation of the complete SDK took
-two seconds, with no recursive Git build. The wrapper passed syntax checking;
-its full clean-source execution and actual archive hashes are a Linux CI gate.
+## Verification record — 2026-09-09
 
-An earlier eleven-test run passed, including
-an actual two-server HTTP test against server scene checkpoint `88155a8`: duplicate
-manifest IDs from different publishers, exact package selection, two-player ready /
-start / action / finish, lost-ACK retry, private-state exclusion, replay, next-match
-reset and independent source outage. Other tests cover invitations, lifecycle
-fences, inert package parsing, role-scoped HTTP handles, derived grant revocation
-and multi-seat economic consent with same-key reserve recovery. The separate
-lightweight security run now passes five tests, including actual HTTP streaming
-at exactly 2,000,000 bytes, rejection at 2,000,001 bytes and propagated mid-stream
-abort. This check does not start QuickJS or a native App.
+The preceding unified candidate passed the fresh Linux SDK build inside the parent
+TypeScript 6 checkout, client installation, all 12 tests including actual two-server
+HTTP, build and indexed artifact verification:
+[client CI](https://github.com/cordisx/plugin-game-room/actions/runs/34292959889/job/102283313451).
+This supersedes earlier load-related local runner failures and the earlier SDK
+preparation failure; no production runtime limits were changed.
 
-To include real HTTP in the client gate, build the root server and run:
+The main-page revision adds a regression for delayed human authorization and
+cancellation. Local formatting, source/CSS lint, typecheck, build, dry-run and all four
+indexed runtime files pass. All 13 tests pass with zero skips against the immutable
+server build `66adc014`, including the actual two-server HTTP scenario. Real HTTP is included by building the server and using:
 
 ```sh
 GAME_ROOM_SERVER_MODULE="$PWD/dist/server/http.js" npm --prefix client test
 ```
 
-Without this environment variable, the HTTP integration test is explicitly skipped.
-The final-candidate local check intentionally did not set that environment
-variable or repeat the sandbox/native lane. The preceding real-HTTP full check
-failed with `rule_failure` while publishing a
-healthy fixture under machine-wide load 40–73 on eight cores; server ownership
-reported the same healthy-guest timeouts. No runtime limits were relaxed. The
-updated server `66adc014ff790d2e204236a6c049c3720d249f82` has been merged as a read-only
-dependency baseline; final client regression against its immutable build is pending.
+Without the environment variable the real HTTP case is explicitly skipped.
 
-Fresh-entry browser review, dark/responsive review,
-native installed-generation lifecycle, real-model dispatch and real-wallet UI
-funding are separately tracked; no sample screenshot proves those outcomes.
-The old preview entry was retracted after a fresh-window navigation failure; do not
-use “open Manager manually” as acceptance. Unified Host includes its fix and is
-awaiting fresh-entry verification. The owner stopped its recursive dependency
-install trees, then restarted the sole lightweight Playground at
-`http://127.0.0.1:43129/` using existing dependencies, Host source `5101d6e` and the
-provider experimental dist. Homepage and source-runtime requests return HTTP 200.
-This is HTTP readiness only: Mac lock blocked CUA, so fresh clicks/screenshots wait
-for unlock. No existing user App was restarted.
+Browser review uses the actual plugin and public Host HTTP/restrictedContent
+brokers against a persistent local score-only service. Verified through the Host
+masked input: connect `preview_player`, continue Join, confirm Ready, observe the
+rule-based practice opponent start, play a white stone at column 9 / row 8, then
+observe the opponent's black stone at column 8 / row 7 and authoritative move 3.
+The practice opponent is explicitly labelled **not an AI model**. It uses neither
+AgentLoop nor wallet funds. Credentials remain in Host capture and local secret
+storage, never committed config or React state.
 
-The first client Linux run using H69b0146 failed during SDK preparation, before
-client installation: Proxy compilation picked up the enclosing game repository’s
-TypeScript 6 and reported CSS side-effect import errors. Host be2403c isolates
-plugin-local build tools in the maintained recipe. The client keeps the same
-recipe call and compiler settings; the corrected cold Linux run remains a CI gate.
+Independent browser review confirmed fixed lobby filters and Agent panel while
+room results scroll. Responsive container corrections and complete final visual
+review are tracked with the delivery evidence. Native installed-generation
+lifecycle, real-model Agent dispatch and real-wallet funding remain separate
+acceptance scopes; this browser record does not claim them.
 
-The superseded H510 archive mismatch was traced to executable metadata alone.
-H69b0146 fixes entry modes, bundles complete Channel/Proxy, and resolves Protocol
-from one shared root package. The client, Agent adapter and Host all deduplicate
-to exact P465, verified by the lock and targeted `npm ls`; no type cast or private
-implementation bypass is used. Client preparation delegates to the maintained
-recipe without consumer-side archive-mode overrides.
-
-The broader `npm ls --all` still flags an existing React peer range:
-`valtio` → `use-sync-external-store@1.2.0` declares React 16–18 while this SDK uses
-React 19.2.8. This is separate from the corrected Protocol and bundled-package
-identity; it has been reported to Host ownership, with no local override applied.
-Local candidate checks and fresh Linux CI results remain separate from
-browser/native acceptance.
+The existing React peer range warning (`valtio` → `use-sync-external-store@1.2.0`
+with React 19) is unchanged. Protocol, Channel and Proxy identities remain exact
+and deduplicated; no local peer override or private Host fallback is introduced.

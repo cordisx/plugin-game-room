@@ -141,8 +141,8 @@ export function apply(
           id,
           title: { key: id, fallback: title },
           description: { key: 'description', fallback: '多人游戏与 Agent 对局' },
-          icon: 'host:info',
-          chrome: 'standard',
+          icon: 'host:layers',
+          chrome: id === 'configuration' ? 'standard' : 'body-only',
         },
         defineReactPage(() => (
           <Suspense fallback={null}>
@@ -156,25 +156,23 @@ export function apply(
         $schema: CORDISX_ROUTE_SCHEMA_V2,
         schemaVersion: 2,
         id,
-        path: `/manager/extensions/game-room/${id}`,
-        outlet: 'manager.content',
+        path: id === 'configuration' ? '/manager/extensions/game-room/configuration' : `/main/game-room/${id}`,
+        outlet: id === 'configuration' ? 'manager.content' : 'main',
         page: id,
         title: { key: id, fallback: title },
         description: { key: 'description', fallback: '多人游戏与 Agent 对局' },
       }),
     )
-    const top = ['lobby', 'agents', 'dispatch'].includes(id)
-    dispose.push(ctx.managerContent.register({
-      $schema: CORDISX_MANAGER_CONTENT_NAVIGATION_SCHEMA_V5,
-      schemaVersion: 5,
-      id,
-      route: { id },
-      header: { title: { kind: 'route' } },
-      ...(id === 'configuration' ? { body: { kind: 'plugin-config-form' as const, namespace: name } } : {}),
-      ...(top
-        ? { tabs: ['lobby', 'agents', 'dispatch'].map(id => ({ id, route: { id } })) }
-        : { parentRoute: { id: id === 'agent' ? 'agents' : id === 'replay' ? 'personal' : 'lobby' } }),
-    }))
+    if (id === 'configuration') {
+      dispose.push(ctx.managerContent.register({
+        $schema: CORDISX_MANAGER_CONTENT_NAVIGATION_SCHEMA_V5,
+        schemaVersion: 5,
+        id,
+        route: { id },
+        header: { title: { kind: 'route' } },
+        body: { kind: 'plugin-config-form', namespace: name },
+      }))
+    }
   }
   dispose.push(
     ctx.slots.register({
@@ -182,12 +180,12 @@ export function apply(
       id: 'game-room',
       group: 'after-settings',
       order: 160,
-    }, { route: { id: 'lobby' } }),
+    }, { route: { id: 'configuration' } }),
   )
   dispose.push(
     ctx.slots.register({ name: 'sidebar.navigation.items', id: 'open', group: 'utility', order: 95 }, {
       label: { key: 'sidebar', fallback: '游戏大厅' },
-      icon: 'host:info',
+      icon: 'host:layers',
       route: { id: 'lobby' },
     }),
   )

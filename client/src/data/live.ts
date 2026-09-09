@@ -23,6 +23,7 @@ export class LivePort implements GameRoomPort {
   readonly kind = 'live' as const
   private disposed = false
   private economy = new EconomyAccounts(() => this.http)
+  private ownedRooms = new Map<string, Set<string>>()
   private accounts = new Map<string, string>()
   private packages = new Map<string, Record<string, unknown>[]>()
   private cards = new Map<string, Record<string, unknown>>()
@@ -43,9 +44,16 @@ export class LivePort implements GameRoomPort {
     void this.http.dispose()
     this.economy.dispose()
     this.pendingActions.clear()
+    this.ownedRooms.clear()
+    this.accounts.clear()
     this.http = http
   }
+  isConnected(sourceId: string) {
+    return this.accounts.has(sourceId)
+  }
   async connect(sourceId: string) {
+    this.accounts.delete(sourceId)
+    this.ownedRooms.delete(sourceId)
     const source = this.source(sourceId)
     if (!this.http.connect) throw new Error('此 Host 尚不支持安全账户连接')
     await this.http.connect(source, 'bearer')
@@ -109,6 +117,7 @@ export class LivePort implements GameRoomPort {
       sourceId: source.id,
       name: typeof config.roomName === 'string' ? config.roomName : game.name,
       game,
+      owned: this.ownedRooms.get(source.id)?.has(string(r.id)) ?? false,
       occupied: seats.length,
       capacity: number(r.maxPlayers),
       state: r.status === 'playing' || r.status === 'funding'
@@ -128,6 +137,9 @@ export class LivePort implements GameRoomPort {
       settlement: string(r.policy),
       compatible: true,
     }
+  }
+  async prepareSource(source: Source, signal: AbortSignal) {
+    await this.http.prepare?.(source, signal)
   }
   async list(source: Source, signal: AbortSignal): Promise<SourceSnapshot> {
     const handshake = object(await this.http.request({ source, path: '/v1/handshake', signal }))
@@ -159,6 +171,10 @@ export class LivePort implements GameRoomPort {
     ])
     signal.throwIfAborted()
     if (this.disposed) throw new Error('客户端已关闭')
+    if (this.isConnected(source.id)) {
+      const mine = object(await this.request(source.id, '/v1/me/rooms', signal))
+      this.ownedRooms.set(source.id, new Set(array(mine.rooms).map(value => string(object(value).id))))
+    }
     const packages = array(object(packageResponse).packages).map(object)
     this.packages.set(source.id, packages)
     for (const value of array(object(roomResponse).rooms)) {
@@ -443,6 +459,7 @@ export class LivePort implements GameRoomPort {
     this.economy.dispose()
     this.pendingActions.clear()
     this.cards.clear()
+    this.ownedRooms.clear()
     this.accounts.clear()
     this.views.clear()
     this.packages.clear()

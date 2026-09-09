@@ -7,7 +7,10 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 .gr-muted {
   color: var(--gr-muted);
@@ -81,4 +84,38 @@
   place-content: center;
   gap: 12px;
   text-align: center;
+}
+
+.gr-symbol {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  vertical-align: middle;
+  margin-inline-end: 6px;
+}
+.gr-root button {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.gr-detail {
+  flex: none;
+  width: 100%;
+  min-width: 0;
+}
+
+.gr-input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--gr-border);
+  border-radius: 8px;
+  padding: 9px 12px;
+  background: var(--gr-surface);
+  color: var(--gr-text);
+  font: inherit;
+}
+.gr-input:focus-visible {
+  outline: 2px solid var(--cx-primary, #82a8ff);
+  outline-offset: 2px;
 }

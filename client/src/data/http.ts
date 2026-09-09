@@ -11,6 +11,7 @@ export type HttpRequest = {
 }
 /** Implemented by the public Host network capability; never resolve credential handles in React. */
 export interface HttpTransport {
+  prepare?(source: Source, signal: AbortSignal): Promise<void>
   exchange?(request: HttpRequest, credentialField: string): Promise<{ credentialRef: string; value: unknown }>
   requestCredential?(request: HttpRequest & { credentialRef: string }): Promise<{ status: number; body: unknown }>
   disconnect?(source: Source): Promise<void>

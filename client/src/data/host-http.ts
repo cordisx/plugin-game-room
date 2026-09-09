@@ -34,20 +34,21 @@ export class HostHttpTransport implements HttpTransport {
       if (connection) await this.client.revoke(connection)
     }
   }
+  async prepare(source: Source, signal: AbortSignal): Promise<void> {
+    signal.throwIfAborted()
+    if (this.disposed) throw new Error('连接已关闭')
+    if (this.connections.has(this.key(source, false)) || this.connections.has(this.key(source, true))) return
+    const key = this.key(source, false)
+    const opening = this.publicConnections.get(key)
+      ?? this.connect(source, 'none').finally(() => this.publicConnections.delete(key))
+    this.publicConnections.set(key, opening)
+    await opening
+    signal.throwIfAborted()
+  }
   async request(request: HttpRequest): Promise<unknown> {
     request.signal.throwIfAborted()
     if (this.disposed) throw new Error('连接已关闭')
-    if (
-      !request.authenticated && !this.connections.has(this.key(request.source, false))
-      && !this.connections.has(this.key(request.source, true))
-    ) {
-      const key = this.key(request.source, false)
-      const opening = this.publicConnections.get(key)
-        ?? this.connect(request.source, 'none').finally(() => this.publicConnections.delete(key))
-      this.publicConnections.set(key, opening)
-      await opening
-      request.signal.throwIfAborted()
-    }
+    if (!request.authenticated) await this.prepare(request.source, request.signal)
     const connection = this.connections.get(this.key(request.source, request.authenticated === true))
       ?? (!request.authenticated ? this.connections.get(this.key(request.source, true)) : undefined)
     if (!connection) throw new Error('请在设置中连接此来源账户')

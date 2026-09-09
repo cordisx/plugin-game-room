@@ -1,6 +1,7 @@
+import { TextInput } from './components/text-input.js'
 import type { ReactElement } from 'cordisx/react'
 import { useEffect, useState } from 'cordisx/react'
-import { Button, SearchField } from 'cordisx/ui'
+import { Button } from 'cordisx/ui'
 import { SourceAggregator } from './data/aggregate.js'
 import type { GameRoomPort } from './data/port.js'
 import type { Agent, Balance, Dispatch, Filters, History, Seat, SourceState } from './data/model.js'
@@ -21,6 +22,7 @@ import type { RestrictedContentV1 } from '@cordisx/protocol/restricted-content/v
 import { FundingPanel } from './components/funding.js'
 import type { FundingQuote } from './data/economy.js'
 import './styles/foundation.css'
+import { PageShell } from './components/page-shell.js'
 export type ClientRuntime = {
   port: GameRoomPort
   restrictedContent?: RestrictedContentV1
@@ -129,9 +131,16 @@ export function GameRoomPage({ page, runtime }: { page: string; runtime: ClientR
     runtime.agent = agent
     navigate('agent')
   }
+  const ensureAccount = async (sourceId: string, signal: AbortSignal) => {
+    if (port.kind === 'live' && !port.isConnected?.(sourceId)) {
+      if (!port.connect) throw new Error('此 Host 尚未提供安全账户连接')
+      await port.connect(sourceId)
+      signal.throwIfAborted()
+    }
+  }
   const rooms = states.flatMap(state => state.snapshot?.rooms ?? [])
   return (
-    <div className='gr-root'>
+    <PageShell page={page} navigate={navigate}>
       {port.kind === 'sample' && (
         <div className='gr-notice' role='status'>
           样例数据 · 真实插件组件预览 · 不连接服务器、不运行模型、不改变余额
@@ -140,6 +149,9 @@ export function GameRoomPage({ page, runtime }: { page: string; runtime: ClientR
       {error && <div className='gr-error' role='alert'>{error}</div>}
       {page === 'lobby' && (
         <Lobby
+          connected={sourceId => port.kind === 'sample' || port.isConnected?.(sourceId) === true}
+          refresh={() => setEpoch(epoch => epoch + 1)}
+          busy={busy}
           states={states}
           filters={filters}
           setFilters={setFilters}
@@ -147,6 +159,12 @@ export function GameRoomPage({ page, runtime }: { page: string; runtime: ClientR
           dispatches={dispatches}
           join={room =>
             run(async signal => {
+              await ensureAccount(room.sourceId, signal)
+              if (room.state !== 'waiting' || room.occupied >= room.capacity) {
+                const snapshot = await port.list(port.sources.find(source => source.id === room.sourceId)!, signal)
+                const current = snapshot.rooms.find(value => value.id === room.id)
+                if (!current?.owned && !(current?.state === 'waiting' && current.occupied < current.capacity)) return
+              }
               runtime.seat = await port.join({ sourceId: room.sourceId, roomId: room.id }, signal)
               navigate('prepare')
             })}
@@ -177,6 +195,7 @@ export function GameRoomPage({ page, runtime }: { page: string; runtime: ClientR
           busy={busy}
           create={(sourceId, draft) =>
             run(async signal => {
+              await ensureAccount(sourceId, signal)
               const invitation = await port.create(sourceId, draft, signal)
               runtime.seat = await port.join(invitation, signal)
               navigate('prepare')
@@ -186,7 +205,7 @@ export function GameRoomPage({ page, runtime }: { page: string; runtime: ClientR
       {page === 'invite' && (
         <div className='gr-detail'>
           <label className='gr-field'>
-            完整邀请 ID<SearchField
+            完整邀请 ID<TextInput
               aria-label='完整邀请 ID'
               placeholder='粘贴包含来源的邀请 ID'
               value={invitation}
@@ -199,7 +218,9 @@ export function GameRoomPage({ page, runtime }: { page: string; runtime: ClientR
             disabled={busy || !invitation.trim()}
             onClick={() =>
               run(async signal => {
-                runtime.seat = await port.join(decodeInvitation(invitation, port.sources), signal)
+                const decoded = decodeInvitation(invitation, port.sources)
+                await ensureAccount(decoded.sourceId, signal)
+                runtime.seat = await port.join(decoded, signal)
                 navigate('prepare')
               })}
           >
@@ -343,7 +364,13 @@ export function GameRoomPage({ page, runtime }: { page: string; runtime: ClientR
           {states.map(state => (
             <div className='gr-record' key={state.source.id}>
               <strong>{state.source.name}</strong>
-              <span>{state.state === 'online' ? '已连接' : state.state === 'loading' ? '连接中' : '不可用'}</span>
+              <span>
+                {state.state === 'online'
+                  ? (port.isConnected?.(state.source.id) ? '账户已连接' : '服务在线 · 账户未连接')
+                  : state.state === 'loading'
+                  ? '连接中'
+                  : '不可用'}
+              </span>
               <span className='gr-code'>{state.source.url}</span>
               <span className='gr-muted'>
                 协议 {state.snapshot?.protocol ?? '未知'} · 账户 {state.source.accountId}
@@ -381,12 +408,6 @@ export function GameRoomPage({ page, runtime }: { page: string; runtime: ClientR
           <p className='gr-muted'>来源地址与账户分别配置。多个来源会同时显示在大厅。</p>
         </div>
       )}
-      {page === 'lobby' && (
-        <div className='gr-action-row'>
-          <Button variant='ghost' onClick={() => navigate('personal')}>个人 · 资产与战绩</Button>
-          <Button variant='ghost' onClick={() => navigate('settings')}>设置 · 数据来源</Button>
-        </div>
-      )}
-    </div>
+    </PageShell>
   )
 }

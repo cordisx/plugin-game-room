@@ -80,3 +80,30 @@ test('invitation rejects same server id at another origin', () => {
   const invitation = encodeInvitation({ sourceId: 'friends', roomId: '2048' }, port.sources)
   assert.throws(() => decodeInvitation(invitation, [{ ...port.sources[0]!, url: 'https://different.example' }]))
 })
+
+test('human authorization is outside the network budget and can be cancelled', async () => {
+  const port = new SamplePort()
+  let allow!: () => void
+  const authorization = new Promise<void>(resolve => {
+    allow = resolve
+  })
+  const prepared = Object.assign(port, { prepareSource: () => authorization })
+  const events: SourceState[][] = []
+  const aggregate = new SourceAggregator(prepared, states => events.push(states), 5)
+  const pending = aggregate.refresh()
+  await new Promise(resolve => setTimeout(resolve, 20))
+  assert.ok(events.at(-1)!.every(state => state.state === 'loading'))
+  allow()
+  await pending
+  assert.ok(events.at(-1)!.every(state => state.state === 'online'))
+  aggregate.dispose()
+  const cancelled = new SourceAggregator(
+    Object.assign(new SamplePort(), {
+      prepareSource: () => new Promise<void>(() => {}),
+    }),
+    () => {},
+  )
+  const waiting = cancelled.refresh()
+  cancelled.dispose()
+  await waiting
+})
