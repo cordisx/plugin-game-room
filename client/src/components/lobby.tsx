@@ -44,12 +44,14 @@ export function Lobby(
           </div>
         </div>
         <div className='gr-filter-toolbar'>
-          <SearchField
-            aria-label='搜索房间或房间号'
-            placeholder='搜索房间或房间号'
-            value={filters.search}
-            onChange={search => setFilters({ ...filters, search })}
-          />
+          <div className='gr-room-search'>
+            <SearchField
+              aria-label='搜索房间或房间号'
+              placeholder='搜索房间或房间号'
+              value={filters.search}
+              onChange={search => setFilters({ ...filters, search })}
+            />
+          </div>
           <Select
             aria-label='来源筛选'
             value={filters.sourceId}
