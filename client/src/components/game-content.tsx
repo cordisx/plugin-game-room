@@ -13,6 +13,7 @@ import type { GameRoomPort } from '../data/port.js'
 import { consentFor, type Seat } from '../data/model.js'
 import { RequestFailure } from '../data/http.js'
 import { type KnownHtmlUi, loadKnownHtmlUi } from '../data/known-html-ui.js'
+import { canResumeFinishedGame, performGameAction } from '../data/game-action.js'
 import gomokuPresentation from '../data/gomoku-presentation.json' with { type: 'json' }
 import '../styles/game-status.css'
 
@@ -141,10 +142,10 @@ function snapshot(seat: Seat, waitingUi: boolean): RoomSnapshot {
     observation: ['waiting', 'funding'].includes(seat.status ?? '') && !waitingUi
       ? null
       : seat.observation && typeof seat.observation === 'object' && !Array.isArray(seat.observation)
-      ? { ...seat.observation, turnDeadline: seat.turnDeadline ?? null } as GameUiSnapshotV1['observation']
+      ? { ...seat.observation, turnDeadline: seat.turnDeadline ?? null, canResumeUndo: canResumeFinishedGame(seat) } as GameUiSnapshotV1['observation']
       : seat.observation as GameUiSnapshotV1['observation'],
     status: seat.status ?? 'waiting',
-    canAct: seat.status === 'playing' && !!seat.legalActions?.length,
+    canAct: (seat.status === 'playing' && !!seat.legalActions?.length) || canResumeFinishedGame(seat),
     readOnly: false,
     theme: color.includes('dark') ? 'dark' : 'light',
     roomActions: roomActions(seat),
@@ -200,8 +201,7 @@ function HtmlGameSurface(
         try {
           let next: Seat | undefined
           if (request.kind === 'action') {
-            if (!p.port.act) return { status: 'rejected', code: 'unavailable' }
-            next = await p.port.act(p.seat, request.payload, abort.signal)
+            next = await performGameAction(p.port, p.seat, request.payload, abort.signal)
           } else if (request.kind === 'next-round') {
             if (!p.seat.canNextMatch || !p.port.nextMatch) return { status: 'rejected', code: 'not-actionable' }
             next = await p.port.nextMatch(p.seat, abort.signal)

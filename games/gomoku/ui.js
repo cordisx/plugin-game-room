@@ -39,7 +39,7 @@ globalThis.renderGame = (
   container.setAttribute('aria-label', '五子棋棋盘')
   const self = v.selfSeat
   const result = v.result
-  const heading = waiting ? initial.phase === 'funding' ? '等待投入确认' : '等待开局' : result
+  const heading = busy ? '正在提交操作…' : waiting ? initial.phase === 'funding' ? '等待投入确认' : '等待开局' : result
     ? globalThis.gomokuOutcome(v)
     : state.readOnly
     ? `轮到${v.turn === 0 ? '黑' : '白'}方`
@@ -170,6 +170,11 @@ globalThis.renderGame = (
   })
   layout.append(topPlayers, board, bottomPlayers)
   container.append(layout)
+  if (result && v.canResumeUndo && !state.readOnly) {
+    const controls = node('div', 'gomoku-undo')
+    controls.append(button('悔棋并继续', () => act({ type: 'resume-undo' }), busy || !state.canAct))
+    container.append(controls)
+  }
   if (!waiting && !result && !state.readOnly) {
     const controls = node('div', 'gomoku-undo')
     if (v.undo) {
