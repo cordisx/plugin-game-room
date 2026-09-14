@@ -507,6 +507,15 @@ export class LivePort implements GameRoomPort {
       canStart: view.creatorAccountId === (this.accounts.get(sourceId) ?? this.source(sourceId).accountId)
         && view.status === 'waiting' && array(view.seats).length >= number(object(view.manifest).minPlayers)
         && array(view.seats).map(object).every(seat => seat.ready === true),
+      canResumeUndo: view.closedAt === undefined && view.mode === 'score' && !view.walletSpend
+        && ['playing', 'finished'].includes(String(view.status))
+        && view.creatorAccountId === (this.accounts.get(sourceId) ?? this.source(sourceId).accountId)
+        && [
+          '80e5626780b64d4a29c0cba073816fe0524a6ba7ac51aa40ffda702401219b41',
+          '4ce550ff5cf585984dd1d688a8671dde9400f7b1055405ab68104fb847ab4fe0',
+        ].includes(String(view.packageHash))
+        && array(view.seats).length === 2
+        && array(view.seats).map(object).some(s => s.kind === 'bot' || s.kind === 'agent'),
       canNextMatch: view.closedAt === undefined
         && view.creatorAccountId === (this.accounts.get(sourceId) ?? this.source(sourceId).accountId)
         && ['finished', 'aborted'].includes(String(view.status))
@@ -740,6 +749,14 @@ export class LivePort implements GameRoomPort {
       if (error instanceof RequestFailure && error.outcome === 'rejected') this.pendingActions.delete(key)
       throw error
     }
+  }
+  async resumeUndo(seat: Seat, signal: AbortSignal) {
+    return await this.seat(
+      seat.room.sourceId,
+      await this.request(seat.room.sourceId, `/v1/rooms/${encodeURIComponent(seat.room.id)}/undo-resume`, signal, {
+        expectedVersion: seat.version,
+      }),
+    )
   }
   async closeRoom(seat: Seat, signal: AbortSignal) {
     await this.request(seat.room.sourceId, `/v1/rooms/${encodeURIComponent(seat.room.id)}/close`, signal, {})

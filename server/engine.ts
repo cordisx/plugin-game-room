@@ -1,3 +1,4 @@
+import { canResumeGomoku, resumedPosition, undoPackage } from './gomoku-resume.js'
 import { GameSpend, type GameSpendRecord } from './game-spend.js'
 import { DisplayProfiles } from './display-profile.js'
 import { allocateSeat, orderSeats } from './seat-positions.js'
@@ -441,6 +442,29 @@ export class Engine {
     const old = room.version++
     await this.save(room, old, 'agent_joined')
     return { seat, view: await this.view(room, account.id, seat.id) }
+  }
+  async resumeUndo(account: Account, id: string, expectedVersion: unknown) {
+    const room = writableRoom(await this.load(id))
+    requireThat(canResumeGomoku(room, account.id), 'undo_resume_not_allowed', 403)
+    requireThat(room.version === expectedVersion, 'version_conflict', 409)
+    const seat = this.seat(room, account.id)
+    const events = await this.store.db.prepare('SELECT body FROM events WHERE room_id=? ORDER BY version').all(id) as {
+      body: string
+    }[]
+    const state = resumedPosition(room, seat, events)
+    const metadata = await this.packages.publish(account.id, undoPackage)
+    const old = room.version++
+    room.packageHash = metadata.hash
+    room.manifest = metadata.manifest
+    room.state = state
+    room.result = null
+    room.status = 'playing'
+    room.turn = seat
+    room.deadline = this.now() + room.turnTimeoutMs
+    room.matchDeadline = this.now() + 23 * 3600000
+    await this.observations(room)
+    requireThat(room.status === 'playing', 'undo_restore_failed', 409)
+    return await this.view(await this.save(room, old, 'undo_resumed'), account.id)
   }
   async closeRoom(account: Account, id: string) {
     const room = await this.load(id)

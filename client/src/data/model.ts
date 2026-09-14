@@ -134,6 +134,7 @@ export type Seat = {
   version?: number
   status?: 'waiting' | 'funding' | 'playing' | 'finished' | 'aborted'
   canStart?: boolean
+  canResumeUndo?: boolean
   canNextMatch?: boolean
   canCloseRoom?: boolean
   closed?: boolean

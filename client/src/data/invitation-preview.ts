@@ -10,6 +10,7 @@ export async function readInvitation(port: GameRoomPort, text: string, signal: A
   const room = snapshot.rooms.find(room => room.id === invitation.roomId && room.sourceId === invitation.sourceId)
   if (!room) throw new Error('房间不存在或已不可见')
   if (!room.compatible) throw new Error(room.compatibilityReason ?? '房间版本不兼容')
+  if (room.owned) return { invitation, room, source }
   if (room.state !== 'waiting') throw new Error(room.state === 'playing' ? '房间正在对局，暂不可加入' : '房间已结束')
   if (room.occupied >= room.capacity) throw new Error('房间已满')
   return { invitation, room, source }

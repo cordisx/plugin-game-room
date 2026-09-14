@@ -108,7 +108,7 @@ export function InvitePanel(
               <RoomSummary room={preview.room} sources={port.sources} />
               <div className='gr-invite-join'>
                 <Button variant='primary' disabled={status !== 'idle'} onClick={() => void read(true)}>
-                  {status === 'joining' ? '加入中…' : '加入房间'}
+                  {status === 'joining' ? '正在进入…' : preview.room.owned ? '返回房间' : '加入房间'}
                 </Button>
               </div>
             </>

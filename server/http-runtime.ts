@@ -360,6 +360,9 @@ export function createGameRuntime(options: RuntimeOptions) {
             if (op === 'start') {
               return await engine.start(account, id)
             }
+            if (op === 'undo-resume') {
+              return await engine.resumeUndo(account, id, input.expectedVersion)
+            }
             if (op === 'next-match') {
               return await engine.nextMatch(account, id)
             }

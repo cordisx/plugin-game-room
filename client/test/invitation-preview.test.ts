@@ -50,3 +50,13 @@ test('aborted delayed preview never publishes a room', async () => {
   finish()
   await assert.rejects(pending)
 })
+
+test('existing participants can preview a full finished room to resume their original seat', async () => {
+  const port = new SamplePort()
+  const signal = new AbortController().signal
+  const snapshot = await port.list(port.sources[0]!, signal)
+  const room = { ...snapshot.rooms[0]!, owned: true, state: 'finished' as const, occupied: 2, capacity: 2 }
+  port.list = async () => ({ ...snapshot, rooms: [room] })
+  const text = encodeInvitation({ sourceId: room.sourceId, roomId: room.id }, port.sources)
+  assert.equal((await readInvitation(port, text, signal)).room.id, room.id)
+})
