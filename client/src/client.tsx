@@ -1,3 +1,5 @@
+import { DEFAULT_OFFICIAL_SOURCE_ORIGINS } from './data/create-source-selection.js'
+import { CreatePreferences } from './data/create-preferences.js'
 import type { WalletSpendV1 } from '@cordisx/protocol/wallet-spend/v1'
 import { pages, updatePageHeader } from './data/page-navigation.js'
 import { CanonicalGameWallet } from './data/canonical-wallet.js'
@@ -68,6 +70,9 @@ export const Config = Schema.object({
       model: Schema.string().required(),
     }),
   ).default([]).description('我的 Agent'),
+  officialSourceOrigins: Schema.array(Schema.string()).default(DEFAULT_OFFICIAL_SOURCE_ORIGINS).description(
+    '创建房间默认优先的官方服务器 HTTP(S) origin。',
+  ),
   sources: Schema.array(Schema.object({
     id: Schema.string().required().description('服务器 ID（握手返回）'),
     name: Schema.string().required().description('来源名称'),
@@ -86,6 +91,7 @@ export function apply(
   config: {
     sample?: boolean
     sources?: Source[]
+    officialSourceOrigins?: string[]
     agentProfiles?: AgentProfile[]
     providerId?: string
   } = {},
@@ -101,8 +107,12 @@ export function apply(
       transport => new CanonicalGameWallet(transport, () => walletProvider),
       true,
     )
+  const preferences = new CreatePreferences()
+  ctx.effect(() => () => preferences.dispose())
   const runtime: ClientRuntime = {
+    createPreferences: preferences,
     port,
+    officialSourceOrigins: config.officialSourceOrigins ?? DEFAULT_OFFICIAL_SOURCE_ORIGINS,
     subscribeWallet: changed => {
       walletListeners.add(changed)
       return () => {
@@ -114,6 +124,11 @@ export function apply(
       void ctx.routes.navigate({ id: page })
     },
   }
+  ctx.inject(['documents'], child => {
+    const documents = child.documents
+    preferences.attach(documents)
+    child.effect(() => () => preferences.detach(documents))
+  })
   if (!config.sample && port instanceof LivePort) {
     // A new plugin activation resumes retained source and wallet sessions through the public Host client.
     ctx.inject(['http'], child => {

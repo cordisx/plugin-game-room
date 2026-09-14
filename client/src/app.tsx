@@ -1,3 +1,4 @@
+import type { CreatePreferences } from './data/create-preferences.js'
 import { walletBalanceResource } from './data/wallet-presentation.js'
 import { useSourceStates } from './data/use-source-states.js'
 import { type CreateContext, defaultLobbyFilters, openLobbyCreate } from './data/lobby-context.js'
@@ -35,6 +36,8 @@ import type { CurrentUserState } from './data/current-user-sync.js'
 export type ClientRuntime = {
   currentUser?: CurrentUserState
   port: GameRoomPort
+  createPreferences?: CreatePreferences
+  officialSourceOrigins?: readonly string[]
   createContext?: CreateContext
   lobbyStates?: SourceState[]
   lobbyFilters?: Filters
@@ -303,6 +306,8 @@ function EnabledGameRoomPage({ page, runtime }: { page: string; runtime: ClientR
           tokenAvailable={port.walletMode?.() === 'canonical-local'
             ? sourceId => !!port.economyAvailable?.(sourceId)
             : undefined}
+          preferences={runtime.createPreferences}
+          officialOrigins={runtime.officialSourceOrigins}
           context={runtime.createContext}
           configure={() => navigate('configuration')}
           publish={() => navigate('publish')}

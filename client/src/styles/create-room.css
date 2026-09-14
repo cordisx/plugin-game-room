@@ -15,6 +15,7 @@
   min-height: 0;
   display: grid;
   grid-template-columns: minmax(260px, 1fr) minmax(300px, 0.9fr);
+  grid-template-rows: minmax(0, 1fr);
   gap: var(--gr-create-layout-gap);
   padding: 0 0 var(--gr-create-layout-gap);
 }
@@ -45,6 +46,7 @@
   margin-left: auto;
 }
 .gr-create-fields {
+  flex: 1;
   overflow: auto;
   min-height: 0;
   padding: 0 0 20px;
@@ -53,6 +55,10 @@
   gap: 22px;
   scrollbar-gutter: auto;
   overscroll-behavior: contain;
+}
+.gr-create-form {
+  flex: none;
+  min-width: 0;
 }
 .gr-create-fields .gr-field {
   font-size: 13px;
@@ -133,6 +139,8 @@
 @container create-room (max-width: 700px) {
   .gr-create-workspace {
     grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+    grid-auto-rows: max-content;
     overflow: auto;
     overscroll-behavior: contain;
     gap: var(--gr-create-layout-gap);

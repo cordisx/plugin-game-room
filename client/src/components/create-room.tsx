@@ -1,3 +1,5 @@
+import { reconcileCreateSelection } from '../data/create-source-selection.js'
+import type { CreatePreferences } from '../data/create-preferences.js'
 import { TokenAmount } from './token-amount.js'
 import { latestSourceGames } from '../data/game-catalog.js'
 import { type CreateContext, resolveCreateSelection } from '../data/lobby-context.js'
@@ -11,18 +13,30 @@ import { Symbol } from './icons.js'
 import { CreateRoomPreview } from './create-room-preview.js'
 import '../styles/create-room.css'
 
-export function CreateRoomPanel({ states, create, busy, publish, configure, context, tokenAvailable }: {
-  states: SourceState[]
-  context?: CreateContext
-  tokenAvailable?: (sourceId: string) => boolean
-  create: (sourceId: string, draft: CreateRoom) => void
-  busy: boolean
-  publish: () => void
-  configure?: () => void
-}) {
+export function CreateRoomPanel(
+  { states, create, busy, publish, configure, context, tokenAvailable, preferences, officialOrigins }: {
+    preferences?: CreatePreferences
+    officialOrigins?: readonly string[]
+    states: SourceState[]
+    context?: CreateContext
+    tokenAvailable?: (sourceId: string) => boolean
+    create: (sourceId: string, draft: CreateRoom) => void
+    busy: boolean
+    publish: () => void
+    configure?: () => void
+  },
+) {
   const available = states.filter(state => state.state === 'online')
-  const [initial] = useState(() => resolveCreateSelection(states, context))
-  const [edited, setEdited] = useState(false)
+  const [initial] = useState(() =>
+    reconcileCreateSelection(states, context, { sourceId: '', packageHash: '' }, {
+      previous: preferences?.current,
+      officialOrigins,
+    })
+  )
+  const [sourceEdited, setSourceEdited] = useState(false)
+  const [gameEdited, setGameEdited] = useState(false)
+  const [preferenceRevision, setPreferenceRevision] = useState(0)
+  useEffect(() => preferences?.subscribe(() => setPreferenceRevision(value => value + 1)), [preferences])
   const [sourceId, setSourceId] = useState(initial.sourceId)
   const source = available.find(state => state.source.id === sourceId)
   const sourceLoading = states.some(state =>
@@ -105,12 +119,15 @@ export function CreateRoomPanel({ states, create, busy, publish, configure, cont
   }, [game, mode, maxPlayers])
   // Source refreshes must not remount the form or discard the user's draft.
   useEffect(() => {
-    if (!edited && !gameId) {
-      const next = resolveCreateSelection(states, context)
-      setSourceId(next.sourceId)
-      setGameId(next.packageHash)
-    }
-  }, [states, context, edited, gameId])
+    const next = reconcileCreateSelection(states, context, { sourceId, packageHash: gameId }, {
+      previous: preferences?.current,
+      officialOrigins,
+      sourceEdited,
+      gameEdited,
+    })
+    if (next.sourceId !== sourceId) setSourceId(next.sourceId)
+    if (next.packageHash !== gameId) setGameId(next.packageHash)
+  }, [states, context, sourceId, gameId, sourceEdited, gameEdited, preferences, preferenceRevision, officialOrigins])
   const validStake = Number.isSafeInteger(Number(stake)) && Number(stake) > 0
   let commonValid = true
   try {
@@ -124,21 +141,14 @@ export function CreateRoomPanel({ states, create, busy, publish, configure, cont
     || (mode === 'token' && (!accepted || !validStake))
   return (
     <section className='gr-create' aria-label='创建房间设置'>
-      {!source && (
-        <EmptyState
-          title={sourceLoading
-            ? '正在加载服务器…'
-            : sourceId
-            ? '所选服务器当前不可用'
-            : available.length
-            ? '请选择服务器'
-            : '没有可用服务器'}
-          description={sourceLoading ? '正在读取服务器与玩法信息。' : '请选择可用服务器，或在来源配置中检查连接。'}
-          action={configure ? <Button onClick={configure}>配置服务器</Button> : undefined}
-        />
-      )}
       <div className='gr-create-workspace'>
         <section className='gr-create-editor'>
+          {!source && (
+            <p className='gr-notice' role='status'>
+              {sourceLoading ? '正在加载服务器…' : sourceId ? '所选服务器当前不可用' : '没有可用服务器'}
+              {!sourceLoading && configure && <Button variant='ghost' onClick={configure}>检查来源配置</Button>}
+            </p>
+          )}
           {source && gameId && !game && (
             <p className='gr-notice' role='status'>
               {selectedPackage
@@ -148,6 +158,9 @@ export function CreateRoomPanel({ states, create, busy, publish, configure, cont
           )}
           {source && !gameId && catalog.some(item => catalog.filter(other => other.id === item.id).length > 1) && (
             <p className='gr-notice'>请选择玩法；同版本存在多个发布者时须明确选择。</p>
+          )}
+          {!tokenReady && game?.modes.includes('token') && (
+            <p className='gr-muted' role='status'>本地钱包不可用或此来源不支持本地结算；Token 模式暂不可用。</p>
           )}
           <div className='gr-create-tabs' role='tablist' aria-label='房间配置'>
             {[{ id: 'general', label: '通用配置', icon: 'settings' }, {
@@ -199,73 +212,77 @@ export function CreateRoomPanel({ states, create, busy, publish, configure, cont
             aria-labelledby={`create-tab-${tab}`}
             tabIndex={0}
           >
-            {tab === 'general'
-              ? (
-                <SchemaForm
-                  identity={`create-general:${identity}`}
-                  schema={commonSchema}
-                  value={commonValue}
-                  locale='zh-CN'
-                  disabled={busy}
-                  onChange={({ value }) => {
-                    setEdited(true)
-                    const nextSource = typeof value.sourceId === 'string' ? value.sourceId : sourceId
-                    const nextGameId = nextSource !== sourceId
-                      ? resolveCreateSelection(states, {
-                        ...context,
-                        gameId: game?.id ?? selectedPackage?.id ?? context?.gameId,
-                        sourceId: nextSource,
-                        chooseSource: false,
-                        chooseGame: false,
-                      }).packageHash
-                      : String(value.gameId)
-                    const nextGame = latestSourceGames(states.find(state => state.source.id === nextSource)).find(
-                      item => item.packageHash === nextGameId,
-                    )
-                    setSourceId(nextSource)
-                    setGameId(nextGameId)
-                    setName(String(value.name))
-                    setAgents(value.allowAgents === true)
-                    const nextPlayers = nextGameId !== gameId || nextSource !== sourceId
-                      ? nextGame?.maxPlayers ?? 2
-                      : Number(value.maxPlayers ?? maxPlayers)
-                    setPlayerDraft({ key: JSON.stringify([nextSource, nextGameId]), value: nextPlayers })
-                    const nextToken = value.mode === 'token'
-                    const botMaximum = nextToken || !nextGame?.rulesBot || !Number.isFinite(nextPlayers)
-                      ? 0
-                      : Math.max(0, Math.floor(nextPlayers) - 1)
-                    setBotCount(Math.min(Number(value.botCount ?? 0), botMaximum))
-                    setMode(
-                      nextGame?.modes.includes(value.mode as CreateRoom['mode'])
-                        ? value.mode as CreateRoom['mode']
-                        : nextGame?.modes[0] ?? 'score',
-                    )
-                    if (value.stake !== undefined) setStake(String(value.stake))
-                  }}
-                />
-              )
-              : (
-                <>
-                  {game?.configSchema
-                    ? (
-                      <SchemaForm
-                        identity={identity}
-                        schema={gameSchema}
-                        value={config}
-                        locale='zh-CN'
-                        disabled={busy}
-                        onChange={({ value }) =>
-                          setGameDraft({ key: identity, value: value as Record<string, string | number | boolean> })}
-                      />
-                    )
-                    : <EmptyState title='此版本使用固定规则' description={game?.description ?? '请先选择玩法'} />}
-                </>
-              )}
+            <div className='gr-create-form'>
+              {tab === 'general'
+                ? (
+                  <SchemaForm
+                    identity={`create-general:${identity}`}
+                    schema={commonSchema}
+                    value={commonValue}
+                    locale='zh-CN'
+                    disabled={busy}
+                    onChange={({ value }) => {
+                      const nextSource = typeof value.sourceId === 'string' ? value.sourceId : sourceId
+                      const nextGameId = nextSource !== sourceId
+                        ? resolveCreateSelection(states, {
+                          ...context,
+                          gameId: game?.id ?? selectedPackage?.id ?? context?.gameId,
+                          sourceId: nextSource,
+                          chooseSource: false,
+                          chooseGame: false,
+                        }).packageHash
+                        : String(value.gameId)
+                      const nextGame = latestSourceGames(states.find(state => state.source.id === nextSource)).find(
+                        item => item.packageHash === nextGameId,
+                      )
+                      if (nextSource !== sourceId) {
+                        setSourceEdited(true)
+                        setGameEdited(false)
+                        const selected = available.find(state => state.source.id === nextSource)
+                        if (selected) preferences?.remember(selected.source)
+                      } else if (nextGameId !== gameId) setGameEdited(true)
+                      setSourceId(nextSource)
+                      setGameId(nextGameId)
+                      setName(String(value.name))
+                      setAgents(value.allowAgents === true)
+                      const nextPlayers = nextGameId !== gameId || nextSource !== sourceId
+                        ? nextGame?.maxPlayers ?? 2
+                        : Number(value.maxPlayers ?? maxPlayers)
+                      setPlayerDraft({ key: JSON.stringify([nextSource, nextGameId]), value: nextPlayers })
+                      const nextToken = value.mode === 'token'
+                      const botMaximum = nextToken || !nextGame?.rulesBot || !Number.isFinite(nextPlayers)
+                        ? 0
+                        : Math.max(0, Math.floor(nextPlayers) - 1)
+                      setBotCount(Math.min(Number(value.botCount ?? 0), botMaximum))
+                      setMode(
+                        nextGame?.modes.includes(value.mode as CreateRoom['mode'])
+                          ? value.mode as CreateRoom['mode']
+                          : nextGame?.modes[0] ?? 'score',
+                      )
+                      if (value.stake !== undefined) setStake(String(value.stake))
+                    }}
+                  />
+                )
+                : (
+                  <>
+                    {game?.configSchema
+                      ? (
+                        <SchemaForm
+                          identity={identity}
+                          schema={gameSchema}
+                          value={config}
+                          locale='zh-CN'
+                          disabled={busy}
+                          onChange={({ value }) =>
+                            setGameDraft({ key: identity, value: value as Record<string, string | number | boolean> })}
+                        />
+                      )
+                      : <EmptyState title='此版本使用固定规则' description={game?.description ?? '请先选择玩法'} />}
+                  </>
+                )}
+            </div>
           </div>
         </section>
-        {!tokenReady && game?.modes.includes('token') && (
-          <p className='gr-muted' role='status'>本地钱包不可用或此来源不支持本地结算；Token 模式暂不可用。</p>
-        )}
         <CreateRoomPreview
           game={game}
           name={name}
@@ -303,6 +320,7 @@ export function CreateRoomPanel({ states, create, busy, publish, configure, cont
           disabled={disabled}
           onClick={() => {
             if (disabled || !game) return
+            if (source) preferences?.remember(source.source)
             create(sourceId, {
               config,
               name: name.trim(),
