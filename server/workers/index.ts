@@ -2,6 +2,8 @@ import { createGameRuntime, type IncomingMessage } from '../http-runtime.js'
 import { type D1Binding, D1Store } from './d1-store.js'
 import { configuredAccessPolicy } from '../access-policy.js'
 import { requireThat } from '../errors.js'
+import * as managedCodec from '@cordisx/protocol/managed-source/v1'
+import type { ManagedAccountTrust } from '../managed-auth.js'
 let cleanedWindow = -1
 interface Env {
   DB: D1Binding
@@ -9,6 +11,7 @@ interface Env {
   SPEND_SERVICE_PRIVATE_KEY?: string
   AUTH_POLICY?: string
   ALLOWED_ORIGINS?: string
+  MANAGED_SOURCE_TRUST?: string
 }
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -26,9 +29,21 @@ export default {
 async function handle(request: Request, env: Env): Promise<Response> {
   requireThat(!!env.SPEND_SERVICE_ORIGIN === !!env.SPEND_SERVICE_PRIVATE_KEY, 'invalid_spend_configuration')
   const store = await D1Store.open(env.DB)
+  const managedTrust: ManagedAccountTrust | undefined = env.MANAGED_SOURCE_TRUST
+    ? JSON.parse(env.MANAGED_SOURCE_TRUST)
+    : undefined
+  if (managedTrust) {
+    requireThat(
+      managedTrust.binding?.origin === new URL(request.url).origin
+        && managedTrust.binding.sourceId === store.serverId && managedTrust.binding.instanceId === store.serverId
+        && managedTrust.binding.audience === 'source-account',
+      'managed_binding_mismatch',
+    )
+  }
   const session = env.DB.withSession('first-primary')
   const runtime = createGameRuntime({
     store,
+    ...(managedTrust ? { managedAccount: { trust: managedTrust, codec: managedCodec } } : {}),
     ...(env.SPEND_SERVICE_ORIGIN && env.SPEND_SERVICE_PRIVATE_KEY
       ? { walletSpend: { origin: env.SPEND_SERVICE_ORIGIN, privateKey: env.SPEND_SERVICE_PRIVATE_KEY } }
       : {}),

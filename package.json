@@ -25,7 +25,7 @@
     "test:online-wallet-fixture": "npm run build && node scripts/verify-online-wallet-smoke.mjs"
   },
   "dependencies": {
-    "@cordisx/protocol": "file:sdk/experimental/protocol-wallet-spend-r40-normal.tgz",
+    "@cordisx/protocol": "file:sdk/experimental/protocol-managed-https-r45.tgz",
     "@jitl/quickjs-wasmfile-release-sync": "0.32.0",
     "quickjs-emscripten": "0.32.0",
     "quickjs-emscripten-core": "0.32.0",
