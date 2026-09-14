@@ -98,8 +98,14 @@
   padding: 13px 0;
 }
 .gr-create-preview-body dt {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   color: var(--gr-muted);
   flex: none;
+}
+.gr-create-preview-body dt > .gr-symbol {
+  margin-inline-end: 0;
 }
 .gr-create-preview-body dd {
   margin: 0;
