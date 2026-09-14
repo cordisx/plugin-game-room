@@ -17,6 +17,7 @@ export class HostHttpTransport implements HttpTransport {
   private resumes = new Map<string, Promise<unknown | undefined>>()
   private epochs = new Map<string, number>()
   private storage = new Map<string, Promise<void>>()
+  private blockedReadRecovery = new Map<string, 'session_unavailable' | 'session_identity_changed'>()
   private epoch(key: string) {
     return this.epochs.get(key) ?? 0
   }
@@ -113,6 +114,7 @@ export class HostHttpTransport implements HttpTransport {
       if (this.disposed) throw new Error('连接已关闭')
       if (credential === 'bearer') this.identities.delete(key)
       this.connections.set(key, result.value)
+      this.blockedReadRecovery.delete(key)
     } catch (error) {
       // Retained descriptors belong to Host: revoking one could erase the saved scope.
       if (!retained) await this.client.revoke(result.value)
@@ -139,8 +141,11 @@ export class HostHttpTransport implements HttpTransport {
       const epoch = this.epoch(key)
       // Recovery belongs to the adapter; each waiter retains its own cancellation/deadline.
       const controller = new AbortController()
-      const sharedDeadline = Date.now() + 15000
-      const timer = setTimeout(() => controller.abort(new Error('来源请求已超时')), 15000)
+      const sharedDeadline = Math.min(deadline, Date.now() + 15000)
+      const timer = setTimeout(
+        () => controller.abort(new Error('来源请求已超时')),
+        Math.max(0, sharedDeadline - Date.now()),
+      )
       pending = (async () => {
         const resumed = await this.wait(client.resume(this.scope(source)), controller.signal, sharedDeadline)
         if (resumed.status !== 'accepted') throw new Error(`会话恢复失败：${resumed.code}`)
@@ -163,6 +168,7 @@ export class HostHttpTransport implements HttpTransport {
         if (this.disposed) throw new Error('连接已关闭')
         if (this.epoch(key) !== epoch) throw new Error('授权已被替换')
         if (value !== undefined && !this.connections.has(key)) this.connections.set(key, resumed.value)
+        if (value !== undefined) this.blockedReadRecovery.delete(key)
         return value
       })().finally(() => {
         clearTimeout(timer)
@@ -192,8 +198,8 @@ export class HostHttpTransport implements HttpTransport {
       signal.throwIfAborted()
       const key = this.key(source, true)
       if (!(error instanceof RequestFailure) || error.outcome !== 'rejected') throw error
-      if (error.message === 'session_unavailable' && this.persistent) throw error
-      if (!['invalid_session', 'authentication_required', 'session_unavailable'].includes(error.message)) throw error
+      if (error.code === 'session_unavailable' && this.persistent) throw error
+      if (!['invalid_session', 'authentication_required', 'session_unavailable'].includes(error.code)) throw error
       await this.store(key, async () => {
         if (this.epoch(key) !== epoch || this.disposed) return
         const current = this.connections.get(key)
@@ -219,6 +225,7 @@ export class HostHttpTransport implements HttpTransport {
     }
     for (const value of this.derived.values()) void this.client.revoke(value.connection)
     this.derived.clear()
+    this.blockedReadRecovery.clear()
   }
   private managedWaiters = new Map<Promise<unknown>, number>()
   private managedConnections = new Map<string, Promise<unknown>>()
@@ -279,6 +286,7 @@ export class HostHttpTransport implements HttpTransport {
           if (this.disposed || this.epoch(key) !== epoch || Date.now() >= deadline) throw new Error('授权已被替换')
           this.identities.delete(key)
           this.connections.set(key, result.value.connection)
+          this.blockedReadRecovery.delete(key)
           return body
         } catch (error) {
           if (!retained) await this.client.revoke(result.value.connection)
@@ -368,6 +376,7 @@ export class HostHttpTransport implements HttpTransport {
       if (this.disposed) throw new Error('访客连接已取消')
       this.identities.delete(key)
       this.connections.set(key, result.value.connection)
+      this.blockedReadRecovery.delete(key)
     } catch (error) {
       if (!retained) await this.client.revoke(result.value.connection)
       throw error
@@ -436,6 +445,27 @@ export class HostHttpTransport implements HttpTransport {
   request(request: HttpRequest): Promise<unknown> {
     return this.perform(request, Date.now() + 15000, true)
   }
+  private async resumeRead(source: Source, signal: AbortSignal, deadline: number, epoch: number) {
+    const key = this.key(source, true)
+    if (!this.persistent || this.blockedReadRecovery.has(key)) {
+      throw new RequestFailure(this.blockedReadRecovery.get(key) ?? 'session_unavailable', 'rejected')
+    }
+    try {
+      const session = await this.restoreSession(source, signal, deadline)
+      if (session === undefined) throw new RequestFailure('session_unavailable', 'rejected')
+      return session
+    } catch (error) {
+      signal.throwIfAborted()
+      if (this.disposed || this.epoch(key) !== epoch || Date.now() >= deadline) throw error
+      if (error instanceof RequestFailure && error.code === 'session_identity_changed') {
+        this.blockedReadRecovery.set(key, 'session_identity_changed')
+        throw error
+      }
+      // A refused/absent saved credential requires explicit reconnect, not another permission attempt.
+      this.blockedReadRecovery.set(key, 'session_unavailable')
+      throw new RequestFailure('session_unavailable', 'rejected')
+    }
+  }
   private async perform(
     request: HttpRequest,
     deadline: number,
@@ -447,12 +477,21 @@ export class HostHttpTransport implements HttpTransport {
     if (this.disposed) throw new Error('连接已关闭')
     if (Date.now() >= deadline) throw new Error('来源请求已超时')
     if (!request.authenticated) await this.prepare(request.source, request.signal, deadline)
-    const connection = candidate ?? this.connections.get(this.key(request.source, request.authenticated === true))
+    let connection = candidate ?? this.connections.get(this.key(request.source, request.authenticated === true))
       ?? (!request.authenticated ? this.connections.get(this.key(request.source, true)) : undefined)
-    if (!connection) throw new Error('请在设置中连接此来源账户')
-    if (this.quarantined.has(connection.id)) throw new RequestFailure('session_identity_changed', 'rejected')
     const authKey = this.key(request.source, true)
     const epoch = expectedEpoch ?? this.epoch(authKey)
+    if (!connection && request.authenticated && recover && (request.method ?? 'GET') === 'GET') {
+      const session = await this.resumeRead(request.source, request.signal, deadline, epoch)
+      recover = false
+      if (request.path === '/v1/me') return session
+      connection = this.connections.get(authKey)
+    }
+    if (!connection) {
+      if (request.authenticated) throw new RequestFailure('session_unavailable', 'rejected')
+      throw new Error('请在设置中连接此来源账户')
+    }
+    if (this.quarantined.has(connection.id)) throw new RequestFailure('session_identity_changed', 'rejected')
     const result = await this.client.request({
       connection,
       path: request.path,
@@ -467,7 +506,11 @@ export class HostHttpTransport implements HttpTransport {
       signal: request.signal,
     })
     request.signal.throwIfAborted()
-    if (request.authenticated && (this.epoch(authKey) !== epoch || this.disposed)) throw new Error('授权已被替换')
+    if (
+      (request.authenticated || connection.credential === 'bearer') && (this.epoch(authKey) !== epoch || this.disposed)
+    ) {
+      throw new Error('授权已被替换')
+    }
     if (result.status !== 'accepted') {
       if (['connection-unavailable', 'credential-unavailable'].includes(result.code)) {
         const key = this.key(request.source, connection.credential === 'bearer')
@@ -475,9 +518,7 @@ export class HostHttpTransport implements HttpTransport {
         if (recover && (request.method ?? 'GET') === 'GET') {
           if (connection.credential === 'none') await this.prepare(request.source, request.signal, deadline)
           else {
-            if (!this.persistent) throw new RequestFailure('session_unavailable', 'rejected')
-            const session = await this.restoreSession(request.source, request.signal, deadline)
-            if (session === undefined) throw new RequestFailure('session_unavailable', 'rejected')
+            const session = await this.resumeRead(request.source, request.signal, deadline, epoch)
             if (request.path === '/v1/me') {
               if (Date.now() >= deadline) throw new Error('来源请求已超时')
               return session
@@ -619,6 +660,7 @@ export class HostHttpTransport implements HttpTransport {
     this.quarantined.clear()
     this.resumes.clear()
     this.derived.clear()
+    this.blockedReadRecovery.clear()
     await Promise.allSettled(transient.map(connection => this.client.revoke(connection)))
   }
 }

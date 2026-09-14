@@ -43,7 +43,7 @@
     "miniflare": "4.20260730.0",
     "tsx": "4.23.13",
     "typescript": "6.0.3",
-    "cordisx": "file:sdk/experimental/cordisx-host-wallet-spend-r40-normal.tgz"
+    "cordisx": "file:sdk/experimental/cordisx-host-wallet-native-read-r41-normal.tgz"
   },
   "overrides": {
     "@cordisx/protocol": "$@cordisx/protocol"

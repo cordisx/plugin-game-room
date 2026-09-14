@@ -274,7 +274,7 @@ test('resumed account or instance drift stops before replaying ledger and preser
     f.identity(account, instance)
     await assert.rejects(
       t.request({ source, path: '/v1/ledger', authenticated: true, signal: signal() }),
-      /session_identity_changed/,
+      { code: 'session_identity_changed', outcome: 'rejected' },
     )
     assert.equal(f.requests.filter(r => r.path === '/v1/ledger').length, 1)
     assert.equal(f.counts().resumes, 1)
@@ -311,7 +311,7 @@ test('unvalidated resumed grant is not available to concurrent GET or POST', asy
   f.retire()
   await assert.rejects(
     t.request({ source, path: '/orders', method: 'POST', authenticated: true, signal: signal() }),
-    /session_unavailable/,
+    { code: 'session_unavailable', outcome: 'rejected' },
   )
   f.identity('foreign')
   const wait = deferred()
@@ -319,13 +319,33 @@ test('unvalidated resumed grant is not available to concurrent GET or POST', asy
   const restore = t.restoreSession(source, signal())
   await new Promise(r => setImmediate(r))
   const attempts = f.requests.length
-  for (const method of ['GET', 'POST'] as const) {
-    await assert.rejects(t.request({ source, path: '/orders', method, authenticated: true, signal: signal() }))
-  }
+  const read = t.request({ source, path: '/orders', authenticated: true, signal: signal() })
+  const rejectedRead = assert.rejects(read, { code: 'session_identity_changed', outcome: 'rejected' })
+  await assert.rejects(t.request({ source, path: '/orders', method: 'POST', authenticated: true, signal: signal() }))
   assert.equal(f.requests.length, attempts)
   wait.resolve()
-  await assert.rejects(restore, /session_identity_changed/)
+  await assert.rejects(restore, { code: 'session_identity_changed', outcome: 'rejected' })
+  await rejectedRead
   assert.equal(f.counts().forgets, 0)
+})
+
+test('short shared resume deadline removes pending validation before a later reader starts', async () => {
+  const f = fixture(), t = new HostHttpTransport(f.client)
+  await t.connect(source, 'bearer')
+  f.retire()
+  await assert.rejects(
+    t.request({ source, path: '/orders', method: 'POST', authenticated: true, signal: signal() }),
+    { code: 'session_unavailable', outcome: 'rejected' },
+  )
+  const wait = deferred()
+  f.waitMe(wait.promise)
+  await assert.rejects(t.restoreSession(source, signal(), Date.now() + 30), /超时/)
+  await new Promise(resolve => setImmediate(resolve))
+  const before = f.counts().resumes
+  f.waitMe()
+  assert.ok(await t.restoreSession(source, signal()))
+  assert.equal(f.counts().resumes, before + 1)
+  wait.resolve()
 })
 test('dispose during replacement old-revoke retires the newly issued transient grant exactly', async () => {
   const f = fixture()
@@ -372,7 +392,7 @@ test('old provisional identity reply cannot pin or forget a newly authorized acc
   await t.connect(source, 'bearer')
   await t.restoreSession(source, signal())
   f.retire()
-  await assert.rejects(t.restoreSession(source, signal()), /session_unavailable/)
+  await assert.rejects(t.restoreSession(source, signal()), { code: 'session_unavailable', outcome: 'rejected' })
   const held = deferred()
   f.waitMe(held.promise)
   const old = t.restoreSession(source, signal())

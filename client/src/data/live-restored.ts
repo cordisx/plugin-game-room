@@ -134,7 +134,13 @@ export class LivePort implements GameRoomPort {
   }
   private async loginManaged(source: Source, signal: AbortSignal) {
     const lease = this.sourceSessions.capture(source.id)
-    const accountId = await this.sourceSessions.login(source, signal)
+    let accountId: string
+    try {
+      accountId = await this.sourceSessions.login(source, signal)
+    } catch (error) {
+      if (!signal.aborted && this.sourceSessions.valid(source.id, lease)) this.sourceSessions.paused.add(source.id)
+      throw error
+    }
     if (this.disposed || !this.sourceSessions.valid(source.id, lease)) throw new Error('授权已被替换')
     this.displays.reset(source.id, accountId)
     this.ownedRooms.delete(source.id)
@@ -197,6 +203,7 @@ export class LivePort implements GameRoomPort {
     await this.syncDisplayProfile(sourceId, new AbortController().signal)
   }
   private async restoreSession(source: Source, signal: AbortSignal) {
+    if (this.sourceSessions.paused.has(source.id)) return false
     const value = await this.http.restoreSession?.(source, signal)
     signal.throwIfAborted()
     if (this.disposed) throw new Error('客户端已关闭')
@@ -221,6 +228,7 @@ export class LivePort implements GameRoomPort {
     return source
   }
   private request(sourceId: string, path: string, signal: AbortSignal, body?: unknown) {
+    const lease = this.sourceSessions.capture(sourceId)
     return this.http.request({
       source: this.source(sourceId),
       path,
@@ -230,17 +238,32 @@ export class LivePort implements GameRoomPort {
     }).then(value => {
       signal.throwIfAborted()
       if (this.disposed) throw new Error('客户端已关闭')
+      if (!this.sourceSessions.valid(sourceId, lease)) throw new Error('授权已被替换')
       return value
     }).catch(error => {
-      if (
-        error instanceof RequestFailure && error.outcome === 'rejected'
-        && ['invalid_session', 'authentication_required', 'session_unavailable'].includes(error.message)
-      ) {
-        this.accounts.delete(sourceId)
-        this.sessionKinds.delete(sourceId)
-        this.ownedRooms.delete(sourceId)
-        this.displays.reset(sourceId)
-      }
+      if (this.sourceSessions.valid(sourceId, lease)) this.retireRejectedAccount(sourceId, error)
+      throw error
+    })
+  }
+  private retireRejectedAccount(sourceId: string, error: unknown) {
+    if (
+      !(error instanceof RequestFailure) || error.outcome !== 'rejected'
+      || !['invalid_session', 'authentication_required', 'session_unavailable', 'session_identity_changed'].includes(
+        error.code,
+      )
+    ) return
+    this.accounts.delete(sourceId)
+    this.sessionKinds.delete(sourceId)
+    this.ownedRooms.delete(sourceId)
+    this.displays.reset(sourceId)
+    if (error.code === 'session_unavailable' || error.code === 'session_identity_changed') {
+      this.sourceSessions.paused.add(sourceId)
+    }
+  }
+  private discovery(source: Source, path: string, signal: AbortSignal) {
+    const lease = this.sourceSessions.capture(source.id)
+    return this.http.request({ source, path, signal }).catch(error => {
+      if (this.sourceSessions.valid(source.id, lease)) this.retireRejectedAccount(source.id, error)
       throw error
     })
   }
@@ -369,7 +392,7 @@ export class LivePort implements GameRoomPort {
   }
   async prepareSource(source: Source, signal: AbortSignal) {
     await this.http.prepare?.(source, signal)
-    const handshake = object(await this.http.request({ source, path: '/v1/handshake', signal }))
+    const handshake = object(await this.discovery(source, '/v1/handshake', signal))
     this.economy.discover(source, handshake.walletSpend)
     // Wallet source approval belongs to explicit connectEconomy, not lobby discovery.
   }
@@ -380,7 +403,7 @@ export class LivePort implements GameRoomPort {
     } catch {
       signal.throwIfAborted()
     }
-    const handshake = object(await this.http.request({ source, path: '/v1/handshake', signal }))
+    const handshake = object(await this.discovery(source, '/v1/handshake', signal))
     if (handshake.serverId !== source.id) {
       return {
         rooms: [],
@@ -421,8 +444,8 @@ export class LivePort implements GameRoomPort {
     }
     await this.syncDisplayProfile(source.id, signal)
     const [roomResponse, packageResponse] = await Promise.all([
-      this.http.request({ source, path: '/v1/rooms', signal }),
-      this.http.request({ source, path: '/v1/packages', signal }),
+      this.discovery(source, '/v1/rooms', signal),
+      this.discovery(source, '/v1/packages', signal),
     ])
     signal.throwIfAborted()
     if (this.disposed) throw new Error('客户端已关闭')

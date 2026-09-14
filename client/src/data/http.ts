@@ -80,7 +80,13 @@ export function array(value: unknown): unknown[] {
 }
 
 export class RequestFailure extends Error {
-  constructor(message: string, readonly outcome: 'rejected' | 'uncertain') {
-    super(message)
+  constructor(readonly code: string, readonly outcome: 'rejected' | 'uncertain') {
+    super(
+      code === 'session_unavailable'
+        ? '连接已失效，请重新连接此来源'
+        : code === 'session_identity_changed'
+        ? '账号已变化，请重新连接'
+        : code,
+    )
   }
 }

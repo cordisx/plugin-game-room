@@ -245,7 +245,11 @@ test('a retired live grant keeps the saved token and resumes on the next attempt
   const transport = new HostHttpTransport(client)
   await transport.connectGuest(f.source, signal)
   client.dispose()
-  await assert.rejects(transport.connectGuest(f.source, signal), /session_unavailable/)
+  await assert.rejects(transport.connectGuest(f.source, signal), {
+    code: 'session_unavailable',
+    outcome: 'rejected',
+    message: '连接已失效，请重新连接此来源',
+  })
   assert.equal(f.saved.size, 1)
   assert.equal(f.forgets(), 0)
   assert.ok(await transport.restoreSession(f.source, signal))

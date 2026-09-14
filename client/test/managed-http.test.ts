@@ -18,6 +18,7 @@ const grant = (id: string): HttpConnectionV1 => ({
 })
 function fixture(previous: HttpConnectionV1 | null = null) {
   let resumed = previous
+  let resumes = 0, requests = 0
   let finish!: (value: Awaited<ReturnType<HttpClientV3['connectAccount']>>) => void
   let calls = 0
   let retained = 0
@@ -40,6 +41,7 @@ function fixture(previous: HttpConnectionV1 | null = null) {
       throw new Error('Bearer prompt must not replace managed login')
     },
     async request() {
+      requests++
       throw new Error('No raw requests needed by this fixture')
     },
     async exchange() {
@@ -51,6 +53,7 @@ function fixture(previous: HttpConnectionV1 | null = null) {
       return { status: 'accepted', value: null }
     },
     async resume() {
+      resumes++
       return { status: 'accepted', value: resumed }
     },
     async forget() {
@@ -73,6 +76,8 @@ function fixture(previous: HttpConnectionV1 | null = null) {
     },
     inputs,
     revoked,
+    resumes: () => resumes,
+    requests: () => requests,
     calls: () => calls,
     retained: () => retained,
     async started() {
@@ -185,8 +190,23 @@ test('a later waiter cannot extend the shared managed deadline while retention i
   await laterRejected
   assert.equal(f.retained(), 1)
   assert.deepEqual(f.revoked, [])
+  const before = f.resumes(), logins = f.calls()
   await assert.rejects(
     f.transport.request({ source, path: '/protected', authenticated: true, signal: new AbortController().signal }),
-    /连接此来源账户/,
+    { code: 'session_unavailable', outcome: 'rejected', message: '连接已失效，请重新连接此来源' },
   )
+  assert.equal(f.resumes(), before + 1)
+  await assert.rejects(
+    f.transport.request({
+      source,
+      path: '/protected',
+      method: 'POST',
+      authenticated: true,
+      signal: new AbortController().signal,
+    }),
+    { code: 'session_unavailable', outcome: 'rejected' },
+  )
+  assert.equal(f.resumes(), before + 1)
+  assert.equal(f.requests(), 0)
+  assert.equal(f.calls(), logins)
 })
