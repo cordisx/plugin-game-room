@@ -2,7 +2,7 @@ import type { CreatePreferences } from './data/create-preferences.js'
 import { walletBalanceResource } from './data/wallet-presentation.js'
 import { useSourceStates } from './data/use-source-states.js'
 import { type CreateContext, defaultLobbyFilters, openLobbyCreate } from './data/lobby-context.js'
-import { startSeatRefresh } from './data/seat-refresh.js'
+import { awaitingRulesBot, startSeatRefresh } from './data/seat-refresh.js'
 import type { IsolatedGameUiV1 } from '@cordisx/protocol/isolated-game-ui/v1'
 import { ActionScope, runPageAction } from './data/action-scope.js'
 import { agentPageBlocked } from './data/features.js'
@@ -137,6 +137,7 @@ function EnabledGameRoomPage({ page, runtime }: { page: string; runtime: ClientR
     if (!['prepare', 'funding'].includes(page) || !runtime.seat?.seatId || !port.refreshSeat) return
     setConnectionError('')
     return startSeatRefresh({
+      initialDelay: awaitingRulesBot(runtime.seat) ? 0 : 1500,
       refresh: signal => port.refreshSeat!(runtime.seat!, signal),
       changed: next => {
         if ((next.version ?? 0) >= (runtime.seat?.version ?? 0)) {
@@ -154,7 +155,7 @@ function EnabledGameRoomPage({ page, runtime }: { page: string; runtime: ClientR
       },
       failed: setConnectionError,
     })
-  }, [page, port, runtime, refreshAttempt])
+  }, [page, port, runtime, refreshAttempt, runtime.seat?.version])
   useEffect(() => {
     if (page !== 'prepare') {
       setDetailsOpen(false)

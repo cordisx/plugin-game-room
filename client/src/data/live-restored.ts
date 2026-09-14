@@ -689,7 +689,7 @@ export class LivePort implements GameRoomPort {
     )
   }
   async refreshSeat(seat: Seat, signal: AbortSignal) {
-    await this.spend.recover(seat.room.sourceId, signal)
+    if (seat.walletSpend) await this.spend.recover(seat.room.sourceId, signal)
     return this.seat(
       seat.room.sourceId,
       await this.request(
@@ -744,7 +744,7 @@ export class LivePort implements GameRoomPort {
         ),
       )
       this.pendingActions.delete(key)
-      await this.spend.recover(seat.room.sourceId, signal)
+      if (result.walletSpend) await this.spend.recover(seat.room.sourceId, signal)
       return result
     } catch (error) {
       if (error instanceof RequestFailure && error.outcome === 'rejected') this.pendingActions.delete(key)

@@ -4,6 +4,7 @@ export function startSeatRefresh<T>(options: {
   changed: (seat: T) => void
   failed: (message: string) => void
   recovered: (seat: T) => void
+  initialDelay?: number
   schedule?: (callback: () => void, delay: number) => () => void
 }) {
   const abort = new AbortController()
@@ -32,9 +33,17 @@ export function startSeatRefresh<T>(options: {
       cancel = schedule(() => void poll(), Math.min(1500 * 2 ** failures, 12000))
     }
   }
-  cancel = schedule(() => void poll(), 1500)
+  cancel = schedule(() => void poll(), options.initialDelay ?? 1500)
   return () => {
     abort.abort()
     cancel?.()
   }
+}
+
+/** After a committed move, prompt request-driven servers to answer the bot turn immediately. */
+export function awaitingRulesBot(seat: import('./model.js').Seat | undefined) {
+  if (seat?.status !== 'playing') return false
+  const view = seat.observation as { turn?: number | null } | null
+  return typeof view?.turn === 'number'
+    && seat.gameParticipants?.some(player => player.seatIndex === view.turn && player.kind === 'bot') === true
 }

@@ -62,3 +62,32 @@ test('disposing an in-flight refresh ignores late results and cancels further po
   assert.equal(changed, 0)
   assert.equal(scheduled, undefined)
 })
+
+test('computer turn starts a read immediately without mutation or overlapping polls', async () => {
+  let scheduled: (() => void) | undefined
+  const delays: number[] = []
+  let requests = 0
+  const stop = startSeatRefresh({
+    initialDelay: 0,
+    refresh: async () => {
+      requests++
+      return 1
+    },
+    changed: () => {},
+    recovered: () => {},
+    failed: () => assert.fail(),
+    schedule: (callback, delay) => {
+      scheduled = callback
+      delays.push(delay)
+      return () => {
+        scheduled = undefined
+      }
+    },
+  })
+  assert.deepEqual(delays, [0])
+  scheduled!()
+  await new Promise(resolve => setImmediate(resolve))
+  assert.equal(requests, 1)
+  assert.deepEqual(delays, [0, 1500])
+  stop()
+})
