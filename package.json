@@ -25,7 +25,7 @@
     "test:online-wallet-fixture": "npm run build && node scripts/verify-online-wallet-smoke.mjs"
   },
   "dependencies": {
-    "@cordisx/protocol": "file:sdk/experimental/protocol-wallet-spend-r36-final-normal.tgz",
+    "@cordisx/protocol": "file:sdk/experimental/protocol-wallet-spend-r40-normal.tgz",
     "@jitl/quickjs-wasmfile-release-sync": "0.32.0",
     "quickjs-emscripten": "0.32.0",
     "quickjs-emscripten-core": "0.32.0",
@@ -43,7 +43,7 @@
     "miniflare": "4.20260730.0",
     "tsx": "4.23.13",
     "typescript": "6.0.3",
-    "cordisx": "file:sdk/experimental/cordisx-host-wallet-spend-r37-final-normal.tgz"
+    "cordisx": "file:sdk/experimental/cordisx-host-wallet-spend-r40-normal.tgz"
   },
   "overrides": {
     "@cordisx/protocol": "$@cordisx/protocol"

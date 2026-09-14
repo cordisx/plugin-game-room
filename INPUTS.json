@@ -1,16 +1,18 @@
 {
   "owner": "cordisx/plugin-game-room",
-  "branch": "codex/c6d2-game-unified-wallet-r36",
-  "baseCommit": "7035d4377f4ae60250f65b995ba2017c1a752e70",
-  "state": "frozen_experimental_candidate_not_native_verified_or_deployed",
+  "branch": "codex/c6d2-game-host-wallet-r40",
+  "baseCommit": "b70976739389f880d40398a74da70831477ed4e9",
+  "state": "frozen_normal_sdk_runtime_successor_not_applied_to_native",
   "baseline": {
     "backendArchiveSHA256": "e07b58ce3f5b58fe3fd356c4290a92bcd71618ef482927f0414c6cb967dd711f",
     "frontendSourceReference": "/Users/yijie/.codex/runtime-staging/game-wallet-income-r26/plugin-game-room/client",
-    "note": "R35 frozen backend plus R26 presentation source; no Native runtime configuration included"
+    "note": "R35 frozen backend plus R26 presentation source; no Native runtime configuration included",
+    "parentGameCommit": "b70976739389f880d40398a74da70831477ed4e9",
+    "r36SourceArchiveSHA256": "c6d796a83f5ae0702fcd56d6e215436b34130b9df7dfc068153c521ff8edecab"
   },
   "sdk": {
-    "protocol": "aa237fb06d4fddbcef7da9b367c7c53634e71f4a9aa42a977dff43e63217cc85",
-    "host": "d2bcd11fe0eb18d20bcd57947186758718e0a302a49710dad01d2f960b2e10d1",
+    "protocol": "abb31f30b0ed7d14efd098cea95375f67767cde6bef784ce6ad313ee8edf4075",
+    "host": "509023817c897e66fe5774abb648c5cb78312b06de9d93a82f43e447fa9b9d67",
     "economy": "1588db6bc2732938a262179c6f16bd35e2a8b82f8d6960e2f782cac488118c0f"
   },
   "files": [
@@ -201,13 +203,13 @@
     },
     {
       "path": "client/package-lock.json",
-      "bytes": 290198,
-      "sha256": "e20589708e088db3fbc23dbf4f0a8c9036322c7007ed7fd478c167ce028f8d0c"
+      "bytes": 290255,
+      "sha256": "5f4073adf292c7ae989933955faa82a2c0a104d1a93cb9e943da5d1637ae521d"
     },
     {
       "path": "client/package.json",
-      "bytes": 2282,
-      "sha256": "5c244e028148e6d0962497625af4061b38e3690e6ea928917f2dad6b4b48f860"
+      "bytes": 2270,
+      "sha256": "ee2880545b78132439e4936e309839cd73baebe6c23d8f7ea1b07c3d07c7f061"
     },
     {
       "path": "client/runtime-manifest.json",
@@ -270,6 +272,11 @@
       "sha256": "d2bcd11fe0eb18d20bcd57947186758718e0a302a49710dad01d2f960b2e10d1"
     },
     {
+      "path": "client/sdk/experimental/cordisx-host-wallet-spend-r40-normal.tgz",
+      "bytes": 2881777,
+      "sha256": "509023817c897e66fe5774abb648c5cb78312b06de9d93a82f43e447fa9b9d67"
+    },
+    {
       "path": "client/sdk/experimental/cordisx-host-work-profile-r28-normal.tgz",
       "bytes": 2852715,
       "sha256": "a2920c14df622957d4558d3fd294fd30e7586aa139c775477a829cfa066c97dc"
@@ -303,6 +310,11 @@
       "path": "client/sdk/experimental/protocol-wallet-spend-r36-normal.tgz",
       "bytes": 204295,
       "sha256": "9a8c6d29f14ef538708685af842a94e10d4ab35a4e0c0fac91d50d7350a4975d"
+    },
+    {
+      "path": "client/sdk/experimental/protocol-wallet-spend-r40-normal.tgz",
+      "bytes": 204411,
+      "sha256": "abb31f30b0ed7d14efd098cea95375f67767cde6bef784ce6ad313ee8edf4075"
     },
     {
       "path": "client/src/app.tsx",
@@ -681,8 +693,8 @@
     },
     {
       "path": "client/src/data/live-restored.ts",
-      "bytes": 34450,
-      "sha256": "76c7a3678189946d2de22735213bb9771097a0befe66d2f2168657df71d7e14b"
+      "bytes": 34434,
+      "sha256": "e33b2317311e962452642077a24e9e9095df6801162244e7bde00a3feb13e944"
     },
     {
       "path": "client/src/data/lobby-context.ts",
@@ -1125,6 +1137,11 @@
       "sha256": "3ee43fbaae73f24f8da72b7823cc93151f0b9f62f2ac92a1dd84acb07b13ed09"
     },
     {
+      "path": "client/test/wallet-discovery.test.ts",
+      "bytes": 3686,
+      "sha256": "cfe7e875de57595372271a24469e34fc90d60d9513fae89fea490c1d8fdf22c8"
+    },
+    {
       "path": "client/test/wallet-integration.test.ts",
       "bytes": 8300,
       "sha256": "9285d39da2e71952653cdb39345db60eaa635aa6e844883e0a2aeb0d0dabd36e"
@@ -1476,13 +1493,13 @@
     },
     {
       "path": "package-lock.json",
-      "bytes": 288758,
-      "sha256": "b045d4ec97cd9429a110692767a25fb362b760433ca3b2a72a4735ba91e20982"
+      "bytes": 288815,
+      "sha256": "b7de157429e2a9b97413bed62bb16043aa4800178eb26bc7fd0c188b351be038"
     },
     {
       "path": "package.json",
-      "bytes": 2094,
-      "sha256": "b6c1cca48990c15a8f51dc095e33d8e96ece72e700a53126cd8305ff94714cc6"
+      "bytes": 2082,
+      "sha256": "1a1f0854e629c6356e7e008c6ab67713d1317282731975a9de46d3eea05c3141"
     },
     {
       "path": "scripts/apply-workers-migrations.mjs",
@@ -1560,6 +1577,11 @@
       "sha256": "d2bcd11fe0eb18d20bcd57947186758718e0a302a49710dad01d2f960b2e10d1"
     },
     {
+      "path": "sdk/experimental/cordisx-host-wallet-spend-r40-normal.tgz",
+      "bytes": 2881777,
+      "sha256": "509023817c897e66fe5774abb648c5cb78312b06de9d93a82f43e447fa9b9d67"
+    },
+    {
       "path": "sdk/experimental/cordisx-protocol-local-v4-37ed3af0.tgz",
       "bytes": 201793,
       "sha256": "37ed3af003653f9c9bc076a4c7ba636602fe6a0151d3f253315d5718dc326444"
@@ -1578,6 +1600,11 @@
       "path": "sdk/experimental/protocol-wallet-spend-r36-normal.tgz",
       "bytes": 204295,
       "sha256": "9a8c6d29f14ef538708685af842a94e10d4ab35a4e0c0fac91d50d7350a4975d"
+    },
+    {
+      "path": "sdk/experimental/protocol-wallet-spend-r40-normal.tgz",
+      "bytes": 204411,
+      "sha256": "abb31f30b0ed7d14efd098cea95375f67767cde6bef784ce6ad313ee8edf4075"
     },
     {
       "path": "sdk/game-config.d.mts",
@@ -1899,5 +1926,21 @@
       "bytes": 393,
       "sha256": "5a9ce4de99d866b7da8b6555dbf07d08d58884ab9b7c1213a64a4fe539a00d3c"
     }
-  ]
+  ],
+  "sdkInputs": {
+    "host": {
+      "originTar": "/Users/yijie/.codex/local-source/2026-09-14/host-wallet-spend-r40-sdk-final/packages/cordisx-0.1.0-beta.2.tgz",
+      "sourceCommit": "12c675c1cf12d460d3938ee6371cb68871acecb7",
+      "rootClientTar": "sdk/experimental/cordisx-host-wallet-spend-r40-normal.tgz"
+    },
+    "protocol": {
+      "originTar": "/Users/yijie/.codex/local-source/2026-09-14/protocol-wallet-spend-r40-normal.tgz",
+      "sourceCommit": "8073e2e49bc3b9847d773fdf7c0fd4e5a889f8fc",
+      "rootClientTar": "sdk/experimental/protocol-wallet-spend-r40-normal.tgz"
+    },
+    "economy": {
+      "originTar": "/Users/yijie/Documents/Codex/2026-09-10/game-room-pages-implementation/outputs/local-wallet-package-r38/cordisx-economy-0.1.0.tgz",
+      "rootClientTar": "sdk/experimental/cordisx-economy-r38-normal.tgz"
+    }
+  }
 }
