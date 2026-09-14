@@ -397,18 +397,15 @@ export class LivePort implements GameRoomPort {
   }
   async prepareSource(source: Source, signal: AbortSignal) {
     await this.http.prepare?.(source, signal)
-    const handshake = object(await this.discovery(source, '/v1/handshake', signal))
-    this.economy.discover(source, handshake.walletSpend)
     // Wallet source approval belongs to explicit connectEconomy, not lobby discovery.
   }
   async list(source: Source, signal: AbortSignal): Promise<SourceSnapshot> {
     if (this.disposed) throw new Error('客户端已关闭')
-    try {
-      await this.refreshWallet(signal)
-    } catch {
-      signal.throwIfAborted()
-    }
-    const handshake = object(await this.discovery(source, '/v1/handshake', signal))
+    const [discovery] = await Promise.all([
+      this.discovery(source, '/v1/handshake', signal),
+      this.refreshWallet(signal).catch(() => signal.throwIfAborted()),
+    ])
+    const handshake = object(discovery)
     if (handshake.serverId !== source.id) {
       return {
         rooms: [],
@@ -447,16 +444,15 @@ export class LivePort implements GameRoomPort {
       if (this.usesCodexAccount(source.id)) await this.loginManaged(source, signal)
       else await this.restoreSession(source, signal)
     }
-    await this.syncDisplayProfile(source.id, signal)
-    const [roomResponse, packageResponse] = await Promise.all([
-      this.discovery(source, '/v1/rooms', signal),
+    const [roomResponse, packageResponse, mine] = await Promise.all([
+      this.syncDisplayProfile(source.id, signal).then(() => this.discovery(source, '/v1/rooms', signal)),
       this.discovery(source, '/v1/packages', signal),
+      this.isConnected(source.id) ? this.request(source.id, '/v1/me/rooms', signal) : undefined,
     ])
     signal.throwIfAborted()
     if (this.disposed) throw new Error('客户端已关闭')
-    if (this.isConnected(source.id)) {
-      const mine = object(await this.request(source.id, '/v1/me/rooms', signal))
-      this.ownedRooms.set(source.id, new Set(array(mine.rooms).map(value => string(object(value).id))))
+    if (mine) {
+      this.ownedRooms.set(source.id, new Set(array(object(mine).rooms).map(value => string(object(value).id))))
     }
     const packages = array(object(packageResponse).packages).map(object)
     this.packages.set(source.id, packages)

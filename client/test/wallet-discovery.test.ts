@@ -68,6 +68,7 @@ for (const code of ['source-unavailable', 'denied', 'outcome-unknown'] as const)
     try {
       await aggregate.refresh()
       assert.equal(states[0]!.state, 'online')
+      assert.equal(paths.filter(path => path === '/v1/handshake').length, 1)
       assert.equal(port.isConnected(source.id), true)
       assert.equal(port.walletStatus(), 'ready')
       assert.equal(port.tokenStatus(source.id), 'ready')

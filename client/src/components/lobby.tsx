@@ -59,7 +59,6 @@ export function Lobby(
     ['waiting', 'playing', 'finished'].indexOf(a.state) - ['waiting', 'playing', 'finished'].indexOf(b.state)
   )
   const empty = lobbyEmptyState(states, filters, configured)
-  const loading = empty.kind === 'loading'
   return (
     <div className='gr-lobby' ref={motion.root} data-detail-open={!!detailRoom}>
       <div className='gr-lobby-controls'>
@@ -88,10 +87,9 @@ export function Lobby(
       </div>
       <section className='gr-room-area' aria-label='房间'>
         {filtersOpen && <LobbyFilters filters={filters} setFilters={setFilters} states={states} />}
-        {states.filter(state => state.state !== 'online').map(state => (
+        {states.filter(state => state.state !== 'online' && state.state !== 'loading').map(state => (
           <div className='gr-source-notice' role='status' key={state.source.id}>
-            {state.source.name} ·{' '}
-            {state.state === 'loading' ? '连接中' : state.state === 'incompatible' ? '协议不兼容' : '连接中断'}
+            {state.source.name} · {state.state === 'incompatible' ? '协议不兼容' : '连接中断'}
             {state.error && ` · ${state.error}`}
             <Button
               variant='ghost'
@@ -127,13 +125,11 @@ export function Lobby(
               ))}
             </div>
           )}
-          {rooms.length === 0 && (empty.kind === 'loading' || empty.kind === 'error'
+          {rooms.length === 0 && (empty.kind === 'error'
             ? (
               <EmptyState
-                title={loading ? '正在连接游戏来源' : '暂时无法获取房间'}
-                description={loading
-                  ? '正在获取最新房间，这通常只需几秒。'
-                  : '请检查上方来源状态后重试。已有房间不会被删除。'}
+                title='暂时无法获取房间'
+                description='请检查上方来源状态后重试。已有房间不会被删除。'
               />
             )
             : empty.kind !== 'populated' && (

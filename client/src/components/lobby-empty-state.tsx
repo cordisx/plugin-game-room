@@ -136,15 +136,21 @@ function AnimatedCards() {
 }
 
 export interface LobbyEmptyStateProps {
-  kind: 'lobby' | 'game' | 'filter' | 'search'
+  kind: 'lobby' | 'game' | 'filter' | 'search' | 'loading'
   game?: { id: string; name: string }
   create: () => void
   reset?: () => void
 }
 
 export function LobbyEmptyState({ kind, game, create, reset }: LobbyEmptyStateProps) {
-  const title = kind === 'search' ? '还没有找到这一局' : kind === 'filter' ? '换个条件，遇见下一局' : '下一局，从你开始'
-  const description = kind === 'search'
+  const title = kind === 'loading'
+    ? '正在加载房间…'
+    : kind === 'search'
+    ? '还没有找到这一局'
+    : kind === 'filter'
+    ? '换个条件，遇见下一局'
+    : '下一局，从你开始'
+  const description = kind === 'loading' ? '稍等片刻，好局即将开始。' : kind === 'search'
     ? '试试房间名或房间号，也可以自己开一局。'
     : kind === 'filter'
     ? '当前筛选下暂无房间。'
@@ -192,15 +198,17 @@ export function LobbyEmptyState({ kind, game, create, reset }: LobbyEmptyStatePr
         <div className='gr-lobby-empty-copy'>
           <h2>{title}</h2>
           <p>{description}</p>
-          <div className='gr-lobby-empty-actions'>
-            <Button variant='ghost' className='gr-lobby-empty-create' onClick={create}>
-              <Symbol name='plus' size={16} />
-              {game ? `开一局${game.name}` : '创建房间'}
-            </Button>
-            {reset && kind !== 'lobby' && (
-              <Button variant='ghost' className='gr-lobby-empty-reset' onClick={reset}>{resetLabel}</Button>
-            )}
-          </div>
+          {kind !== 'loading' && (
+            <div className='gr-lobby-empty-actions'>
+              <Button variant='ghost' className='gr-lobby-empty-create' onClick={create}>
+                <Symbol name='plus' size={16} />
+                {game ? `开一局${game.name}` : '创建房间'}
+              </Button>
+              {reset && kind !== 'lobby' && (
+                <Button variant='ghost' className='gr-lobby-empty-reset' onClick={reset}>{resetLabel}</Button>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </section>
