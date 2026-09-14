@@ -92,3 +92,11 @@ export function isGomokuClockPresentation(packageHash: string, digest: string) {
     || (packageHash === '80e5626780b64d4a29c0cba073816fe0524a6ba7ac51aa40ffda702401219b41'
       && digest === '1864117da8bac03520ba4cb69ca764c646872849932153a63216a750ad781ce4')
 }
+
+/** Only legacy waiting-only presentations require different assets at kickoff. */
+export function gameUiLoadPhase(packageHash: string, status?: string) {
+  return waitingPresentations.some(item => item.sourcePackageHash === packageHash)
+      && (status === 'waiting' || status === 'funding')
+    ? 'waiting'
+    : undefined
+}

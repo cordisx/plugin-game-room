@@ -44,3 +44,13 @@ test('Gomoku presentation fix admits only the exact package and UI identity', as
   assert.ok(JSON.stringify(loaded.bundle).includes('方超时'))
   assert.equal(room.game.packageHash, hash)
 })
+
+test('ordinary game transitions and resync do not change asset identity', async () => {
+  const { gameUiLoadPhase } = await import('../src/data/known-html-ui.js')
+  for (const state of ['waiting', 'funding', 'playing', 'finished', 'aborted']) {
+    assert.equal(gameUiLoadPhase('4ce550ff5cf585984dd1d688a8671dde9400f7b1055405ab68104fb847ab4fe0', state), undefined)
+  }
+  assert.equal(gameUiLoadPhase(sourcePackageHash, 'waiting'), 'waiting')
+  assert.equal(gameUiLoadPhase(sourcePackageHash, 'funding'), 'waiting')
+  assert.equal(gameUiLoadPhase(sourcePackageHash, 'playing'), undefined)
+})

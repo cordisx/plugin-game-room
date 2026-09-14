@@ -12,7 +12,7 @@ import { GameSurface as SceneSurface } from './game-surface.js'
 import type { GameRoomPort } from '../data/port.js'
 import { consentFor, type Seat } from '../data/model.js'
 import { RequestFailure } from '../data/http.js'
-import { type KnownHtmlUi, loadKnownHtmlUi } from '../data/known-html-ui.js'
+import { gameUiLoadPhase, type KnownHtmlUi, loadKnownHtmlUi } from '../data/known-html-ui.js'
 import { canResumeFinishedGame, leaveGameView, performGameAction } from '../data/game-action.js'
 import gomokuPresentation from '../data/gomoku-presentation.json' with { type: 'json' }
 import '../styles/game-status.css'
@@ -39,6 +39,8 @@ export function GameSurface(
     exited: () => void
   },
 ) {
+  const loadPhase = gameUiLoadPhase(props.seat.room.game.packageHash, props.seat.status)
+  const [loadAttempt, setLoadAttempt] = useState(0)
   const [loaded, setLoaded] = useState<KnownHtmlUi | null>()
   const [error, setError] = useState('')
   const [exitApproval, setExitApproval] = useState(false)
@@ -55,7 +57,7 @@ export function GameSurface(
       setLoaded({ bundle: null, waitingUi: false })
       return
     }
-    void loadKnownHtmlUi(props.port, props.seat.room, controller.signal, props.seat.status).then(value => {
+    void loadKnownHtmlUi(props.port, props.seat.room, controller.signal, loadPhase).then(value => {
       if (!controller.signal.aborted) setLoaded(value)
     }).catch(e => {
       if (!controller.signal.aborted) setError(e.message)
@@ -65,8 +67,8 @@ export function GameSurface(
     props.port,
     props.seat.room.sourceId,
     props.seat.room.game.packageHash,
-    props.seat.status,
-    props.syncRevision,
+    loadPhase,
+    loadAttempt,
     gomokuPresentation.digest,
   ])
 
@@ -88,8 +90,14 @@ export function GameSurface(
         {props.seat.participants?.map(s => <p key={s.id}>{s.name} · {s.ready ? '已准备' : '未准备'}</p>)}
       </section>
     )
-  } else if (error) content = <p role='status'>{error}</p>
-  else if (loaded === undefined) content = <p role='status'>正在加载游戏界面…</p>
+  } else if (error) {
+    content = (
+      <div role='status'>
+        <p>{error}</p>
+        <Button onClick={() => setLoadAttempt(value => value + 1)}>重新加载</Button>
+      </div>
+    )
+  } else if (loaded === undefined) content = <p role='status'>正在加载游戏界面…</p>
   else if (loaded === null || loaded.bundle === null) content = <SceneSurface {...props} />
   else {
     content = (
@@ -189,6 +197,15 @@ function HtmlGameSurface(
   const latest = useRef(props)
   latest.current = props
   const [status, setStatus] = useState('')
+  const unavailable = useRef(false)
+  const [mountAttempt, setMountAttempt] = useState(0)
+  useEffect(() => {
+    if (unavailable.current) setMountAttempt(value => value + 1)
+    else {
+      mounted.current?.publish(snapshot(latest.current.seat, latest.current.waitingUi))
+      setStatus('')
+    }
+  }, [props.syncRevision])
   useEffect(() => {
     const abort = new AbortController()
     let active = true
@@ -197,11 +214,13 @@ function HtmlGameSurface(
       return
     }
     setStatus('')
+    unavailable.current = false
     void props.htmlService.mount({
       element: root.current,
       bundle: props.bundle,
       title: '游戏界面',
       onUnavailable: code => {
+        unavailable.current = true
         if (active) setStatus(`界面已停止：${code}。可以重新加载或返回大厅。`)
       },
       onRequest: async rawRequest => {
@@ -259,6 +278,8 @@ function HtmlGameSurface(
       },
     }).then(result => {
       if (result.status !== 'accepted') {
+        unavailable.current = true
+
         if (active) setStatus(`无法加载游戏：${result.code}`)
         return
       }
@@ -269,6 +290,7 @@ function HtmlGameSurface(
       mounted.current = result.value
       result.value.publish(snapshot(latest.current.seat, latest.current.waitingUi))
     }).catch(() => {
+      unavailable.current = true
       if (active) setStatus('游戏界面加载失败')
     })
     return () => {
@@ -283,7 +305,7 @@ function HtmlGameSurface(
     props.seat.matchId,
     props.seat.seatId,
     props.seat.room.sourceId,
-    props.syncRevision,
+    mountAttempt,
   ])
   useEffect(() => {
     mounted.current?.publish(snapshot(props.seat, props.waitingUi))
