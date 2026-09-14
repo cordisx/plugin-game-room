@@ -35,6 +35,7 @@ export function generalCreateSchema(
   game?: Game,
   token = false,
   maxPlayers = game?.maxPlayers ?? 2,
+  tokenHint?: string,
 ) {
   const available = states.filter(state => state.state === 'online')
   const hideSource = available.length === 1 && available[0]?.source.id === sourceId
@@ -87,7 +88,7 @@ export function generalCreateSchema(
       ).default(0)
         .description(
           token
-            ? '规则电脑没有独立资金身份，Token 模式不可用'
+            ? 'Token 房间不支持规则电脑'
             : !game?.rulesBot
             ? '此来源或游戏包尚未支持规则电脑'
             : '自动按游戏规则行动，不调用大模型',
@@ -96,6 +97,7 @@ export function generalCreateSchema(
     ),
     allowAgents: label(Schema.boolean().default(true), '允许 Agent 加入'),
   })
+  if (tokenHint) form.dict!.mode.description(tokenHint)
   for (const node of Object.values(form.dict ?? {})) withIcon(node, 'host:settings')
   return form
 }

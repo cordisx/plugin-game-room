@@ -306,6 +306,7 @@ function EnabledGameRoomPage({ page, runtime }: { page: string; runtime: ClientR
           tokenAvailable={port.walletMode?.() === 'canonical-local'
             ? sourceId => !!port.economyAvailable?.(sourceId)
             : undefined}
+          tokenStatus={port.tokenStatus ? sourceId => port.tokenStatus!(sourceId) : undefined}
           preferences={runtime.createPreferences}
           officialOrigins={runtime.officialSourceOrigins}
           context={runtime.createContext}

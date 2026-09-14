@@ -39,6 +39,9 @@ export class CanonicalGameWallet {
     if (prior && prior.servicePublicKey !== servicePublicKey) throw new Error('游戏来源签名已变化，请重新确认来源')
     this.sources.set(source.id, { serviceOrigin: origin, servicePublicKey, serverId: source.id })
   }
+  supportsService(sourceId: string) {
+    return this.sources.has(sourceId)
+  }
   hasService(sourceId: string) {
     return this.walletStatus() === 'ready' && this.sources.has(sourceId)
   }

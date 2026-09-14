@@ -14,6 +14,7 @@ import type {
 } from './model.js'
 /** Internal boundary, not a published server protocol. Adapters must bind every operation to one source. */
 export interface GameRoomPort {
+  tokenStatus?(sourceId: string): 'ready' | 'wallet-unavailable' | 'host-unavailable' | 'source-unsupported'
   economyAvailable?(sourceId: string): boolean
   walletMode?(): import('./wallet-lifecycle.js').WalletMode
   walletStatus?(): 'ready' | 'unavailable'

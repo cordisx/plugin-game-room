@@ -14,11 +14,12 @@ import { CreateRoomPreview } from './create-room-preview.js'
 import '../styles/create-room.css'
 
 export function CreateRoomPanel(
-  { states, create, busy, publish, configure, context, tokenAvailable, preferences, officialOrigins }: {
+  { states, create, busy, publish, configure, context, tokenAvailable, tokenStatus, preferences, officialOrigins }: {
     preferences?: CreatePreferences
     officialOrigins?: readonly string[]
     states: SourceState[]
     context?: CreateContext
+    tokenStatus?: (sourceId: string) => 'ready' | 'wallet-unavailable' | 'host-unavailable' | 'source-unsupported'
     tokenAvailable?: (sourceId: string) => boolean
     create: (sourceId: string, draft: CreateRoom) => void
     busy: boolean
@@ -45,6 +46,12 @@ export function CreateRoomPanel(
   const [gameId, setGameId] = useState(initial.packageHash)
   const catalog = latestSourceGames(source)
   const tokenReady = !source || !tokenAvailable || tokenAvailable(source.source.id)
+  const status = source ? tokenStatus?.(source.source.id) : undefined
+  const tokenHint = tokenReady ? undefined : status === 'source-unsupported'
+    ? '此服务器未提供 Token 结算。'
+    : status === 'host-unavailable'
+    ? '钱包支付功能暂不可用。'
+    : '钱包连接暂不可用，恢复后即可使用。'
   const game = catalog.find(item => item.packageHash === gameId)
   const selectedPackage = source?.snapshot?.games.find(item => item.packageHash === gameId)
   const [name, setName] = useState('朋友来一局')
@@ -72,11 +79,10 @@ export function CreateRoomPanel(
       generalCreateSchema(
         states,
         sourceId,
-        !tokenReady && game
-          ? { ...game, modes: game.modes.filter(mode => mode !== 'token') }
-          : game,
+        game,
         mode === 'token',
         maxPlayers,
+        mode === 'token' ? tokenHint : undefined,
       ),
     [
       states,
@@ -84,7 +90,7 @@ export function CreateRoomPanel(
       game,
       mode,
       maxPlayers,
-      tokenReady,
+      tokenHint,
     ],
   )
   const commonValue = {
@@ -158,9 +164,6 @@ export function CreateRoomPanel(
           )}
           {source && !gameId && catalog.some(item => catalog.filter(other => other.id === item.id).length > 1) && (
             <p className='gr-notice'>请选择玩法；同版本存在多个发布者时须明确选择。</p>
-          )}
-          {!tokenReady && game?.modes.includes('token') && (
-            <p className='gr-muted' role='status'>本地钱包不可用或此来源不支持本地结算；Token 模式暂不可用。</p>
           )}
           <div className='gr-create-tabs' role='tablist' aria-label='房间配置'>
             {[{ id: 'general', label: '通用配置', icon: 'settings' }, {

@@ -68,6 +68,11 @@ export class LivePort implements GameRoomPort {
   walletStatus() {
     return this.wallet.status
   }
+  tokenStatus(sourceId: string) {
+    if (!this.economy.supportsService(sourceId)) return 'source-unsupported' as const
+    if (this.disposed || this.walletStatus() !== 'ready') return 'wallet-unavailable' as const
+    return this.spend.supported() ? 'ready' as const : 'host-unavailable' as const
+  }
   economyAvailable(sourceId: string) {
     return !this.disposed && this.economy.hasService(sourceId) && this.spend.supported()
   }
