@@ -371,7 +371,7 @@ export class LivePort implements GameRoomPort {
     await this.http.prepare?.(source, signal)
     const handshake = object(await this.http.request({ source, path: '/v1/handshake', signal }))
     this.economy.discover(source, handshake.walletSpend)
-    if (handshake.walletSpend && this.spend.supported()) await this.spend.authorize(source.id, signal)
+    // Wallet source approval belongs to explicit connectEconomy, not lobby discovery.
   }
   async list(source: Source, signal: AbortSignal): Promise<SourceSnapshot> {
     if (this.disposed) throw new Error('客户端已关闭')
