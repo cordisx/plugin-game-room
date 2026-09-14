@@ -9,7 +9,7 @@ export class SourceAggregator {
   constructor(
     private port: GameRoomPort,
     private publish: (states: SourceState[]) => void,
-    private timeoutMs = 8000,
+    private timeoutMs = 15000,
     private prepareTimeoutMs = 30000,
   ) {}
   async refresh(): Promise<void> {
