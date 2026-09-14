@@ -72,9 +72,8 @@ export function lobbyEmptyState(states: readonly SourceState[], filters: Filters
   const selected = latestGameCatalog(online).filter(item => item.game.id === filters.gameId)
   const game = selected.length === 1 ? selected[0]!.game : undefined
   if (game) return { kind: 'game' as const, game: { id: game.id, name: game.name } }
-  const rooms = online.flatMap(s => s.snapshot?.rooms ?? [])
   if (
-    ids.length || filters.gameId || filters.agents || filters.vacancy || filters.status === 'available' || rooms.length
+    ids.length || filters.gameId || filters.agents || filters.vacancy || (filters.status ?? 'active') !== 'active'
   ) {
     return { kind: 'filter' as const }
   }

@@ -145,7 +145,7 @@ export function Lobby(
                 kind={empty.kind}
                 game={'game' in empty ? empty.game : undefined}
                 create={create}
-                reset={empty.kind === 'lobby'
+                reset={empty.kind === 'lobby' || empty.kind === 'loading'
                   ? undefined
                   : () => setFilters(empty.kind === 'search' ? { ...filters, search: '' } : defaultLobbyFilters())}
               />

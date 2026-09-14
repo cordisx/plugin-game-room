@@ -7,7 +7,7 @@ import {
   openLobbyCreate,
   resolveCreateSelection,
 } from '../src/data/lobby-context.js'
-import type { Game, SourceState } from '../src/data/model.js'
+import type { Game, Room, SourceState } from '../src/data/model.js'
 const source = (id: string, games = ['gomoku', 'holdem']): SourceState => ({
   source: { id, name: id, url: 'http://127.0.0.1:1234', accountId: '', enabled: true },
   state: 'online',
@@ -96,4 +96,16 @@ test('a selected game prefers its latest version but requires an explicit publis
     packageHash: 'other-package',
   })
   assert.equal(resolveCreateSelection([state], context).packageHash, '')
+})
+
+test('historical finished rooms do not imply a user-applied filter', () => {
+  const state = source('one')
+  state.snapshot!.rooms = [{
+    id: 'ended',
+    sourceId: 'one',
+    state: 'finished',
+    game: state.snapshot!.games[0],
+  }] as Room[]
+  assert.equal(lobbyEmptyState([state], defaultLobbyFilters()).kind, 'lobby')
+  assert.equal(lobbyEmptyState([state], { ...defaultLobbyFilters(), agents: true }).kind, 'filter')
 })
