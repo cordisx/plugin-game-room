@@ -557,6 +557,15 @@ export class LivePort implements GameRoomPort {
     await this.seat(sourceId, view)
     return { sourceId, roomId: string(view.id) }
   }
+  async createAndJoin(sourceId: string, draft: CreateRoom, signal: AbortSignal): Promise<Seat> {
+    const invitation = await this.create(sourceId, draft, signal)
+    signal.throwIfAborted()
+    // Creation already seats the owner and returns the authenticated RoomView.
+    // Do not block entry on a second lobby/catalog/wallet refresh.
+    const view = this.views.get(JSON.stringify([sourceId, invitation.roomId]))
+    if (!view) throw new Error('房间已创建，请从大厅返回房间')
+    return this.seat(sourceId, view)
+  }
   async join(invitation: Invitation, signal: AbortSignal) {
     const source = this.source(invitation.sourceId)
     if (invitation.sourceUrl && new URL(invitation.sourceUrl).origin !== new URL(source.url).origin) {

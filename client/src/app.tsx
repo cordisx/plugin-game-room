@@ -317,8 +317,9 @@ function EnabledGameRoomPage({ page, runtime }: { page: string; runtime: ClientR
           create={(sourceId, draft) =>
             run(async signal => {
               await ensureAccount(sourceId, signal)
-              const invitation = await port.create(sourceId, draft, signal)
-              runtime.seat = await port.join(invitation, signal)
+              runtime.seat = port.createAndJoin
+                ? await port.createAndJoin(sourceId, draft, signal)
+                : await port.join(await port.create(sourceId, draft, signal), signal)
               navigate('prepare')
             })}
         />

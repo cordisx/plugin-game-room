@@ -28,8 +28,10 @@ const fixture = {
 class TestTransport implements HttpTransport {
   tokens = new Map<string, string>()
   dropNextAction = false
+  requests: string[] = []
   async connect() {}
   async request(request: HttpRequest): Promise<unknown> {
+    this.requests.push(`${request.method ?? 'GET'} ${request.path}`)
     const response = await fetch(new URL(request.path, request.source.url), {
       method: request.method ?? 'GET',
       signal: request.signal,
@@ -109,14 +111,15 @@ test('real two-server HTTP: exact packages, two-player match, lost ACK, replay, 
     }
     const port = new LivePort(sources, transport)
     const bob = new LivePort([bobSource], bobTransport)
-    await port.connect(sources[0]!.id)
-    await bob.connect(bobSource.id)
+    await port.connect(sources[0]!.id, 'account')
+    await bob.connect(bobSource.id, 'account')
     assert.equal(port.isConnected(sources[0]!.id), true)
     const catalog = await port.list(sources[0]!, signal)
     assert.equal(catalog.compatible, true)
     assert.equal(catalog.games.length, 2)
     const game = catalog.games.find(game => game.publisherId === bobSource.accountId)!
-    const invitation = await port.create(sources[0]!.id, {
+    transport.requests.length = 0
+    let aliceSeat = await port.createAndJoin(sources[0]!.id, {
       name: 'Real client room',
       gameId: game.id,
       gameVersion: game.version,
@@ -125,8 +128,10 @@ test('real two-server HTTP: exact packages, two-player match, lost ACK, replay, 
       stake: 0,
       allowAgents: true,
     }, signal)
+    assert.deepEqual(transport.requests, ['POST /v1/rooms'])
+    assert.equal(aliceSeat.canCloseRoom, true)
+    const invitation = { sourceId: sources[0]!.id, roomId: aliceSeat.room.id }
     assert.equal(decodeInvitation(encodeInvitation(invitation, sources), sources).sourceId, sources[0]!.id)
-    let aliceSeat = await port.join(invitation, signal)
     let bobSeat = await bob.join(invitation, signal)
     assert.equal(aliceSeat.room.game.packageHash, game.packageHash)
     assert.equal(aliceSeat.room.game.publisherId, bobSource.accountId)

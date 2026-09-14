@@ -49,6 +49,7 @@ export interface GameRoomPort {
   sources: readonly Source[]
   list(source: Source, signal: AbortSignal): Promise<SourceSnapshot>
   create(sourceId: string, draft: CreateRoom, signal: AbortSignal): Promise<Invitation>
+  createAndJoin?(sourceId: string, draft: CreateRoom, signal: AbortSignal): Promise<Seat>
   join(invitation: Invitation, signal: AbortSignal): Promise<Seat>
   ready(seat: Seat, ready: boolean, consent: Consent | undefined, signal: AbortSignal): Promise<Seat>
   leave(seat: Seat, signal: AbortSignal): Promise<void>
