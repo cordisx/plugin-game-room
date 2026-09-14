@@ -1,3 +1,4 @@
+import { RoomRecovery } from './data/room-recovery.js'
 import { DEFAULT_OFFICIAL_SOURCE_ORIGINS } from './data/create-source-selection.js'
 import { CreatePreferences } from './data/create-preferences.js'
 import type { WalletSpendV1 } from '@cordisx/protocol/wallet-spend/v1'
@@ -207,8 +208,14 @@ export function apply(
       currentUserListeners.delete(changed)
     }
   }
+  const roomRecovery = new RoomRecovery()
+  let recoveryEpoch = 0
   const publishCurrentUser = (state: CurrentUserState) => {
     if (JSON.stringify(currentUser) === JSON.stringify(state)) return
+    const recoverySeat = roomRecovery.update(currentUser, state, runtime.seat)
+    const epoch = ++recoveryEpoch
+    runtime.recoveringRoom = state.status === 'unavailable' && state.reason !== 'signed-out' && roomRecovery.pending
+
     if (
       currentUser.status === 'available'
       && (state.status !== 'available' || currentUser.subject !== state.subject)
@@ -222,6 +229,23 @@ export function apply(
     currentUser = state
     runtime.currentUser = state
     if (port instanceof LivePort) port.setCurrentUser(state)
+    if (recoverySeat && state.status === 'available' && port instanceof LivePort) {
+      runtime.recoveringRoom = true
+      const signal = AbortSignal.timeout(20000)
+      void (async () => {
+        if (!port.isConnected?.(recoverySeat.room.sourceId)) await port.connect?.(recoverySeat.room.sourceId)
+        signal.throwIfAborted()
+        const seat = await port.refreshSeat!(recoverySeat, signal)
+        if (epoch !== recoveryEpoch || runtime.seat) return
+        runtime.seat = seat
+        roomRecovery.clear()
+      })().catch(() => {}).finally(() => {
+        if (epoch !== recoveryEpoch) return
+        runtime.recoveringRoom = false
+        for (const listener of currentUserListeners) listener()
+      })
+    }
+
     for (const listener of profileListeners) listener(state)
     for (const listener of currentUserListeners) listener()
   }

@@ -35,6 +35,7 @@ import { PageShell } from './components/page-shell.js'
 import type { CurrentUserState } from './data/current-user-sync.js'
 export type ClientRuntime = {
   currentUser?: CurrentUserState
+  recoveringRoom?: boolean
   port: GameRoomPort
   createPreferences?: CreatePreferences
   officialSourceOrigins?: readonly string[]
@@ -331,9 +332,8 @@ function EnabledGameRoomPage({ page, runtime }: { page: string; runtime: ClientR
       )}
       {page === 'prepare' && !runtime.seat && (
         <section className='gr-panel-section' aria-label='恢复房间'>
-          <p role='status'>当前页面的席位信息已丢失。返回大厅恢复现有连接，再选择「返回房间」。</p>
-          <p className='gr-muted'>若原访客连接已失效，将无法恢复原席位；请勿重复创建访客身份。</p>
-          <Button onClick={() => navigate('lobby')}>返回大厅恢复</Button>
+          <p role='status'>{runtime.recoveringRoom ? '正在恢复房间连接…' : '暂时无法恢复房间连接'}</p>
+          {!runtime.recoveringRoom && <Button onClick={() => navigate('lobby')}>返回大厅</Button>}
         </section>
       )}
       {page === 'prepare' && runtime.seat && (
