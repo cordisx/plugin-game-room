@@ -172,7 +172,6 @@ export type CreateRoom = {
   mode: EconomyMode
   stake: number
   allowAgents: boolean
-  consentAccepted?: boolean
 }
 export type Consent = {
   packageHash?: string

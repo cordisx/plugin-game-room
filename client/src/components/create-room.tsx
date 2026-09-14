@@ -63,7 +63,6 @@ export function CreateRoomPanel(
     value: game?.maxPlayers ?? 2,
   })
   const [agents, setAgents] = useState(true)
-  const [accepted, setAccepted] = useState(false)
   const [tab, setTab] = useState('general')
   const [gameDraft, setGameDraft] = useState<{ key: string; value: Record<string, string | number | boolean> }>({
     key: '',
@@ -111,9 +110,6 @@ export function CreateRoomPanel(
   }
 
   useEffect(() => {
-    setAccepted(false)
-  }, [sourceId, gameId, mode, stake, maxPlayers, JSON.stringify(config)])
-  useEffect(() => {
     if (game && !game.modes.includes(mode)) setMode(game.modes[0] ?? 'score')
   }, [game, mode])
   useEffect(() => {
@@ -144,7 +140,7 @@ export function CreateRoomPanel(
   const disabled = (mode === 'token' && !tokenReady) || !configValid || !commonValid || busy || !source || !game
     || !name.trim()
     || !game.modes.includes(mode)
-    || (mode === 'token' && (!accepted || !validStake))
+    || (mode === 'token' && !validStake)
   return (
     <section className='gr-create' aria-label='创建房间设置'>
       <div className='gr-create-workspace'>
@@ -313,15 +309,6 @@ export function CreateRoomPanel(
               )
               : '无需 Token'}
           </span>
-          {mode === 'token' && (
-            <label className='gr-check'>
-              <input
-                type='checkbox'
-                checked={accepted}
-                onChange={event => setAccepted(event.target.checked)}
-              />我同意此版本规则、费用与退款政策
-            </label>
-          )}
         </div>
         <Button
           className='gr-create-submit'
@@ -340,7 +327,6 @@ export function CreateRoomPanel(
               botCount,
               maxPlayers,
               allowAgents: agents,
-              consentAccepted: accepted,
             })
           }}
         >

@@ -526,7 +526,6 @@ export class LivePort implements GameRoomPort {
     const pkg = this.packages.get(sourceId)?.find(pkg => pkg.hash === draft.packageHash)
     if (!pkg) throw new Error('此来源玩法目录已变更，请刷新')
     if (draft.botCount && !this.botSources.has(sourceId)) throw new Error('此服务器尚未支持规则电脑')
-    if (draft.mode === 'token' && !draft.consentAccepted) throw new Error('请先确认固定包版本、审核说明与投入条款')
     const manifest = object(pkg.manifest)
     const policies = Array.isArray(manifest.settlementPolicies) ? manifest.settlementPolicies : ['equal-winners-v1']
     const view = object(
