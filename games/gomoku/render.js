@@ -33,7 +33,7 @@ globalThis.render = (view, context) => {
           stone === null ? '空位' : stone === 0 ? '黑子' : '白子'
         }`,
         action: { type: 'place', x: index % view.size, y: Math.floor(index / view.size) },
-        disabled: !turn || stone !== null,
+        disabled: !turn || !!view.undo || stone !== null,
       })),
     },
     text(
@@ -44,6 +44,17 @@ globalThis.render = (view, context) => {
         : '选择空位落子',
       'muted',
     ),
+    ...(view.undo
+      ? [text(view.undo.requester === view.selfSeat ? '等待对方同意悔棋' : '对方申请悔棋')]
+      : []),
+    ...(turn
+      ? (view.legalActions ?? []).filter(action => action.type !== 'place').map(action => ({
+        type: 'button',
+        label:
+          { 'request-undo': '悔棋', 'approve-undo': '同意', 'reject-undo': '拒绝' }[action.type],
+        action,
+      }))
+      : []),
     text('连成至少五子获胜 · 超时判负', 'muted'),
   ])
 }

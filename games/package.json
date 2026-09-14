@@ -10,7 +10,7 @@
     "format": "dprint fmt",
     "format:check": "dprint check",
     "lint": "eslint . && stylelint \"{gomoku,holdem,ui}/**/*.css\"",
-    "check": "npm run format:check && npm run lint && npm test && npm run build && npm run validate -- dist/gomoku-1.5.12.json dist/texas-holdem-1.4.10.json"
+    "check": "npm run format:check && npm run lint && npm test && npm run build && npm run validate -- dist/gomoku-1.6.0.json dist/texas-holdem-1.4.10.json"
   },
   "devDependencies": {
     "@cordisx/eslint-config": "github:cordisx/cordisxmono#32fa3b257cd5a7bfa0bb2d5f1012ca18665d1637",

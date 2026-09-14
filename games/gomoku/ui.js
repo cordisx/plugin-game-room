@@ -103,7 +103,7 @@ globalThis.renderGame = (
   v.board.forEach((stone, i) => {
     const x = i % v.size, y = Math.floor(i / v.size)
     const last = v.lastMove?.x === x && v.lastMove?.y === y
-    const enabled = state.canAct && !state.readOnly && !result && stone === null && !busy
+    const enabled = state.canAct && !state.readOnly && !result && stone === null && !v.undo && !busy
     const cell = button('', () => act({ type: 'place', x, y }), !enabled, 'intersection')
     cell.setAttribute(
       'aria-label',
@@ -141,5 +141,20 @@ globalThis.renderGame = (
   })
   layout.append(topPlayers, board, bottomPlayers)
   container.append(layout)
+  if (!waiting && !result && !state.readOnly) {
+    const controls = node('div', 'gomoku-undo')
+    if (v.undo) {
+      controls.append(
+        node('span', '', v.undo.requester === self ? '等待对方同意悔棋' : '对方申请悔棋'),
+      )
+      if (state.canAct && v.undo.requester !== self) {
+        controls.append(button('同意', () => act({ type: 'approve-undo' }), busy))
+        controls.append(button('拒绝', () => act({ type: 'reject-undo' }), busy))
+      }
+    } else if (v.canUndo) {
+      controls.append(button('悔棋', () => act({ type: 'request-undo' }), busy || !state.canAct))
+    }
+    container.append(controls)
+  }
   return container
 }

@@ -175,3 +175,12 @@ main:has(> .gomoku) > :not(.sr-only) {
   border-width: 1px;
   border-style: solid;
 }
+
+.gomoku-undo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 8px;
+}

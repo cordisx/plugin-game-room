@@ -74,3 +74,55 @@ test('versioned board configuration changes setup, observation and coordinate bo
     /invalid_config/,
   )
 })
+
+test('human undo requires approval and rolls back both moves to requester turn', async () => {
+  let t = (await run('setup', [])).value
+  for (const seat of [0, 1]) {
+    t = (await run('act', [t.state, { type: 'place', x: seat, y: 0 }], seat)).value
+  }
+  t = (await run('act', [t.state, { type: 'request-undo' }], 0)).value
+  assert.equal(t.turn, 1)
+  assert.equal(t.state.moves, 2)
+  await assert.rejects(run('act', [t.state, { type: 'approve-undo' }], 0), /invalid_action/)
+  await assert.rejects(run('act', [t.state, { type: 'place', x: 2, y: 0 }], 1), /invalid_action/)
+  t = (await run('act', [t.state, { type: 'approve-undo' }], 1)).value
+  assert.equal(t.turn, 0)
+  assert.equal(t.state.moves, 0)
+  assert.equal(t.state.lastMove, null)
+  assert(t.state.board.every(cell => cell === null))
+})
+test('reject and timeout preserve board and prevent repeated requests at the same position', async () => {
+  for (const timeout of [false, true]) {
+    let t = (await run('setup', [])).value
+    for (const seat of [0, 1]) {
+      t = (await run('act', [t.state, { type: 'place', x: seat, y: 0 }], seat)).value
+    }
+    t = (await run('act', [t.state, { type: 'request-undo' }], 0)).value
+    t = (await run(
+      timeout ? 'timeout' : 'act',
+      timeout ? [t.state] : [t.state, { type: 'reject-undo' }],
+      1,
+    )).value
+    assert.equal(t.state.moves, 2)
+    assert.equal(t.turn, 0)
+    await assert.rejects(run('act', [t.state, { type: 'request-undo' }], 0), /invalid_action/)
+  }
+})
+test('bot and Agent opponents automatically accept undo; spectators and empty board cannot request it', async () => {
+  for (const kind of ['bot', 'agent']) {
+    const context = { ...ctx, participants: [{ kind: 'human' }, { kind }] }
+    let t = (await run('setup', [])).value
+    await assert.rejects(run('act', [t.state, { type: 'request-undo' }], 0), /invalid_action/)
+    for (const seat of [0, 1]) {
+      t = (await run('act', [t.state, { type: 'place', x: seat, y: 0 }], seat)).value
+    }
+    await assert.rejects(run('act', [t.state, { type: 'request-undo' }], null), /invalid_action/)
+    t = (await invoke(rules, 'act', [t.state, { type: 'request-undo' }], {
+      ...context,
+      seatIndex: 0,
+    })).value
+    assert.equal(t.state.undo, null)
+    assert.equal(t.state.moves, 0)
+    assert.equal(t.turn, 0)
+  }
+})

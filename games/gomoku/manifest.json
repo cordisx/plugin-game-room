@@ -1,6 +1,6 @@
 {
   "id": "gomoku",
-  "version": "1.5.12",
+  "version": "1.6.0",
   "name": "五子棋",
   "minPlayers": 2,
   "maxPlayers": 2,
@@ -9,7 +9,7 @@
     "local-chips",
     "token"
   ],
-  "description": "自由五子棋；支持 9×9、13×13、15×15 棋盘，连成至少五子获胜，超时判负。",
+  "description": "自由五子棋；支持 9×9、13×13、15×15 棋盘，连成至少五子获胜，超时判负。轮到自己时可申请悔棋，真人对手同意后撤回上一轮，电脑和 Agent 对手自动同意。",
   "configSchema": {
     "type": "object",
     "additionalProperties": false,

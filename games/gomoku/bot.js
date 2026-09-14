@@ -22,6 +22,7 @@ globalThis.bot = view => {
   }
   let best = null, bestScore = -Infinity
   for (const action of legalActions) {
+    if (action.type !== 'place') continue
     const own = strength(action.x, action.y, selfSeat)
     const other = strength(action.x, action.y, 1 - selfSeat)
     const score = own >= 1000000 ? 100000000 : other >= 1000000
