@@ -1,3 +1,4 @@
+import { latestSourceGames } from './game-catalog.js'
 import { type CreateContext, resolveCreateSelection } from './lobby-context.js'
 import { normalizeSourceUrl, type SourceState } from './model.js'
 /** Product-owned configured origin, not a server name or remotely supplied trust claim. */
@@ -27,7 +28,9 @@ export function reconcileCreateSelection(
   const available = states.filter(state =>
     state.state === 'online' && state.snapshot?.compatible && state.source.enabled
   )
-  const official = new Set(options.officialOrigins?.map(sourceOrigin).filter(Boolean))
+  const official = new Set(
+    (options.officialOrigins ?? DEFAULT_OFFICIAL_SOURCE_ORIGINS).map(sourceOrigin).filter(Boolean),
+  )
   const previous = options.previous
     && available.find(state =>
       state.source.id === options.previous?.sourceId && sourceOrigin(state.source.url) === options.previous.origin
@@ -37,11 +40,13 @@ export function reconcileCreateSelection(
     : (previous ?? available.find(state => official.has(sourceOrigin(state.source.url)))
       ?? available.find(state => state.source.id === context?.sourceId) ?? available[0])?.source.id ?? ''
   if (sourceId === current.sourceId && (current.packageHash || options.gameEdited)) return current
+  const games = latestSourceGames(available.find(state => state.source.id === sourceId))
+  const requestedGame = games.some(game => game.id === context?.gameId) ? context?.gameId : undefined
   const next = resolveCreateSelection(states, {
-    ...context,
+    gameId: requestedGame,
     sourceId,
     chooseSource: false,
-    chooseGame: context?.chooseGame ?? false,
+    chooseGame: false,
   })
   return { sourceId, packageHash: next.packageHash }
 }

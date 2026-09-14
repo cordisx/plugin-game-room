@@ -311,3 +311,31 @@ test('detached public documents ignore their late load and a new attachment can 
   assert.equal(preferences.current?.sourceId, 'old')
   preferences.dispose()
 })
+
+test('stale chooseGame context cannot leave an automatically selected source without its available default', () => {
+  const local = state('local')
+  const stale = { chooseSource: true, chooseGame: true }
+  assert.deepEqual(reconcileCreateSelection([local], stale, empty), { sourceId: 'local', packageHash: 'local-gomoku' })
+  assert.deepEqual(reconcileCreateSelection([local], { ...stale, gameId: 'removed-game' }, empty), {
+    sourceId: 'local',
+    packageHash: 'local-gomoku',
+  })
+  const explicit = { sourceId: 'local', packageHash: 'manual-game' }
+  assert.deepEqual(
+    reconcileCreateSelection([local], stale, explicit, { sourceEdited: true, gameEdited: true }),
+    explicit,
+  )
+})
+test('automatic game defaults retain a supported logical context and never resolve ambiguous publishers silently', () => {
+  const local = state('local')
+  local.snapshot!.games.push({ ...local.snapshot!.games[0]!, id: 'holdem', packageHash: 'local-holdem' })
+  assert.equal(
+    reconcileCreateSelection([local], { gameId: 'holdem', chooseSource: true, chooseGame: true }, empty).packageHash,
+    'local-holdem',
+  )
+  local.snapshot!.games.push({ ...local.snapshot!.games[0]!, publisherId: 'other', packageHash: 'other-gomoku' })
+  assert.deepEqual(reconcileCreateSelection([local], { chooseSource: true, chooseGame: true }, empty), {
+    sourceId: 'local',
+    packageHash: '',
+  })
+})

@@ -222,7 +222,10 @@ export function CreateRoomPanel(
                     locale='zh-CN'
                     disabled={busy}
                     onChange={({ value }) => {
-                      const nextSource = typeof value.sourceId === 'string' ? value.sourceId : sourceId
+                      const nextSource = typeof value.sourceId === 'string'
+                          && available.some(state => state.source.id === value.sourceId)
+                        ? value.sourceId
+                        : sourceId
                       const nextGameId = nextSource !== sourceId
                         ? resolveCreateSelection(states, {
                           ...context,
@@ -231,7 +234,9 @@ export function CreateRoomPanel(
                           chooseSource: false,
                           chooseGame: false,
                         }).packageHash
-                        : String(value.gameId)
+                        : catalog.some(item => item.packageHash === value.gameId)
+                        ? String(value.gameId)
+                        : gameId
                       const nextGame = latestSourceGames(states.find(state => state.source.id === nextSource)).find(
                         item => item.packageHash === nextGameId,
                       )
