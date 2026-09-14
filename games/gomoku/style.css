@@ -177,6 +177,8 @@ main:has(> .gomoku) > :not(.sr-only) {
 }
 
 .gomoku-undo {
+  min-height: 64px;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -193,4 +195,8 @@ main:has(> .gomoku) > :not(.sr-only) {
 }
 .gomoku-clock[data-urgent="true"] {
   color: light-dark(#a33423, #ffb4a8);
+}
+
+main:has(> .gomoku) > .room-lifecycle {
+  min-height: 44px;
 }

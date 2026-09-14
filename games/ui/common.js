@@ -137,7 +137,7 @@ globalThis.ui = (() => {
     if (roomActions.includes('next-round')) {
       lifecycle.append(button('下一局准备', () => GameUI.requestNextRound(), false, 'primary'))
     }
-    if (lifecycle.children.length) root.append(lifecycle)
+    if (lifecycle.children.length || current.observation?.kind === 'gomoku') root.append(lifecycle)
     if (notice) {
       const el = node('p', 'notice', notice)
       el.setAttribute('role', 'status')
@@ -145,6 +145,7 @@ globalThis.ui = (() => {
     }
   }
   GameUI.subscribe(value => {
+    if (current && JSON.stringify(value) === JSON.stringify(current)) return
     if (!current || value.sequence > current.sequence) {
       busy = false
       optimisticReady = undefined

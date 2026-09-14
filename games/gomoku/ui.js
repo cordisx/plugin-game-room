@@ -69,6 +69,10 @@ globalThis.renderGame = (
     update()
     if (deadline > Date.now()) turnClock = setInterval(update, 250)
     container.append(clock)
+  } else {
+    const clock = node('p', 'gomoku-clock', '\u00a0')
+    clock.setAttribute('aria-hidden', 'true')
+    container.append(clock)
   }
   const layout = node('div', 'gomoku-layout')
   layout.style.setProperty('--size', v.size)
@@ -170,13 +174,11 @@ globalThis.renderGame = (
   })
   layout.append(topPlayers, board, bottomPlayers)
   container.append(layout)
+  const controls = node('div', 'gomoku-undo')
   if (result && v.canResumeUndo && !state.readOnly) {
-    const controls = node('div', 'gomoku-undo')
     controls.append(button('悔棋并继续', () => act({ type: 'resume-undo' }), busy || !state.canAct))
-    container.append(controls)
   }
   if (!waiting && !result && !state.readOnly) {
-    const controls = node('div', 'gomoku-undo')
     if (v.undo) {
       controls.append(
         node('span', '', v.undo.requester === self ? '等待对方同意悔棋' : '对方申请悔棋'),
@@ -185,10 +187,10 @@ globalThis.renderGame = (
         controls.append(button('同意', () => act({ type: 'approve-undo' }), busy))
         controls.append(button('拒绝', () => act({ type: 'reject-undo' }), busy))
       }
-    } else if (v.canUndo) {
-      controls.append(button('悔棋', () => act({ type: 'request-undo' }), busy || !state.canAct))
+    } else {
+      controls.append(button('悔棋', () => act({ type: 'request-undo' }), busy || !state.canAct || !v.canUndo))
     }
-    container.append(controls)
   }
+  container.append(controls)
   return container
 }
