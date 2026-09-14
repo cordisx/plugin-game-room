@@ -188,6 +188,9 @@ export class LivePort implements GameRoomPort {
       throw new Error('此来源支持免密钥访客连接；账户登录不能使用服务器访问令牌代替')
     }
     if (mode !== 'account' && await this.restoreSession(source, new AbortController().signal)) return
+    if (mode !== 'account' && !this.guestSources.has(sourceId)) {
+      throw new Error('尚未登录此游戏服务器；此服务器暂未接入 Codex 自动登录。')
+    }
     if (!this.http.connect) throw new Error('此 Host 尚不支持安全账户连接')
     const guest = mode !== 'account' && this.guestSources.has(sourceId)
     if (guest) {

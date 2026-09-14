@@ -222,6 +222,8 @@ test('guest-capable sources never request a bearer login; protected sources reta
   assert.deepEqual(calls, ['guest'])
   guests = false
   await port.list(source, signal)
-  await port.connect(source.id)
+  await assert.rejects(port.connect(source.id), /尚未登录此游戏服务器/)
+  assert.deepEqual(calls, ['guest'])
+  await port.connect(source.id, 'account')
   assert.deepEqual(calls, ['guest', 'login'])
 })
