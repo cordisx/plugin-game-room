@@ -2,7 +2,7 @@ import { defaultLobbyFilters, lobbyEmptyState } from '../data/lobby-context.js'
 import { LobbyEmptyState } from './lobby-empty-state.js'
 import { useRoomLayoutMotion } from './use-room-layout-motion.js'
 import { RoomDetails } from './room-details.js'
-import { useState } from 'cordisx/react'
+import { useEffect, useState } from 'cordisx/react'
 import { LobbyFilters } from './lobby-filters.js'
 import type { ReactElement } from 'react'
 import { Button, EmptyState, SearchField } from 'cordisx/ui'
@@ -45,6 +45,10 @@ export function Lobby(
     dispatch: (room: Room) => void
   },
 ): ReactElement {
+  const [joiningKey, setJoiningKey] = useState<string | null>(null)
+  useEffect(() => {
+    if (!busy) setJoiningKey(null)
+  }, [busy])
   const [watching, setWatching] = useState(initialWatching ?? false)
   const [retainedRoom, setRetainedRoom] = useState<Room | null>(initialRoom ?? null)
   const [detailKey, setDetailKey] = useState<string | null>(initialRoom ? roomKey(initialRoom) : null)
@@ -116,9 +120,13 @@ export function Lobby(
                   }}
                   connected={connected(room.sourceId)}
                   busy={busy}
+                  joining={busy && joiningKey === roomKey(room)}
                   room={room}
                   sourceName={states.find(state => state.source.id === room.sourceId)?.source.name ?? room.sourceId}
-                  join={() => join(room)}
+                  join={() => {
+                    setJoiningKey(roomKey(room))
+                    join(room)
+                  }}
                   dispatch={() => dispatch(room)}
                   sources={states.map(state => state.source)}
                 />

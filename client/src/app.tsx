@@ -272,11 +272,6 @@ function EnabledGameRoomPage({ page, runtime }: { page: string; runtime: ClientR
           join={room =>
             run(async signal => {
               await ensureAccount(room.sourceId, signal)
-              if (room.state !== 'waiting' || room.occupied >= room.capacity) {
-                const snapshot = await port.list(port.sources.find(source => source.id === room.sourceId)!, signal)
-                const current = snapshot.rooms.find(value => value.id === room.id)
-                if (!current?.owned && !(current?.state === 'waiting' && current.occupied < current.capacity)) return
-              }
               runtime.seat = await port.join({ sourceId: room.sourceId, roomId: room.id }, signal)
               navigate('prepare')
             })}

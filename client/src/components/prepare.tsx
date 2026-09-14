@@ -33,21 +33,6 @@ export function PreparePanel({ seat, detailsOpen, closeDetails, busy, sources, b
   const layout = resolveRoomDetailLayout(availableWidth, seat.room.game.minimumViewport?.width)
   return (
     <section ref={root} className='gr-room-play' aria-label='游戏与席位状态'>
-      {seat.canCloseRoom && closeRoom && (
-        <div className='gr-room-owner-actions'>
-          <Button variant='ghost' disabled={busy} onClick={() => setConfirmClose(true)}>
-            <Symbol name='close' size={16} />
-            关闭房间
-          </Button>
-          {confirmClose && (
-            <div role='group' aria-label='确认关闭房间'>
-              <span>关闭后所有玩家将退出房间。</span>
-              <Button disabled={busy} onClick={() => setConfirmClose(false)}>取消</Button>
-              <Button disabled={busy} onClick={closeRoom}>确认关闭</Button>
-            </div>
-          )}
-        </div>
-      )}
       <RoomDetailsPane
         open={detailsOpen}
         mode={layout.mode}
@@ -56,6 +41,21 @@ export function PreparePanel({ seat, detailsOpen, closeDetails, busy, sources, b
         game={surface}
       >
         <RoomSummary room={seat.room} sources={sources} busy={busy} bots={bots} />
+        {seat.canCloseRoom && closeRoom && (
+          <div className='gr-room-owner-actions'>
+            <Button variant='ghost' disabled={busy} onClick={() => setConfirmClose(true)}>
+              <Symbol name='close' size={16} />
+              关闭房间
+            </Button>
+            {confirmClose && (
+              <div role='group' aria-label='确认关闭房间'>
+                <span>关闭后所有玩家将退出房间。</span>
+                <Button disabled={busy} onClick={() => setConfirmClose(false)}>取消</Button>
+                <Button disabled={busy} onClick={closeRoom}>确认关闭</Button>
+              </div>
+            )}
+          </div>
+        )}
       </RoomDetailsPane>
     </section>
   )

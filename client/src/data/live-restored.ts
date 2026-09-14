@@ -571,8 +571,25 @@ export class LivePort implements GameRoomPort {
     if (invitation.sourceUrl && new URL(invitation.sourceUrl).origin !== new URL(source.url).origin) {
       throw new Error('邀请来源地址不匹配')
     }
-    await this.list(source, signal)
     const key = JSON.stringify([source.id, invitation.roomId])
+    if (!this.isConnected(source.id) || !this.cards.has(key) || !this.packages.has(source.id)) {
+      await this.list(source, signal)
+    }
+    const card = this.cards.get(key)
+    if (!card) throw new Error('此来源没有该房间')
+    // The server's join operation also returns an existing human seat, and
+    // checks capacity and current state atomically. No speculative GET needed.
+    if (card.mode !== 'token') {
+      return this.seat(
+        source.id,
+        await this.request(
+          source.id,
+          `/v1/rooms/${encodeURIComponent(invitation.roomId)}/join`,
+          signal,
+          {},
+        ),
+      )
+    }
     const existing = this.views.get(key)
     if (existing && typeof existing.selfSeatId === 'string') {
       return this.seat(
@@ -588,8 +605,6 @@ export class LivePort implements GameRoomPort {
     } catch (error) {
       if (!(error instanceof RequestFailure) || error.outcome !== 'rejected') throw error
     }
-    const card = this.cards.get(key)
-    if (!card) throw new Error('此来源没有该房间')
     if (card.mode === 'token') {
       this.views.set(key, card)
       return {

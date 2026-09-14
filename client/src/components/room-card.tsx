@@ -48,13 +48,14 @@ function PlayerAvatar({ avatar, kind }: { avatar?: string; kind?: 'human' | 'age
     </svg>
   )
 }
-export function RoomCard({ room, sourceName, sources, join, dispatch, busy, inspect }: {
+export function RoomCard({ room, sourceName, sources, join, dispatch, busy, joining, inspect }: {
   room: Room
   sourceName: string
   sources: Source[]
   join: () => void
   dispatch: () => void
   busy: boolean
+  joining?: boolean
   connected: boolean
   inspect: () => void
 }) {
@@ -142,7 +143,13 @@ export function RoomCard({ room, sourceName, sources, join, dispatch, busy, insp
         </p>
         <div className='gr-card-actions'>
           <Button className='gr-card-primary' disabled={busy} onClick={room.owned || available ? join : showDetails}>
-            {room.owned ? '返回房间' : available ? room.mode === 'token' ? '确认加入' : '加入' : '查看房间'}
+            {joining
+              ? '正在进入…'
+              : room.owned
+              ? '返回房间'
+              : available
+              ? room.mode === 'token' ? '确认加入' : '加入'
+              : '查看房间'}
           </Button>
           {AGENT_DISPATCH_ENABLED && room.allowAgents && available && (
             <Button

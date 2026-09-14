@@ -13,8 +13,8 @@
   display: flex;
   justify-content: flex-end;
   flex: 0 0 auto;
-  padding: 8px 16px;
-  border-bottom: 1px solid var(--gr-border);
+  padding: 16px;
+  border-top: 1px solid var(--gr-border);
 }
 .gr-room-owner-actions [role="group"] {
   display: flex;
