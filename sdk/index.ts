@@ -99,6 +99,8 @@ export interface EconomyIdentity {
   url: string
 }
 export interface RoomCard {
+  closedAt?: number
+
   creatorAccountId: string
   id: string
   matchId: string

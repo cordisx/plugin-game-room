@@ -338,6 +338,7 @@ export function createGameRuntime(options: RuntimeOptions) {
             if (op === 'join') {
               return await engine.join(account, id, input.consent as Consent | undefined)
             }
+            if (op === 'close') return await engine.closeRoom(account, id)
             if (op === 'leave') {
               return await engine.leave(account, id, typeof input.seatId === 'string' ? input.seatId : undefined)
             }

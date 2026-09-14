@@ -5,6 +5,7 @@ export function historicalTokenRoom(room: Room) {
   return room.mode === 'token' && !room.walletSpend
 }
 export function writableRoom(room: Room) {
+  requireThat(room.closedAt === undefined, 'room_closed', 409)
   requireThat(!historicalTokenRoom(room), 'legacy_transaction_read_only', 410)
   return room
 }

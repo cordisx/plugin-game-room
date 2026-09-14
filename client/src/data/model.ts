@@ -135,6 +135,8 @@ export type Seat = {
   status?: 'waiting' | 'funding' | 'playing' | 'finished' | 'aborted'
   canStart?: boolean
   canNextMatch?: boolean
+  canCloseRoom?: boolean
+  closed?: boolean
   walletSpend?: {
     protocol: 'economy.spend/v1'
     termsHash: string | null

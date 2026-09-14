@@ -3,10 +3,33 @@
   isolation: isolate;
   display: flex;
   align-items: stretch;
+  flex-direction: column;
   flex: 1;
   min-width: 0;
   min-height: 0;
   overflow: hidden;
+}
+.gr-room-owner-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex: 0 0 auto;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--gr-border);
+}
+.gr-room-owner-actions [role="group"] {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.gr-room-owner-actions {
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.gr-room-owner-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 .gr-room-details-pane-scroll {
   display: flex;

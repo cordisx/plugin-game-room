@@ -61,7 +61,14 @@ export function GameSurface(
   }, [props.port, props.seat.room.sourceId, props.seat.room.game.packageHash, props.seat.status, props.syncRevision])
 
   let content
-  if (
+  if (props.seat.closed) {
+    content = (
+      <section className='gr-game-recovery' role='status'>
+        <p>房主已关闭房间</p>
+        <Button onClick={props.exited}>返回大厅</Button>
+      </section>
+    )
+  } else if (
     ['waiting', 'funding'].includes(props.seat.status ?? '') && !props.seat.room.game.waitingUi
     && loaded?.bundle === null
   ) {

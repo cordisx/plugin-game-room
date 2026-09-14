@@ -492,6 +492,9 @@ export class LivePort implements GameRoomPort {
       matchId: typeof view.matchId === 'string' ? view.matchId : undefined,
       version: number(view.version),
       status: view.status as Seat['status'],
+      closed: view.closedAt !== undefined,
+      canCloseRoom: view.closedAt === undefined
+        && view.creatorAccountId === (this.accounts.get(sourceId) ?? this.source(sourceId).accountId),
       canManageBots: view.status === 'waiting'
         && view.creatorAccountId === (this.accounts.get(sourceId) ?? this.source(sourceId).accountId),
       gameParticipants: gameParticipants(view),
@@ -504,7 +507,8 @@ export class LivePort implements GameRoomPort {
       canStart: view.creatorAccountId === (this.accounts.get(sourceId) ?? this.source(sourceId).accountId)
         && view.status === 'waiting' && array(view.seats).length >= number(object(view.manifest).minPlayers)
         && array(view.seats).map(object).every(seat => seat.ready === true),
-      canNextMatch: view.creatorAccountId === (this.accounts.get(sourceId) ?? this.source(sourceId).accountId)
+      canNextMatch: view.closedAt === undefined
+        && view.creatorAccountId === (this.accounts.get(sourceId) ?? this.source(sourceId).accountId)
         && ['finished', 'aborted'].includes(String(view.status))
         && ['none', 'settled', 'refunded'].includes(String(view.settlement)),
       funding: view.funding as Seat['funding'],
@@ -712,6 +716,11 @@ export class LivePort implements GameRoomPort {
       if (error instanceof RequestFailure && error.outcome === 'rejected') this.pendingActions.delete(key)
       throw error
     }
+  }
+  async closeRoom(seat: Seat, signal: AbortSignal) {
+    await this.request(seat.room.sourceId, `/v1/rooms/${encodeURIComponent(seat.room.id)}/close`, signal, {})
+    await this.spend.recover(seat.room.sourceId, signal)
+    this.views.delete(JSON.stringify([seat.room.sourceId, seat.room.id]))
   }
   async leave(seat: Seat, signal: AbortSignal) {
     if (!seat.seatId) return

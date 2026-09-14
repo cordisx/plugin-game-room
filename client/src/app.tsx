@@ -373,6 +373,14 @@ function EnabledGameRoomPage({ page, runtime }: { page: string; runtime: ClientR
               }}
             />
           }
+          closeRoom={port.closeRoom
+            ? () =>
+              run(async signal => {
+                await port.closeRoom!(runtime.seat!, signal)
+                runtime.seat = undefined
+                navigate('lobby')
+              })
+            : undefined}
           seat={runtime.seat}
           detailsOpen={detailsOpen}
           closeDetails={() => setDetailsOpen(false)}

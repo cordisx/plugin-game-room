@@ -52,6 +52,7 @@ export interface GameRoomPort {
   join(invitation: Invitation, signal: AbortSignal): Promise<Seat>
   ready(seat: Seat, ready: boolean, consent: Consent | undefined, signal: AbortSignal): Promise<Seat>
   leave(seat: Seat, signal: AbortSignal): Promise<void>
+  closeRoom?(seat: Seat, signal: AbortSignal): Promise<void>
   agents(signal: AbortSignal): Promise<Agent[]>
   dispatches(signal: AbortSignal): Promise<Dispatch[]>
   dispatch(

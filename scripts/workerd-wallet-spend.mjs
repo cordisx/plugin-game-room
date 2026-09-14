@@ -111,6 +111,44 @@ try {
   }
   assert(!JSON.stringify(publicRooms).includes('requestIds'))
   assert(!JSON.stringify(publicRooms).includes('signature'))
+  // Both funding and active room closure must create a recoverable refund,
+  // while closing a completed room must preserve its existing final decision.
+  await request(path + '/close', accounts[0].token, {})
+  assert.equal(canonical((await request(path + '/spend', accounts[0].token)).value.decision), bytes)
+  for (const active of [false, true]) {
+    const opened = (await request('/v1/rooms', accounts[0].token, {
+      packageHash: metadata.hash,
+      mode: 'token',
+      stake: 10,
+      consent,
+    })).value
+    const closePath = '/v1/rooms/' + opened.id
+    await request(closePath + '/join', accounts[1].token, { consent })
+    for (const a of accounts) await request(closePath + '/ready', a.token, { ready: true, consent })
+    await request(closePath + '/start', accounts[0].token, {})
+    const quote = (await request(closePath + '/spend', accounts[0].token)).value
+    const reservations = wallets.map((w, i) =>
+      w.session.reserve(w.session.quote(quote.terms, quote.requestIds[accounts[i].account.id]))
+    )
+    await request(closePath + '/spend-receipts', accounts[0].token, reservations[0].reservation)
+    if (active) await request(closePath + '/spend-receipts', accounts[1].token, reservations[1].reservation)
+    await request(closePath + '/close', accounts[1].token, {}, 403)
+    await request(closePath + '/close', accounts[0].token, {})
+    const refund = (await request(closePath + '/spend', accounts[1].token)).value
+    assert.equal(refund.phase, 'refund')
+    assert(await verifySigned(refund.decision, identity.servicePublicKey))
+    for (const w of wallets) {
+      const settled = w.engine.applyDecision(refund.decision, () => {})
+      assert.equal(settled[0].settlement.payload.captured, 0)
+      assert.deepEqual(w.engine.applyDecision(refund.decision, () => {}), settled)
+    }
+    await request(closePath + '/close', accounts[0].token, {})
+    assert.equal(
+      canonical((await request(closePath + '/spend', accounts[0].token)).value.decision),
+      canonical(refund.decision),
+    )
+    await request(closePath + '/next-match', accounts[0].token, {}, 409)
+  }
   assert.equal((await request('/v1/spend/identity')).value.serverId, identity.serverId)
   console.log(
     'PASS actual workerd/D1 signed Game identity, wallet proof, terms/receipts, cancel/start CAS, immutable finality, indexed recovery and public privacy; temporary Node wallet authority only',

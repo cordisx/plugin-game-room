@@ -103,6 +103,7 @@ export class Engine {
     } = room
     return structuredClone({
       creatorAccountId: room.creatorAccountId,
+      ...(room.closedAt !== undefined ? { closedAt: room.closedAt } : {}),
       id,
       matchId,
       handNo,
@@ -159,9 +160,9 @@ export class Engine {
   }
   async list(accountId?: string) {
     return await Promise.all(
-      (await this.all()).filter(r => !accountId || r.seats.some(s => s.accountId === accountId)).map(async (r) =>
-        await this.card(r)
-      ),
+      (await this.all()).filter(r =>
+        accountId ? r.seats.some(s => s.accountId === accountId) : r.closedAt === undefined
+      ).map(async (r) => await this.card(r)),
     )
   }
   private consent(room: Room, consent: Consent | undefined) {
@@ -441,6 +442,20 @@ export class Engine {
     await this.save(room, old, 'agent_joined')
     return { seat, view: await this.view(room, account.id, seat.id) }
   }
+  async closeRoom(account: Account, id: string) {
+    const room = await this.load(id)
+    this.seat(room, account.id)
+    requireThat(room.creatorAccountId === account.id, 'creator_required', 403)
+    if (room.closedAt !== undefined) return { closed: true }
+    writableRoom(room)
+    const old = room.version++
+    room.closedAt = this.now()
+    // Preserve completed results and their settlement; unfinished matches refund
+    // through the same durable spend finalization used by cancellation/timeouts.
+    if (!['finished', 'aborted'].includes(room.status)) this.abort(room)
+    await this.save(room, old, 'room_closed')
+    return { closed: true }
+  }
   async leave(account: Account, id: string, seatId?: string) {
     const room = writableRoom(await this.load(id))
     const seat = this.seat(room, account.id, seatId)
@@ -712,7 +727,8 @@ export class Engine {
     }
   }
   async spendState(account: Account, id: string) {
-    const room = writableRoom(await this.load(id))
+    const room = await this.load(id)
+    requireThat(!historicalTokenRoom(room), 'legacy_transaction_read_only', 410)
     this.seat(room, account.id)
     requireThat(this.spend && room.walletSpend?.termsHash, 'spend_transaction_not_found', 404)
     return this.spend.load(room.matchId)
