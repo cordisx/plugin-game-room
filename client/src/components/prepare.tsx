@@ -8,14 +8,13 @@ import { RoomSummary } from './room-summary.js'
 import '../styles/rules-bots.css'
 import '../styles/prepare-drawer.css'
 
-export function PreparePanel({ seat, detailsOpen, closeDetails, busy, sources, bots, surface, closeRoom, resumeUndo }: {
+export function PreparePanel({ seat, detailsOpen, closeDetails, busy, sources, bots, surface, closeRoom }: {
   seat: Seat
   detailsOpen: boolean
   closeDetails: () => void
   busy: boolean
   sources: readonly Source[]
   bots?: (change: { add: true; seatIndex: number } | { removeSeatId: string }) => void
-  resumeUndo?: () => void
   closeRoom?: () => void
   surface: ReactNode
 }) {
@@ -44,7 +43,6 @@ export function PreparePanel({ seat, detailsOpen, closeDetails, busy, sources, b
         <RoomSummary room={seat.room} sources={sources} busy={busy} bots={bots} />
         {seat.canCloseRoom && closeRoom && (
           <div className='gr-room-owner-actions'>
-            {seat.canResumeUndo && resumeUndo && <Button disabled={busy} onClick={resumeUndo}>悔棋并继续</Button>}
             <Button variant='ghost' disabled={busy} onClick={() => setConfirmClose(true)}>
               <Symbol name='close' size={16} />
               关闭房间

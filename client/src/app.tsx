@@ -369,12 +369,6 @@ function EnabledGameRoomPage({ page, runtime }: { page: string; runtime: ClientR
               }}
             />
           }
-          resumeUndo={port.resumeUndo
-            ? () =>
-              run(async signal => {
-                runtime.seat = await port.resumeUndo!(runtime.seat!, signal)
-              })
-            : undefined}
           closeRoom={port.closeRoom
             ? () =>
               run(async signal => {
