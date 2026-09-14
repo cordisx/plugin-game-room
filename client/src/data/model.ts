@@ -133,6 +133,7 @@ export type Seat = {
   matchId?: string
   version?: number
   status?: 'waiting' | 'funding' | 'playing' | 'finished' | 'aborted'
+  turnDeadline?: number | null
   canStart?: boolean
   canResumeUndo?: boolean
   canNextMatch?: boolean

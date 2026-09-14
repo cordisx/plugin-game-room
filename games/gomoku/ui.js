@@ -1,3 +1,14 @@
+let turnClock
+// One display timer per frame; server snapshots remain authoritative.
+globalThis.addEventListener?.('pagehide', () => clearInterval(turnClock))
+globalThis.gomokuOutcome = view => {
+  if (!view.result) return ''
+  if (!view.result.winners.length) return '平局'
+  const winner = view.result.winners[0] === 0 ? '黑' : '白'
+  const loser = view.result.winners[0] === 0 ? '白' : '黑'
+  return view.reason === 'timeout' ? `${loser}方超时 · ${winner}方获胜` : `${winner}方五子连线获胜`
+}
+globalThis.gomokuTimeLeft = (deadline, now) => Math.max(0, Math.ceil((deadline - now) / 1000))
 globalThis.renderGame = (
   state,
   {
@@ -11,6 +22,7 @@ globalThis.renderGame = (
     busy,
   },
 ) => {
+  clearInterval(turnClock)
   const waiting = state.observation.phase === 'waiting' || state.observation.phase === 'funding'
   const initial = state.observation
   const size = initial.config?.boardSize ?? 15
@@ -28,7 +40,7 @@ globalThis.renderGame = (
   const self = v.selfSeat
   const result = v.result
   const heading = waiting ? initial.phase === 'funding' ? '等待投入确认' : '等待开局' : result
-    ? result.winners.length ? `${result.winners[0] === 0 ? '黑' : '白'}方获胜` : '平局'
+    ? globalThis.gomokuOutcome(v)
     : state.readOnly
     ? `轮到${v.turn === 0 ? '黑' : '白'}方`
     : state.canAct
@@ -36,11 +48,28 @@ globalThis.renderGame = (
     : '等待对手落子'
   const status = node(
     'h2',
-    initial.phase === 'funding' || result ? 'gomoku-result' : 'sr-only',
+    'gomoku-result',
     heading,
   )
   status.setAttribute('role', 'status')
   container.append(status)
+  const deadline = v.turnDeadline
+  if (!waiting && !result && Number.isFinite(deadline)) {
+    const clock = node('p', 'gomoku-clock')
+    clock.setAttribute('role', 'timer')
+    clock.setAttribute('aria-label', '本回合剩余时间')
+    const update = () => {
+      const seconds = globalThis.gomokuTimeLeft(deadline, Date.now())
+      clock.textContent = seconds > 0
+        ? `剩余 ${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')} · 超时判负`
+        : '时间已到，正在确认结果…'
+      clock.dataset.urgent = String(seconds <= 10)
+      if (seconds === 0) clearInterval(turnClock)
+    }
+    update()
+    if (deadline > Date.now()) turnClock = setInterval(update, 250)
+    container.append(clock)
+  }
   const layout = node('div', 'gomoku-layout')
   layout.style.setProperty('--size', v.size)
   const bottomSeat = self === 1 ? 1 : 0
@@ -68,8 +97,8 @@ globalThis.renderGame = (
             : result
             ? '本局结束'
             : v.turn === seat
-            ? '当前行动'
-            : '等待落子'
+            ? seat === self ? '轮到你落子' : '正在落子'
+            : '等待对方落子'
         }`,
       ),
     )

@@ -1,6 +1,6 @@
 {
   "id": "gomoku",
-  "version": "1.6.0",
+  "version": "1.6.1",
   "name": "五子棋",
   "minPlayers": 2,
   "maxPlayers": 2,

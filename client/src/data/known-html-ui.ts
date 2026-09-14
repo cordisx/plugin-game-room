@@ -1,3 +1,4 @@
+import gomokuPresentation from './gomoku-presentation.json' with { type: 'json' }
 import digests from './local-html-digests.json' with { type: 'json' }
 import type { GameUiBundleV1 } from '@cordisx/protocol/isolated-game-ui/v1'
 import { verifyHtmlUi } from '../../../sdk/html-ui.mjs'
@@ -68,6 +69,10 @@ export async function loadKnownHtmlUi(
 ): Promise<KnownHtmlUi> {
   const value = await port.gameUi!(room, signal) as { bundle: GameUiBundleV1 | { format: 'scene-v1' }; digest: string }
   const source = await verifiedHtmlUi(value.bundle, value.digest)
+  // A presentation-only fix for these exact immutable packages. Rules and match identity stay pinned.
+  if (isGomokuClockPresentation(room.game.packageHash, value.digest)) {
+    return { bundle: await verifiedHtmlUi(gomokuPresentation.bundle, gomokuPresentation.digest), waitingUi: true }
+  }
   const presentation = knownWaitingPresentation(room.game.packageHash, value.digest, status)
   if (!presentation) return { bundle: source, waitingUi: room.game.waitingUi === true }
   if (!port.gameUiPackage) throw new Error('当前客户端无法加载兼容等待界面')
@@ -79,4 +84,11 @@ export async function loadKnownHtmlUi(
   const bundle = await verifiedHtmlUi(target.bundle, target.digest)
   if (bundle === null) throw new Error('兼容等待界面格式不匹配')
   return { bundle, waitingUi: true }
+}
+
+export function isGomokuClockPresentation(packageHash: string, digest: string) {
+  return (packageHash === '4ce550ff5cf585984dd1d688a8671dde9400f7b1055405ab68104fb847ab4fe0'
+    && digest === '4351537370490204ac2b99175df9844ccce8b7e3a3b33ffd26100733d786793d')
+    || (packageHash === '80e5626780b64d4a29c0cba073816fe0524a6ba7ac51aa40ffda702401219b41'
+      && digest === '1864117da8bac03520ba4cb69ca764c646872849932153a63216a750ad781ce4')
 }

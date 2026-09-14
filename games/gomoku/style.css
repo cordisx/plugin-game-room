@@ -184,3 +184,13 @@ main:has(> .gomoku) > :not(.sr-only) {
   flex-wrap: wrap;
   padding: 8px;
 }
+
+.gomoku-clock {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.gomoku-clock[data-urgent="true"] {
+  color: light-dark(#a33423, #ffb4a8);
+}

@@ -13,6 +13,7 @@ import type { GameRoomPort } from '../data/port.js'
 import { consentFor, type Seat } from '../data/model.js'
 import { RequestFailure } from '../data/http.js'
 import { type KnownHtmlUi, loadKnownHtmlUi } from '../data/known-html-ui.js'
+import gomokuPresentation from '../data/gomoku-presentation.json' with { type: 'json' }
 import '../styles/game-status.css'
 
 type RoomAction = 'ready' | 'cancel-ready' | 'start' | 'funding' | 'next-round'
@@ -58,7 +59,7 @@ export function GameSurface(
       if (!controller.signal.aborted) setError(e.message)
     })
     return () => controller.abort()
-  }, [props.port, props.seat.room.sourceId, props.seat.room.game.packageHash, props.seat.status, props.syncRevision])
+  }, [props.port, props.seat.room.sourceId, props.seat.room.game.packageHash, props.seat.status, props.syncRevision, gomokuPresentation.digest])
 
   let content
   if (props.seat.closed) {
@@ -139,6 +140,8 @@ function snapshot(seat: Seat, waitingUi: boolean): RoomSnapshot {
     sequence: seat.version!,
     observation: ['waiting', 'funding'].includes(seat.status ?? '') && !waitingUi
       ? null
+      : seat.observation && typeof seat.observation === 'object' && !Array.isArray(seat.observation)
+      ? { ...seat.observation, turnDeadline: seat.turnDeadline ?? null } as GameUiSnapshotV1['observation']
       : seat.observation as GameUiSnapshotV1['observation'],
     status: seat.status ?? 'waiting',
     canAct: seat.status === 'playing' && !!seat.legalActions?.length,

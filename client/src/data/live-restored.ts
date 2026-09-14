@@ -492,6 +492,7 @@ export class LivePort implements GameRoomPort {
       matchId: typeof view.matchId === 'string' ? view.matchId : undefined,
       version: number(view.version),
       status: view.status as Seat['status'],
+      turnDeadline: typeof view.deadline === 'number' ? view.deadline : null,
       closed: view.closedAt !== undefined,
       canCloseRoom: view.closedAt === undefined
         && view.creatorAccountId === (this.accounts.get(sourceId) ?? this.source(sourceId).accountId),
