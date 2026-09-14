@@ -1,3 +1,4 @@
+import type { GameConfigSchema } from '../../../sdk/game-config.mjs'
 /** Client view models. HTTP wire decoding belongs exclusively to the server adapter. */
 export type EconomyMode = 'score' | 'local-chips' | 'token'
 export type Source = {
@@ -5,10 +6,18 @@ export type Source = {
   name: string
   url: string
   accountId: string
+  accountDisplayName?: string
   enabled: boolean
   connectionId?: string
 }
 export type Game = {
+  waitingUi?: boolean
+  rulesBot?: boolean
+  minPlayers?: number
+  maxPlayers?: number
+  spectating?: boolean
+  minimumViewport?: { width: number; height: number }
+  configSchema?: GameConfigSchema
   id: string
   name: string
   version: string
@@ -19,7 +28,11 @@ export type Game = {
   modes: EconomyMode[]
   policies: string[]
 }
+export type BotChange = { add: true; seatIndex: number } | { removeSeatId: string }
+export type RoomPlayer = GameParticipant & { id: string; ready: boolean }
 export type Room = {
+  participants?: RoomPlayer[]
+  canManageBots?: boolean
   id: string
   sourceId: string
   name: string
@@ -58,7 +71,35 @@ export type Dispatch = {
   budget: number
   turns: number
 }
-export type Balance = { economyId: string; label: string; available: number; reserved: number }
+export type PersonalProfile = {
+  sourceId: string
+  state: 'connected' | 'disconnected'
+  accountId?: string
+  displayName?: string
+  avatar?: string
+  guest?: boolean
+  economyAvailable?: boolean
+}
+export type LedgerRecord = {
+  sourceId: string
+  economyId: string
+  accountId: string
+  sequence: number
+  transactionId: string
+  availableDelta: number
+  reservedDelta: number
+  reason: string
+  reference: string
+  createdAt: number
+}
+export type Balance = {
+  accountId?: string
+  origin?: string
+  economyId: string
+  label: string
+  available: number
+  reserved: number
+}
 export type History = {
   id: string
   sourceId: string
@@ -70,7 +111,17 @@ export type History = {
   delta: number
   completedAt: string
 }
+export type GameParticipant = {
+  seatIndex: number
+  name: string
+  kind: 'human' | 'agent' | 'bot'
+  avatar?: string
+  isOwner: boolean
+}
 export type Seat = {
+  gameParticipants?: GameParticipant[]
+  canManageBots?: boolean
+  participants?: { id: string; name: string; kind: string; ready: boolean }[]
   room: Room
   seatId: string
   ready: boolean
@@ -84,12 +135,25 @@ export type Seat = {
   status?: 'waiting' | 'funding' | 'playing' | 'finished' | 'aborted'
   canStart?: boolean
   canNextMatch?: boolean
+  walletSpend?: {
+    protocol: 'economy.spend/v1'
+    termsHash: string | null
+    acceptBefore: number | null
+    phase: 'waiting' | 'funding' | 'active' | 'capture' | 'refund'
+  }
   funding?: { economyUrl: string; agreementId: string; termsHash: string } | null
   result?: unknown
   settlementState?: string
   ownedSeats?: { id: string; name: string; kind: string }[]
 }
-export type SourceSnapshot = { rooms: Room[]; games: Game[]; compatible: boolean; protocol: string; reason?: string }
+export type SourceSnapshot = {
+  rooms: Room[]
+  games: Game[]
+  compatible: boolean
+  protocol: string
+  reason?: string
+  guestAccess?: boolean
+}
 export type SourceState = {
   source: Source
   state: 'loading' | 'online' | 'offline' | 'incompatible'
@@ -97,6 +161,10 @@ export type SourceState = {
   error?: string
 }
 export type CreateRoom = {
+  /** Total seated players, including the creator, humans, rules bots and Agents; spectators do not count. */
+  maxPlayers?: number
+  botCount?: number
+  config?: Record<string, string | number | boolean>
   name: string
   gameId: string
   gameVersion: string
@@ -130,11 +198,23 @@ export const consentFor = (room: Room): Consent => ({
 })
 export const economyLabel = (mode: EconomyMode) =>
   ({ score: '积分', 'local-chips': '本局筹码', token: '虚拟 Token' })[mode]
-export type Filters = { search: string; gameId: string; sourceId: string; vacancy: boolean; agents: boolean }
+export type Filters = {
+  search: string
+  gameId: string
+  sourceId: string
+  vacancy: boolean
+  agents: boolean
+  sourceIds?: string[]
+  status?: 'active' | 'available' | 'all'
+}
 export function filterRooms(states: readonly SourceState[], filters: Filters): Room[] {
   const query = filters.search.trim().toLocaleLowerCase()
   return states.flatMap(state => state.state === 'online' ? state.snapshot?.rooms ?? [] : []).filter(room =>
-    (!filters.sourceId || room.sourceId === filters.sourceId) && (!filters.gameId || room.game.id === filters.gameId)
+    (!filters.sourceIds?.length || filters.sourceIds.includes(room.sourceId))
+    && (filters.status !== 'active' || room.state !== 'finished')
+    && (filters.status !== 'available'
+      || (room.compatible && room.state === 'waiting' && room.occupied < room.capacity))
+    && (!filters.sourceId || room.sourceId === filters.sourceId) && (!filters.gameId || room.game.id === filters.gameId)
     && (!filters.vacancy || (room.state === 'waiting' && room.occupied < room.capacity))
     && (!filters.agents || room.allowAgents)
     && (!query || `${room.name} ${room.id} ${room.game.name}`.toLocaleLowerCase().includes(query))
@@ -171,3 +251,12 @@ export function decodeInvitation(value: string, sources: readonly Source[]): Inv
 }
 
 export type ReplayEvent = { turn: number; description: string; seat?: Seat }
+
+export type SpectatorView = {
+  participants?: GameParticipant[]
+  matchId: string
+  version: number
+  status: string
+  scene: unknown
+  observation?: unknown
+}

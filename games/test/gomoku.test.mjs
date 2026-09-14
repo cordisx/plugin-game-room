@@ -53,3 +53,24 @@ test('full board without any five-in-line ends in a draw', async () => {
   assert.equal(t.turn, null)
   assert.deepEqual(t.done.winners, [])
 })
+
+test('versioned board configuration changes setup, observation and coordinate bounds', async () => {
+  for (const size of [9, 13, 15]) {
+    const configured = context(2, { config: { boardSize: size } })
+    const state = (await invoke(rules, 'setup', [], configured)).value.state
+    assert.equal(state.board.length, size * size)
+    const view = (await invoke(rules, 'observe', [state, 0], configured)).value
+    assert.equal(view.size, size)
+    await assert.rejects(
+      invoke(rules, 'act', [state, { type: 'place', x: size, y: 0 }], {
+        ...configured,
+        seatIndex: 0,
+      }),
+      /invalid_action/,
+    )
+  }
+  await assert.rejects(
+    invoke(rules, 'setup', [], context(2, { config: { boardSize: 10 } })),
+    /invalid_config/,
+  )
+})

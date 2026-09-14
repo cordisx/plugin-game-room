@@ -10,6 +10,7 @@ const staging = mkdtempSync(join(tmpdir(), 'game-production-'))
 let child
 try {
   for (const path of ['package.json', 'package-lock.json']) cpSync(resolve(path), join(staging, path))
+  cpSync(resolve('sdk/experimental'), join(staging, 'sdk/experimental'), { recursive: true })
   mkdirSync(join(staging, 'dist'))
   for (const path of ['server', 'sdk']) cpSync(resolve('dist', path), join(staging, 'dist', path), { recursive: true })
   const install = spawnSync('npm', ['ci', '--omit=dev', '--ignore-scripts'], { cwd: staging, encoding: 'utf8' })

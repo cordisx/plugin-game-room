@@ -1,22 +1,39 @@
+import { defaultLobbyFilters, lobbyEmptyState } from '../data/lobby-context.js'
+import { LobbyEmptyState } from './lobby-empty-state.js'
+import { useRoomLayoutMotion } from './use-room-layout-motion.js'
+import { RoomDetails } from './room-details.js'
+import { useState } from 'cordisx/react'
+import { LobbyFilters } from './lobby-filters.js'
 import type { ReactElement } from 'react'
-import { Button, EmptyState, SearchField, Select } from 'cordisx/ui'
+import { Button, EmptyState, SearchField } from 'cordisx/ui'
 import type { Filters, Room, SourceState } from '../data/model.js'
-import { economyLabel, filterRooms, roomKey } from '../data/model.js'
+import { filterRooms, roomKey } from '../data/model.js'
 import '../styles/lobby.css'
-import { GameIcon, Symbol } from './icons.js'
+import { Symbol } from './icons.js'
+import { RoomCard } from './room-card.js'
 export function Lobby(
   {
+    initialRoom,
+    initialWatching,
+    spectator,
     connected,
+    configured,
+    create,
     refresh,
+    bots,
     busy,
     states,
     filters,
     setFilters,
     join,
-    create,
-    invite,
+    dispatch,
   }: {
+    initialRoom?: Room
+    configured: boolean
+    initialWatching?: boolean
+    spectator?: (room: Room, close: () => void) => ReactElement
     connected: (sourceId: string) => boolean
+    bots?: (room: Room, change: import('../data/model.js').BotChange) => void
     refresh: () => void
     busy: boolean
     states: SourceState[]
@@ -25,179 +42,132 @@ export function Lobby(
     join: (room: Room) => void
     create: () => void
     invite: () => void
+    dispatch: (room: Room) => void
   },
 ): ReactElement {
+  const [watching, setWatching] = useState(initialWatching ?? false)
+  const [retainedRoom, setRetainedRoom] = useState<Room | null>(initialRoom ?? null)
+  const [detailKey, setDetailKey] = useState<string | null>(initialRoom ? roomKey(initialRoom) : null)
+  const motion = useRoomLayoutMotion(detailKey)
+  const detailRoom = states.flatMap(state => state.snapshot?.rooms ?? []).find(room => roomKey(room) === detailKey)
+  const sourcesAvailable = (room: Room) => states.some(state => state.source.id === room.sourceId)
+  const panelRoom = detailRoom ?? retainedRoom
+  const [filtersOpen, setFiltersOpen] = useState(false)
+  const count = Number((filters.status ?? 'active') !== 'active') + Number(filters.agents) + Number(!!filters.gameId)
+    + Number(!!filters.sourceIds?.length)
   const rooms = filterRooms(states, filters).sort((a, b) =>
     ['waiting', 'playing', 'finished'].indexOf(a.state) - ['waiting', 'playing', 'finished'].indexOf(b.state)
   )
-  const games = [...new Map(states.flatMap(state => state.snapshot?.games ?? []).map(game => [game.id, game])).values()]
+  const empty = lobbyEmptyState(states, filters, configured)
+  const loading = empty.kind === 'loading'
   return (
-    <div className='gr-lobby'>
-      <section className='gr-room-area' aria-label='房间'>
-        <div className='gr-room-toolbar'>
-          <h2 className='gr-section-title'>房间</h2>
-          <div className='gr-room-actions'>
-            <Button variant='ghost' onClick={invite}>邀请加入</Button>
-            <Button variant='primary' onClick={create}>
-              <Symbol name='plus' />创建房间
-            </Button>
-          </div>
-        </div>
-        <div className='gr-filter-toolbar'>
-          <div className='gr-room-search'>
-            <SearchField
-              aria-label='搜索房间或房间号'
-              placeholder='搜索房间或房间号'
-              value={filters.search}
-              onChange={search => setFilters({ ...filters, search })}
-            />
-          </div>
-          <Select
-            aria-label='来源筛选'
-            value={filters.sourceId}
-            options={[
-              { value: '', label: '全部来源' },
-              ...states.map(({ source }) => ({ value: source.id, label: source.name })),
-            ]}
-            onChange={sourceId => setFilters({ ...filters, sourceId })}
+    <div className='gr-lobby' ref={motion.root} data-detail-open={!!detailRoom}>
+      <div className='gr-lobby-controls'>
+        <div className='gr-lobby-tools'>
+          <SearchField
+            className='gr-lobby-search'
+            clearable
+            clearLabel='清空搜索'
+            aria-label='搜索房间或房间号'
+            placeholder='搜索房间或房间号'
+            value={filters.search}
+            onChange={search => setFilters({ ...filters, search })}
           />
-          <div className='gr-game-filters' role='group' aria-label='玩法筛选'>
-            <Button
-              className='gr-filter-chip'
-              variant='ghost'
-              aria-pressed={!filters.gameId}
-              data-active={!filters.gameId}
-              onClick={() => setFilters({ ...filters, gameId: '' })}
-            >
-              <Symbol name='grid' />全部
-            </Button>
-            {games.map(game => (
-              <Button
-                key={game.id}
-                className='gr-filter-chip'
-                variant='ghost'
-                aria-pressed={filters.gameId === game.id}
-                data-active={filters.gameId === game.id}
-                onClick={() => setFilters({ ...filters, gameId: game.id })}
-              >
-                <GameIcon id={game.id} size={16} />
-                {game.name}
-              </Button>
-            ))}
-          </div>
-          <label className='gr-check'>
-            <input
-              type='checkbox'
-              checked={filters.vacancy}
-              onChange={event => setFilters({ ...filters, vacancy: event.target.checked })}
-            />有空位
-          </label>
-          <label className='gr-check'>
-            <input
-              type='checkbox'
-              checked={filters.agents}
-              onChange={event => setFilters({ ...filters, agents: event.target.checked })}
-            />允许 Agent
-          </label>
-          <span className='gr-source-summary'>
-            <span className='gr-dot' />
-            {states.filter(state => state.state === 'online').length} 个来源已连接
-          </span>
-          <Button variant='ghost' disabled={busy} onClick={refresh}>刷新</Button>
+          <Button
+            variant='ghost'
+            className='gr-lobby-filter gr-toolbar-icon'
+            aria-label='筛选房间'
+            title='筛选房间'
+            aria-expanded={filtersOpen}
+            onClick={() => setFiltersOpen(!filtersOpen)}
+          >
+            <Symbol name='filter' size={16} />
+            {count > 0 && <span className='gr-filter-count'>{count}</span>}
+          </Button>
         </div>
+      </div>
+      <section className='gr-room-area' aria-label='房间'>
+        {filtersOpen && <LobbyFilters filters={filters} setFilters={setFilters} states={states} />}
         {states.filter(state => state.state !== 'online').map(state => (
           <div className='gr-source-notice' role='status' key={state.source.id}>
             {state.source.name} ·{' '}
             {state.state === 'loading' ? '连接中' : state.state === 'incompatible' ? '协议不兼容' : '连接中断'}
             {state.error && ` · ${state.error}`}
+            <Button
+              variant='ghost'
+              disabled={busy}
+              className='gr-square-button'
+              aria-label='重试连接'
+              title='重试连接'
+              onClick={refresh}
+            >
+              <Symbol name='reset' />
+            </Button>
           </div>
         ))}
-        <div className='gr-room-results'>
-          <div className='gr-room-grid'>
-            {rooms.map(room => (
-              <RoomCard
-                key={roomKey(room)}
-                connected={connected(room.sourceId)}
-                busy={busy}
-                room={room}
-                sourceName={states.find(state => state.source.id === room.sourceId)?.source.name ?? room.sourceId}
-                join={() => join(room)}
+        <div className='gr-room-results' data-empty={rooms.length === 0}>
+          {rooms.length > 0 && (
+            <div className='gr-room-grid'>
+              {rooms.map(room => (
+                <RoomCard
+                  key={roomKey(room)}
+                  inspect={() => {
+                    motion.capture()
+                    setRetainedRoom(room)
+                    setDetailKey(current => current === roomKey(room) ? null : roomKey(room))
+                  }}
+                  connected={connected(room.sourceId)}
+                  busy={busy}
+                  room={room}
+                  sourceName={states.find(state => state.source.id === room.sourceId)?.source.name ?? room.sourceId}
+                  join={() => join(room)}
+                  dispatch={() => dispatch(room)}
+                  sources={states.map(state => state.source)}
+                />
+              ))}
+            </div>
+          )}
+          {rooms.length === 0 && (empty.kind === 'loading' || empty.kind === 'error'
+            ? (
+              <EmptyState
+                title={loading ? '正在连接游戏来源' : '暂时无法获取房间'}
+                description={loading
+                  ? '正在获取最新房间，这通常只需几秒。'
+                  : '请检查上方来源状态后重试。已有房间不会被删除。'}
+              />
+            )
+            : empty.kind !== 'populated' && (
+              <LobbyEmptyState
+                kind={empty.kind}
+                game={'game' in empty ? empty.game : undefined}
+                create={create}
+                reset={empty.kind === 'lobby'
+                  ? undefined
+                  : () => setFilters(empty.kind === 'search' ? { ...filters, search: '' } : defaultLobbyFilters())}
               />
             ))}
-          </div>
-          {rooms.length === 0 && (
-            <EmptyState
-              title={states.some(state => state.state === 'loading')
-                ? '正在获取房间'
-                : '没有符合条件的房间'}
-              description='调整玩法与来源筛选，或创建一个新房间。'
-            />
-          )}
-          <p className='gr-result-count'>显示 {rooms.length} 个房间</p>
         </div>
       </section>
+      <div className='gr-detail-reveal' data-open={!!detailRoom} aria-hidden={!detailRoom} inert={!detailRoom}>
+        {panelRoom && sourcesAvailable(panelRoom) && (
+          watching && spectator ? spectator(panelRoom, () => setWatching(false)) : (
+            <RoomDetails
+              bots={bots ? change => bots(panelRoom, change) : undefined}
+              watch={() => setWatching(true)}
+              key={roomKey(panelRoom)}
+              room={panelRoom}
+              sources={states.map(state => state.source)}
+              busy={busy}
+              join={() => join(panelRoom)}
+              dispatch={() => dispatch(panelRoom)}
+              close={() => {
+                motion.capture()
+                setDetailKey(null)
+              }}
+            />
+          )
+        )}
+      </div>
     </div>
-  )
-}
-function RoomCard(
-  { room, sourceName, join, busy, connected }: {
-    room: Room
-    sourceName: string
-    join: () => void
-    busy: boolean
-    connected: boolean
-  },
-): ReactElement {
-  const available = room.state === 'waiting' && room.occupied < room.capacity && room.compatible
-  return (
-    <article className='gr-room-card' data-state={room.state}>
-      <div className='gr-room-heading'>
-        <span className='gr-game-icon' data-game={room.game.id} aria-hidden='true'>
-          <GameIcon id={room.game.id} />
-        </span>
-        <div className='gr-room-name'>
-          <h3>{room.name}</h3>
-          <span className='gr-muted'>{room.game.name}</span>
-        </div>
-        <span className='gr-status' data-state={room.state}>
-          <span className='gr-dot' />
-          {room.state === 'waiting' ? '等待中' : room.state === 'playing' ? '进行中' : '已结束'}
-        </span>
-      </div>
-      <div className='gr-room-meta'>
-        <span>
-          <Symbol name='source' size={14} /> {sourceName} · #{room.id.split(':').at(-1)?.slice(0, 8)}
-        </span>
-        <span className='gr-tag'>{room.allowAgents ? '可派遣 Agent' : '不支持派遣'}</span>
-      </div>
-      <div className='gr-room-bottom'>
-        <div className='gr-occupants'>
-          <span className='gr-player-stack'>
-            {room.players.slice(0, 3).map((name, i) => (
-              <span key={i} className='gr-player' data-index={i}>{name.slice(0, 1)}</span>
-            ))}
-          </span>
-          <span>{room.occupied} / {room.capacity}</span>
-        </div>
-        <span className='gr-economy'>{economyLabel(room.mode)}{room.stake > 0 ? ` · ${room.stake}` : ''}</span>
-        <Button
-          disabled={busy || !room.compatible || (connected && !available && !room.owned)}
-          title={room.compatibilityReason}
-          onClick={join}
-        >
-          {!connected && !available
-            ? '查看房间'
-            : room.owned
-            ? '恢复席位'
-            : available
-            ? '加入'
-            : room.state === 'playing'
-            ? '进行中'
-            : room.state === 'finished'
-            ? '已结束'
-            : '已满员'}
-        </Button>
-      </div>
-    </article>
   )
 }

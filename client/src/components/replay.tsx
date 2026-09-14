@@ -1,44 +1,76 @@
-import type { ReactElement } from 'cordisx/react'
-import { useState } from 'cordisx/react'
-import { Button } from 'cordisx/ui'
+import { useEffect, useState } from 'cordisx/react'
+import { Button, EmptyState } from 'cordisx/ui'
 import type { RestrictedContentV1 } from '@cordisx/protocol/restricted-content/v1'
 import type { ReplayEvent } from '../data/model.js'
 import type { GameRoomPort } from '../data/port.js'
+import { readOnly, replayIndex } from '../data/replay-view.js'
 import { GameSurface } from './game-surface.js'
-/** Replay keeps the original owned-seat projection and disables every author action. */
-function readOnly(value: unknown): unknown {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return value
-  const node = value as Record<string, unknown>
-  if (node.type === 'number-action') return { type: 'text', text: `${node.label}: ${node.value}` }
-  return {
-    ...node,
-    ...(node.type === 'button' ? { disabled: true } : {}),
-    ...(Array.isArray(node.children) ? { children: node.children.map(readOnly) } : {}),
-    ...(node.root ? { root: readOnly(node.root) } : {}),
-  }
-}
-export function ReplayPanel(
-  { events, port, service }: { events: ReplayEvent[]; port: GameRoomPort; service?: RestrictedContentV1 },
-): ReactElement {
+import { Symbol } from './icons.js'
+import '../styles/publish-replay.css'
+export function ReplayPanel({ events, port, service, back }: {
+  events: ReplayEvent[]
+  port: GameRoomPort
+  service?: RestrictedContentV1
+  back: () => void
+}) {
   const [index, setIndex] = useState(0)
-  const event = events[index]
+  useEffect(() => setIndex(0), [events])
+  const position = replayIndex(index, events.length)
+  const event = events[position]
   return (
-    <div className='gr-detail'>
-      <div className='gr-action-row'>
-        <Button disabled={index === 0} onClick={() => setIndex(index - 1)}>上一步</Button>
-        <span>{index + 1} / {events.length} · {event?.description}</span>
-        <Button disabled={index >= events.length - 1} onClick={() => setIndex(index + 1)}>下一步</Button>
+    <section className='gr-replay' aria-label='只读回放'>
+      <div className='gr-replay-body'>
+        {event?.seat
+          ? (
+            <GameSurface
+              key={`${event.seat.matchId}/${event.turn}`}
+              seat={{ ...event.seat, status: 'finished', scene: readOnly(event.seat.scene) }}
+              port={port}
+              service={service}
+              changed={() => {}}
+            />
+          )
+          : (
+            <EmptyState
+              title={event ? '此事件没有场景' : '暂无可回放事件'}
+              description={event?.description ?? '返回战绩选择其他对局。'}
+              action={<Button onClick={back}>返回战绩</Button>}
+            />
+          )}
       </div>
-      {event?.seat && (
-        <GameSurface
-          key={`${event.seat.matchId}/${event.turn}`}
-          seat={{ ...event.seat, status: 'finished', scene: readOnly(event.seat.scene) }}
-          port={port}
-          service={service}
-          changed={() => {}}
-        />
-      )}
-      {!event && <p>暂无可回放事件</p>}
-    </div>
+      <footer className='gr-replay-footer'>
+        <Button variant='ghost' className='gr-square-button' aria-label='返回战绩' title='返回战绩' onClick={back}>
+          <Symbol name='back' />
+        </Button>
+        <span>
+          {events.length ? `${position + 1} / ${events.length}` : '0 / 0'}
+          {event?.description ? ` · ${event.description}` : ''}
+        </span>
+        <div className='gr-action-row'>
+          <Button
+            variant='ghost'
+            className='gr-square-button'
+            aria-label='上一步'
+            title='上一步'
+            disabled={!event || position === 0}
+            onClick={() => setIndex(position - 1)}
+          >
+            <Symbol name='back' />
+          </Button>
+          <Button
+            variant='ghost'
+            className='gr-square-button'
+            aria-label='下一步'
+            title='下一步'
+            disabled={!event || position >= events.length - 1}
+            onClick={() => setIndex(position + 1)}
+          >
+            <span className='gr-next-step'>
+              <Symbol name='back' />
+            </span>
+          </Button>
+        </div>
+      </footer>
+    </section>
   )
 }

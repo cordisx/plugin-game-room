@@ -218,12 +218,16 @@
       const options = legal(state, ctx.seatIndex)
       return act(state, { type: options.some(o => o.type === 'check') ? 'check' : 'fold' }, ctx)
     },
-    observe(state, seatIndex) {
-      if (!Number.isInteger(seatIndex) || seatIndex < 0 || seatIndex >= state.players.length) {
+    observe(state, seatIndex, ctx) {
+      if (
+        seatIndex !== null
+        && (!Number.isInteger(seatIndex) || seatIndex < 0 || seatIndex >= state.players.length)
+      ) {
         throw Error('invalid_seat')
       }
       return {
         kind: 'holdem',
+        participants: ctx?.participants ?? [],
         selfSeat: seatIndex,
         turn: state.turn,
         street: state.street,
@@ -242,9 +246,11 @@
           total: p.total,
           folded: p.folded,
           allIn: !p.folded && p.stack === 0 && !state.result,
-          hole: i === seatIndex || (state.showdown && !p.folded) ? p.hole : [null, null],
+          hole: seatIndex !== null && (i === seatIndex || (state.showdown && !p.folded))
+            ? p.hole
+            : [null, null],
         })),
-        legalActions: legal(state, seatIndex),
+        legalActions: seatIndex === null ? [] : legal(state, seatIndex),
         lastAction: state.lastAction,
         pots: state.pots,
         result: state.result,

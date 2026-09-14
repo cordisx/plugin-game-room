@@ -1,5 +1,4 @@
 ;(() => {
-  const SIZE = 15
   const invalid = () => {
     throw Error('invalid_action')
   }
@@ -8,8 +7,11 @@
   }
   globalThis.game = {
     setup(ctx) {
+      const SIZE = ctx.config?.boardSize ?? 15
+      if (![9, 13, 15].includes(SIZE)) throw Error('invalid_config')
       if (ctx.seats.length !== 2) throw Error('invalid_config')
       return transition({
+        size: SIZE,
         board: Array(SIZE * SIZE).fill(null),
         turn: 0,
         moves: 0,
@@ -18,6 +20,7 @@
       })
     },
     act(state, action, ctx) {
+      const SIZE = state.size ?? 15
       if (
         state.result || ctx.seatIndex !== state.turn || !action || action.type !== 'place'
         || !Number.isInteger(action.x) || !Number.isInteger(action.y)
@@ -52,10 +55,12 @@
       state.reason = 'timeout'
       return transition(state)
     },
-    observe(state, seatIndex) {
-      if (seatIndex !== 0 && seatIndex !== 1) throw Error('invalid_seat')
+    observe(state, seatIndex, ctx) {
+      const SIZE = state.size ?? 15
+      if (seatIndex !== null && seatIndex !== 0 && seatIndex !== 1) throw Error('invalid_seat')
       return {
         kind: 'gomoku',
+        participants: ctx?.participants ?? [],
         size: SIZE,
         selfSeat: seatIndex,
         board: state.board,

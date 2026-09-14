@@ -1,0 +1,127 @@
+.gr-room-inspector {
+  --gr-toolbar-frame-border: 1px;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--gr-border);
+  border-radius: 16px;
+  background: var(--gr-surface);
+  color: var(--gr-text);
+}
+.gr-inspector-content {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 18px;
+  overflow-wrap: anywhere;
+  overscroll-behavior: contain;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.gr-inspector-content dl {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.gr-inspector-content dl > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+.gr-inspector-content dt {
+  color: var(--gr-muted);
+  flex: none;
+}
+.gr-inspector-content dd {
+  margin: 0;
+  text-align: right;
+}
+.gr-inspector-content h3 {
+  font-size: 12px;
+  color: var(--gr-muted);
+  margin: 0 0 10px;
+}
+.gr-inspector-content h3:not(:first-child) {
+  margin-top: 22px;
+}
+.gr-inspector-content p {
+  margin: 0 0 16px;
+}
+.gr-inspector-content dl + p {
+  margin-top: 22px;
+}
+.gr-inspector-content code {
+  font-size: 11px;
+}
+.gr-inspector-content textarea {
+  width: 100%;
+  min-height: 90px;
+  border: 1px solid var(--gr-border);
+  border-radius: 8px;
+  padding: 8px;
+  background: var(--cx-surface, Canvas);
+  color: inherit;
+  box-sizing: border-box;
+}
+.gr-inspector-muted {
+  color: var(--gr-muted);
+  font-size: 11px;
+}
+.gr-inspector-footer {
+  padding: 14px 18px 18px;
+  border-top: 1px solid var(--gr-border);
+  flex: none;
+}
+.gr-inspector-footer p {
+  margin: 0 0 10px;
+}
+.gr-inspector-footer > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.gr-inspector-footer .gr-inspector-join {
+  flex: 1;
+  min-width: 0;
+  background: #eee6d5;
+  color: #263128;
+  border: 1px solid #eee6d5;
+  border-radius: 10px;
+  height: 36px;
+}
+.gr-inspector-join:disabled {
+  opacity: 0.45;
+}
+
+.gr-inspector-content dt,
+.gr-inspector-content h3,
+.gr-inspector-copy-heading > span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.gr-inspector-content .gr-symbol {
+  margin: 0;
+}
+.gr-inspector-content .gr-inspector-source-link {
+  padding: 0;
+  min-height: 0;
+  gap: 6px;
+  text-align: right;
+  font: inherit;
+  color: inherit;
+  white-space: normal;
+}
+.gr-inspector-source-link:hover {
+  color: var(--gr-text);
+}
+.gr-inspector-copy-heading {
+  justify-content: space-between;
+}

@@ -1,130 +1,197 @@
-import { TextInput } from './components/text-input.js'
+import { walletBalanceResource } from './data/wallet-presentation.js'
+import { useSourceStates } from './data/use-source-states.js'
+import { type CreateContext, defaultLobbyFilters, openLobbyCreate } from './data/lobby-context.js'
+import { startSeatRefresh } from './data/seat-refresh.js'
+import type { IsolatedGameUiV1 } from '@cordisx/protocol/isolated-game-ui/v1'
+import { ActionScope, runPageAction } from './data/action-scope.js'
+import { agentPageBlocked } from './data/features.js'
+import { Spectator } from './components/spectator-content.js'
+import { Symbol } from './components/icons.js'
 import type { ReactElement } from 'cordisx/react'
-import { useEffect, useState } from 'cordisx/react'
+import { useEffect, useRef, useState } from 'cordisx/react'
 import { Button } from 'cordisx/ui'
-import { SourceAggregator } from './data/aggregate.js'
 import type { GameRoomPort } from './data/port.js'
-import type { Agent, Balance, Dispatch, Filters, History, Seat, SourceState } from './data/model.js'
-import { consentFor, decodeInvitation } from './data/model.js'
+import type { Agent, Filters, Seat, SourceState } from './data/model.js'
+import { consentFor } from './data/model.js'
 import { Lobby } from './components/lobby.js'
-import {
-  AgentPanel,
-  AgentsPanel,
-  CreateRoomPanel,
-  DispatchPanel,
-  PersonalPanel,
-  PreparePanel,
-} from './components/details.js'
+import { AgentPanel, CreateRoomPanel, PreparePanel } from './components/details.js'
+import { AgentsPanel } from './components/agents-panel.js'
+import { DispatchPanel } from './components/dispatch-panel.js'
+import { LedgerPanel } from './components/ledger-panel.js'
+import { PersonalPanel } from './components/personal-panel.js'
+import { usePanelResource } from './data/use-panel-resource.js'
+import { InvitePanel } from './components/invite.js'
+import { SourcesPanel } from './components/sources-restored.js'
 import { PublishPanel } from './components/publish.js'
 import { ReplayPanel } from './components/replay.js'
-import { GameSurface } from './components/game-surface.js'
+import { GameSurface } from './components/game-content.js'
 import type { RestrictedContentV1 } from '@cordisx/protocol/restricted-content/v1'
 import { FundingPanel } from './components/funding.js'
 import type { FundingQuote } from './data/economy.js'
 import './styles/foundation.css'
+import { headerBalanceAccessibleLabel, headerBalanceLabel } from './data/header-balance.js'
 import { PageShell } from './components/page-shell.js'
+import type { CurrentUserState } from './data/current-user-sync.js'
 export type ClientRuntime = {
+  currentUser?: CurrentUserState
   port: GameRoomPort
+  createContext?: CreateContext
+  lobbyStates?: SourceState[]
+  lobbyFilters?: Filters
+  balanceLabel?: string
+  balanceAriaLabel?: string
+  updateBalanceLabel?: (label: string, ariaLabel?: string) => void
+  updateRoomHeader?: (name: string) => void
+  subscribeWallet?: (changed: () => void) => () => void
+  subscribeCurrentUser?: (changed: () => void) => () => void
+  isolatedGameUi?: IsolatedGameUiV1
   restrictedContent?: RestrictedContentV1
   navigate: (page: string) => void
   seat?: Seat
   agent?: Agent
   replay?: import('./data/model.js').ReplayEvent[]
+  lobbyTarget?: { room: import('./data/model.js').Room; watch: boolean }
+  dispatchRoomKey?: string
   quote?: FundingQuote
+  roomHeaderAction?: (action: 'details' | 'sync' | 'leave', signal: AbortSignal) => Promise<void>
 }
 export function GameRoomPage({ page, runtime }: { page: string; runtime: ClientRuntime }): ReactElement {
-  const { port, navigate } = runtime
-  const [states, setStates] = useState<SourceState[]>([])
-  const [agents, setAgents] = useState<Agent[]>([])
-  const [dispatches, setDispatches] = useState<Dispatch[]>([])
-  const [balances, setBalances] = useState<Balance[]>([])
-  const [history, setHistory] = useState<History[]>([])
-  const [filters, setFilters] = useState<Filters>({
-    search: '',
-    gameId: '',
-    sourceId: '',
-    vacancy: false,
-    agents: false,
-  })
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState('')
-  const [invitation, setInvitation] = useState('')
-  const [, renderSeat] = useState(0)
-  const [epoch, setEpoch] = useState(0)
-  const [controller] = useState(() => new AbortController())
-  useEffect(() => () => controller.abort(), [controller])
+  const blocked = agentPageBlocked(page)
   useEffect(() => {
-    const current = new AbortController()
-    const aggregate = new SourceAggregator(port, setStates)
-    void aggregate.refresh()
-    void Promise.allSettled([
-      port.agents(current.signal).then(value => {
-        if (!current.signal.aborted) setAgents(value)
-      }),
-      port.dispatches(current.signal).then(value => {
-        if (!current.signal.aborted) setDispatches(value)
-      }),
-      port.balances(current.signal).then(value => {
-        if (!current.signal.aborted) setBalances(value)
-      }),
-      port.history(current.signal).then(value => {
-        if (!current.signal.aborted) setHistory(value)
-      }),
-    ])
-    return () => {
-      current.abort()
-      aggregate.dispose()
-    }
-  }, [port, epoch])
+    if (blocked) runtime.navigate('lobby')
+  }, [blocked, runtime])
+  if (blocked) {
+    return (
+      <PageShell page={page} navigate={runtime.navigate}>
+        <p role='status'>代理派遣暂未开放，正在返回大厅。</p>
+      </PageShell>
+    )
+  }
+  return <EnabledGameRoomPage page={page} runtime={runtime} />
+}
+function EnabledGameRoomPage({ page, runtime }: { page: string; runtime: ClientRuntime }): ReactElement {
+  const { port, navigate } = runtime
+  const roomName = runtime.seat?.room.name
+  useEffect(() => {
+    if (['prepare', 'funding'].includes(page) && roomName) runtime.updateRoomHeader?.(roomName)
+  }, [page, roomName, runtime])
+  useEffect(() => {
+    if (page === 'lobby') delete runtime.lobbyTarget
+  }, [page, runtime])
+  const [epoch, setEpoch] = useState(0)
+  const [walletEpoch, setWalletEpoch] = useState(0)
+  const [sourceOwnerRevision, setSourceOwnerRevision] = useState(0)
+  const currentSourceOwner = () => runtime.currentUser?.status === 'available' ? runtime.currentUser.subject : undefined
+  const sourceOwner = useRef(currentSourceOwner())
+  const states = useSourceStates(port, epoch, 2000, sourceOwnerRevision)
+  const [filters, setFilters] = useState<Filters>(() => runtime.lobbyFilters ?? defaultLobbyFilters())
+  if (page === 'lobby') {
+    runtime.lobbyFilters = filters
+    runtime.lobbyStates = states
+  }
+  const [busy, setBusy] = useState(false)
+  const [actions] = useState(() => new ActionScope())
+  const [error, setError] = useState('')
+  const [, renderSeat] = useState(0)
+  useEffect(() =>
+    runtime.subscribeCurrentUser?.(() => {
+      const next = currentSourceOwner()
+      if (sourceOwner.current !== next) {
+        sourceOwner.current = next
+        setSourceOwnerRevision(value => value + 1)
+      }
+      setEpoch(value => value + 1)
+    }), [runtime])
+  useEffect(() => runtime.subscribeWallet?.(() => setWalletEpoch(value => value + 1)), [runtime])
+  const [detailsOpen, setDetailsOpen] = useState(false)
+  const [exitRequest, setExitRequest] = useState(0)
+  const [syncRevision, setSyncRevision] = useState(0)
+  const [connectionError, setConnectionError] = useState('')
+  const [refreshAttempt, setRefreshAttempt] = useState(0)
+  const uncertainConnection = useRef(false)
+  const poll = ['lobby', 'agents', 'agent', 'dispatch'].includes(page)
+  const agentResource = usePanelResource(port, signal => port.agents(signal), epoch, poll)
+  const dispatchResource = usePanelResource(port, signal => port.dispatches(signal), epoch, poll)
+  const personalEpoch = epoch + states.filter(state => state.state === 'online').length
+  const walletBalances = usePanelResource(port, signal => port.balances(signal), personalEpoch + walletEpoch)
+  const balances = walletBalanceResource(port, walletBalances)
+  const history = usePanelResource(port, signal => port.history(signal), personalEpoch)
+  const balanceLabel = headerBalanceLabel(balances)
+  const balanceAriaLabel = headerBalanceAccessibleLabel(balances)
+  useEffect(() => {
+    runtime.balanceLabel = balanceLabel
+    runtime.balanceAriaLabel = balanceAriaLabel
+    runtime.updateBalanceLabel?.(balanceLabel, balanceAriaLabel)
+  }, [balanceLabel, balanceAriaLabel, runtime])
+  const agents = agentResource.data
+  useEffect(() => {
+    const deactivate = actions.activate()
+    setBusy(false)
+    return deactivate
+  }, [actions])
   useEffect(() => {
     if (!['prepare', 'funding'].includes(page) || !runtime.seat?.seatId || !port.refreshSeat) return
-    const polling = new AbortController()
-    let timer: ReturnType<typeof setTimeout> | undefined
-    const poll = async () => {
-      try {
-        const next = await port.refreshSeat!(runtime.seat!, polling.signal)
-        if (!polling.signal.aborted && (next.version ?? 0) >= (runtime.seat?.version ?? 0)) {
+    setConnectionError('')
+    return startSeatRefresh({
+      refresh: signal => port.refreshSeat!(runtime.seat!, signal),
+      changed: next => {
+        if ((next.version ?? 0) >= (runtime.seat?.version ?? 0)) {
           runtime.seat = next
-          renderSeat(epoch => epoch + 1)
+          renderSeat(value => value + 1)
         }
-      } catch (error) {
-        if (!polling.signal.aborted) setError(error instanceof Error ? error.message : '对局连接中断')
+      },
+      recovered: next => {
+        if ((next.version ?? 0) < (runtime.seat?.version ?? 0)) return
+        setConnectionError('')
+        if (uncertainConnection.current) {
+          uncertainConnection.current = false
+          setSyncRevision(value => value + 1)
+        }
+      },
+      failed: setConnectionError,
+    })
+  }, [page, port, runtime, refreshAttempt])
+  useEffect(() => {
+    if (page !== 'prepare') {
+      setDetailsOpen(false)
+      return
+    }
+    const handler: ClientRuntime['roomHeaderAction'] = async (action, signal) => {
+      if (action === 'details') {
+        setDetailsOpen(open => !open)
+        return
+      }
+      if (action === 'leave') {
+        setExitRequest(value => value + 1)
+        return
+      }
+      if (!runtime.seat || !port.refreshSeat) throw new Error('当前席位无法同步')
+      setBusy(true)
+      setError('')
+      try {
+        const next = await port.refreshSeat(runtime.seat, signal)
+        if ((next.version ?? 0) >= (runtime.seat?.version ?? 0)) {
+          runtime.seat = next
+          renderSeat(value => value + 1)
+          setSyncRevision(value => value + 1)
+        }
+      } catch (reason) {
+        setError(reason instanceof Error ? reason.message : '同步失败，请重试')
+        throw reason
       } finally {
-        if (!polling.signal.aborted) timer = setTimeout(poll, 1500)
+        setBusy(false)
       }
     }
-    timer = setTimeout(poll, 1500)
+    runtime.roomHeaderAction = handler
     return () => {
-      polling.abort()
-      clearTimeout(timer)
+      if (runtime.roomHeaderAction === handler) runtime.roomHeaderAction = undefined
     }
   }, [page, port, runtime])
-  useEffect(() => {
-    if (!['lobby', 'agents', 'agent', 'dispatch'].includes(page)) return
-    const current = new AbortController()
-    const timer = setInterval(() => {
-      void port.agents(current.signal).then(value => {
-        if (!current.signal.aborted) setAgents(value)
-      }).catch(() => {})
-      void port.dispatches(current.signal).then(value => {
-        if (!current.signal.aborted) setDispatches(value)
-      }).catch(() => {})
-    }, 2000)
-    return () => {
-      current.abort()
-      clearInterval(timer)
-    }
-  }, [page, port])
   const run = (operation: (signal: AbortSignal) => Promise<void>) => {
-    if (busy) return
-    setBusy(true)
-    setError('')
-    void operation(controller.signal).then(() => {
-      if (!controller.signal.aborted) setEpoch(epoch => epoch + 1)
-    }).catch(error => {
-      if (!controller.signal.aborted) setError(error instanceof Error ? error.message : '操作失败')
-    }).finally(() => {
-      if (!controller.signal.aborted) setBusy(false)
+    void runPageAction(actions, operation, {
+      busy: setBusy,
+      error: setError,
+      complete: () => setEpoch(epoch => epoch + 1),
     })
   }
   const selectAgent = (agent: Agent) => {
@@ -140,7 +207,28 @@ export function GameRoomPage({ page, runtime }: { page: string; runtime: ClientR
   }
   const rooms = states.flatMap(state => state.snapshot?.rooms ?? [])
   return (
-    <PageShell page={page} navigate={navigate}>
+    <PageShell
+      page={page}
+      navigate={navigate}
+      actions={page === 'lobby'
+        ? (
+          <>
+            <Button
+              variant='ghost'
+              className='gr-square-button'
+              aria-label='邀请加入'
+              title='邀请加入'
+              onClick={() => navigate('invite')}
+            >
+              <Symbol name='link' />
+            </Button>
+            <Button className='gr-open-game' onClick={() => navigate('create')}>
+              <Symbol name='plus' />开一局
+            </Button>
+          </>
+        )
+        : undefined}
+    >
       {port.kind === 'sample' && (
         <div className='gr-notice' role='status'>
           样例数据 · 真实插件组件预览 · 不连接服务器、不运行模型、不改变余额
@@ -149,6 +237,29 @@ export function GameRoomPage({ page, runtime }: { page: string; runtime: ClientR
       {error && <div className='gr-error' role='alert'>{error}</div>}
       {page === 'lobby' && (
         <Lobby
+          key={sourceOwnerRevision}
+          configured={port.sources.some(source => source.enabled)}
+          bots={port.roomBots
+            ? (room, change) =>
+              run(async signal => {
+                const next = await port.roomBots!(room, change, signal)
+                if (runtime.seat?.room.id === room.id && runtime.seat.room.sourceId === room.sourceId) {
+                  runtime.seat = next
+                }
+                setEpoch(value => value + 1)
+              })
+            : undefined}
+          initialRoom={runtime.lobbyTarget?.room}
+          initialWatching={runtime.lobbyTarget?.watch}
+          spectator={(room, close) => (
+            <Spectator
+              htmlService={runtime.isolatedGameUi}
+              room={room}
+              port={port}
+              service={runtime.restrictedContent}
+              close={close}
+            />
+          )}
           connected={sourceId => port.kind === 'sample' || port.isConnected?.(sourceId) === true}
           refresh={() => setEpoch(epoch => epoch + 1)}
           busy={busy}
@@ -166,11 +277,14 @@ export function GameRoomPage({ page, runtime }: { page: string; runtime: ClientR
               runtime.seat = await port.join({ sourceId: room.sourceId, roomId: room.id }, signal)
               navigate('prepare')
             })}
-          create={() => navigate('create')}
+          dispatch={room => {
+            runtime.dispatchRoomKey = `${room.sourceId}/${room.id}`
+            navigate('agents')
+          }}
+          create={() => openLobbyCreate(runtime)}
           invite={() => navigate('invite')}
         />
       )}
-      {page === 'create' && <Button variant='ghost' onClick={() => navigate('publish')}>导入 / 发布自制游戏包</Button>}
       {page === 'publish' && (
         <PublishPanel
           states={states}
@@ -186,7 +300,12 @@ export function GameRoomPage({ page, runtime }: { page: string; runtime: ClientR
       )}
       {page === 'create' && (
         <CreateRoomPanel
-          key={states.map(state => state.state).join()}
+          tokenAvailable={port.walletMode?.() === 'canonical-local'
+            ? sourceId => !!port.economyAvailable?.(sourceId)
+            : undefined}
+          context={runtime.createContext}
+          configure={() => navigate('configuration')}
+          publish={() => navigate('publish')}
           states={states}
           busy={busy}
           create={(sourceId, draft) =>
@@ -199,61 +318,66 @@ export function GameRoomPage({ page, runtime }: { page: string; runtime: ClientR
         />
       )}
       {page === 'invite' && (
-        <div className='gr-detail'>
-          <label className='gr-field'>
-            完整邀请 ID<TextInput
-              aria-label='完整邀请 ID'
-              placeholder='粘贴包含来源的邀请 ID'
-              value={invitation}
-              onChange={setInvitation}
-            />
-          </label>
-          <p className='gr-muted'>邀请绑定房间所在的来源。不会在其他来源查找同名房间。</p>
-          <Button
-            variant='primary'
-            disabled={busy || !invitation.trim()}
-            onClick={() =>
-              run(async signal => {
-                const decoded = decodeInvitation(invitation, port.sources)
-                await ensureAccount(decoded.sourceId, signal)
-                runtime.seat = await port.join(decoded, signal)
-                navigate('prepare')
-              })}
-          >
-            查看房间
-          </Button>
-        </div>
+        <InvitePanel
+          port={port}
+          settings={() => navigate('settings')}
+          joined={seat => {
+            runtime.seat = seat
+            navigate('prepare')
+          }}
+        />
       )}
-      {page === 'prepare' && runtime.seat?.status && ['playing', 'finished', 'aborted'].includes(runtime.seat.status)
-        && (
-          <GameSurface
-            seat={runtime.seat}
-            port={port}
-            service={runtime.restrictedContent}
-            changed={next => {
-              if ((next.version ?? 0) >= (runtime.seat?.version ?? 0)) {
-                runtime.seat = next
-                renderSeat(epoch => epoch + 1)
-              }
-            }}
-          />
-        )}
+      {page === 'prepare' && !runtime.seat && (
+        <section className='gr-panel-section' aria-label='恢复房间'>
+          <p role='status'>当前页面的席位信息已丢失。返回大厅恢复现有连接，再选择「返回房间」。</p>
+          <p className='gr-muted'>若原访客连接已失效，将无法恢复原席位；请勿重复创建访客身份。</p>
+          <Button onClick={() => navigate('lobby')}>返回大厅恢复</Button>
+        </section>
+      )}
       {page === 'prepare' && runtime.seat && (
         <PreparePanel
+          surface={
+            <GameSurface
+              htmlService={runtime.isolatedGameUi}
+              exitRequest={exitRequest}
+              syncRevision={syncRevision}
+              connectionError={connectionError}
+              recoverConnection={() => {
+                uncertainConnection.current = true
+                setRefreshAttempt(value => value + 1)
+              }}
+              exited={() => {
+                runtime.seat = undefined
+                navigate('lobby')
+              }}
+              seat={runtime.seat}
+              port={port}
+              service={runtime.restrictedContent}
+              funding={(runtime.seat.walletSpend?.phase === 'funding') && port.quote
+                ? async signal => {
+                  runtime.quote = await port.quote!(runtime.seat!, signal)
+                  navigate('funding')
+                }
+                : undefined}
+              changed={next => {
+                if ((next.version ?? 0) >= (runtime.seat?.version ?? 0)) {
+                  runtime.seat = next
+                  renderSeat(epoch => epoch + 1)
+                }
+              }}
+            />
+          }
           seat={runtime.seat}
+          detailsOpen={detailsOpen}
+          closeDetails={() => setDetailsOpen(false)}
           busy={busy}
-          sample={port.kind === 'sample'}
+          bots={port.bots
+            ? change =>
+              run(async signal => {
+                runtime.seat = await port.bots!(runtime.seat!, change, signal)
+              })
+            : undefined}
           sources={port.sources}
-          ready={() =>
-            run(async signal => {
-              runtime.seat = await port.ready(runtime.seat!, consentFor(runtime.seat!.room), signal)
-            })}
-          close={() =>
-            run(async signal => {
-              await port.leave(runtime.seat!, signal)
-              runtime.seat = undefined
-              navigate('lobby')
-            })}
         />
       )}
       {page === 'funding' && runtime.seat && runtime.quote && (
@@ -261,6 +385,20 @@ export function GameRoomPage({ page, runtime }: { page: string; runtime: ClientR
           key={runtime.quote.termsHash}
           seat={runtime.seat}
           quote={runtime.quote}
+          sources={port.sources}
+          back={() => navigate('prepare')}
+          unavailable={port.walletMode?.() === 'canonical-local'
+              && (!port.economyAvailable?.(runtime.seat!.room.sourceId) || port.walletStatus?.() !== 'ready')
+            ? '唯一本地钱包不可用或此来源不支持本地结算'
+            : !port.reserve || !port.refreshSeat
+            ? '此连接无法确认费用'
+            : undefined}
+          refresh={port.quote
+            ? () =>
+              run(async signal => {
+                runtime.quote = await port.quote!(runtime.seat!, signal)
+              })
+            : undefined}
           busy={busy}
           reserve={() =>
             run(async signal => {
@@ -270,51 +408,15 @@ export function GameRoomPage({ page, runtime }: { page: string; runtime: ClientR
             })}
         />
       )}
-      {page === 'prepare' && runtime.seat && (
-        <div className='gr-action-row'>
-          {runtime.seat.canStart && (
-            <Button
-              disabled={busy}
-              onClick={() =>
-                run(async signal => {
-                  runtime.seat = await port.start!(runtime.seat!, signal)
-                })}
-            >
-              开始对局
-            </Button>
-          )}
-          {runtime.seat.funding && (
-            <Button
-              disabled={busy}
-              onClick={() =>
-                run(async signal => {
-                  runtime.quote = await port.quote!(runtime.seat!, signal)
-                  navigate('funding')
-                })}
-            >
-              查看全部席位投入条款
-            </Button>
-          )}
-          {runtime.seat.canNextMatch && (
-            <Button
-              disabled={busy}
-              onClick={() =>
-                run(async signal => {
-                  runtime.seat = await port.nextMatch!(runtime.seat!, signal)
-                })}
-            >
-              开始下一局准备
-            </Button>
-          )}
-        </div>
-      )}
-      {page === 'agents' && <Button onClick={() => navigate('configuration')}>添加 / 编辑 Agent</Button>}
-      {page === 'agents' && <AgentsPanel agents={agents} select={selectAgent} />}
-      {page === 'agent' && port.capabilities?.().agent.reason && <p role='status'>{port.capabilities().agent.reason}
-      </p>}
       {page === 'agent' && runtime.agent && (
         <AgentPanel
           agent={runtime.agent}
+          sources={port.sources}
+          back={() => navigate('agents')}
+          unavailable={port.capabilities?.().agent.available === false
+            ? port.capabilities().agent.reason ?? '派遣服务不可用'
+            : undefined}
+          initialRoomKey={runtime.dispatchRoomKey}
           rooms={rooms}
           busy={busy || port.capabilities?.().agent.available === false}
           dispatch={(room, budget) =>
@@ -330,11 +432,31 @@ export function GameRoomPage({ page, runtime }: { page: string; runtime: ClientR
             })}
         />
       )}
+      {page === 'agents' && (
+        <AgentsPanel
+          resource={agentResource}
+          tasks={dispatchResource}
+          rooms={rooms}
+          select={selectAgent}
+          configure={() => navigate('configuration')}
+          unavailable={port.capabilities?.().agent.available === false
+            ? port.capabilities().agent.reason ?? '派遣服务尚不可用'
+            : undefined}
+        />
+      )}
       {page === 'dispatch' && (
         <DispatchPanel
-          runs={dispatches}
+          resource={dispatchResource}
+          canSpectate={!!port.spectate && !!(runtime.restrictedContent || runtime.isolatedGameUi)}
+          openRoom={(room, watch) => {
+            runtime.lobbyTarget = { room, watch }
+            navigate('lobby')
+          }}
           agents={agents}
+          rooms={rooms}
+          sources={port.sources}
           busy={busy}
+          configure={() => navigate('configuration')}
           withdraw={dispatch =>
             run(async signal => {
               await port.withdraw(dispatch, signal)
@@ -343,7 +465,13 @@ export function GameRoomPage({ page, runtime }: { page: string; runtime: ClientR
       )}
       {page === 'personal' && (
         <PersonalPanel
+          currentUser={runtime.currentUser}
+          port={port}
+          epoch={personalEpoch}
           balances={balances}
+          sources={port.sources}
+          navigate={navigate}
+          busy={busy}
           history={history}
           replay={record =>
             run(async signal => {
@@ -352,57 +480,24 @@ export function GameRoomPage({ page, runtime }: { page: string; runtime: ClientR
             })}
         />
       )}
+      {page === 'ledger' && (
+        <LedgerPanel port={port} epoch={personalEpoch} balances={balances} sources={port.sources} navigate={navigate} />
+      )}
       {page === 'replay' && (
-        <ReplayPanel events={runtime.replay ?? []} port={port} service={runtime.restrictedContent} />
+        <ReplayPanel
+          back={() => navigate('personal')}
+          events={runtime.replay ?? []}
+          port={port}
+          service={runtime.restrictedContent}
+        />
       )}
       {page === 'settings' && (
-        <div className='gr-detail'>
-          {states.map(state => (
-            <div className='gr-record' key={state.source.id}>
-              <strong>{state.source.name}</strong>
-              <span>
-                {state.state === 'online'
-                  ? (port.isConnected?.(state.source.id) ? '账户已连接' : '服务在线 · 账户未连接')
-                  : state.state === 'loading'
-                  ? '连接中'
-                  : '不可用'}
-              </span>
-              <span className='gr-code'>{state.source.url}</span>
-              <span className='gr-muted'>
-                协议 {state.snapshot?.protocol ?? '未知'} · 账户 {state.source.accountId}
-              </span>
-              {state.error && <span>{state.error}</span>}
-              {port.kind === 'live' && (
-                <div className='gr-action-row'>
-                  <Button
-                    disabled={busy || port.capabilities?.().account === false}
-                    onClick={() =>
-                      run(async () => {
-                        await port.connect!(state.source.id)
-                      })}
-                  >
-                    连接游戏账户
-                  </Button>
-                  <Button
-                    disabled={busy || port.capabilities?.().account === false}
-                    onClick={() => run(signal => port.connectEconomy!(state.source.id, signal))}
-                  >
-                    连接经济账户
-                  </Button>
-                  <Button
-                    disabled={busy || port.capabilities?.().account === false}
-                    onClick={() => run(signal => port.linkEconomy!(state.source.id, signal))}
-                  >
-                    确认绑定经济账户
-                  </Button>
-                </div>
-              )}
-            </div>
-          ))}
-          <Button disabled={busy} onClick={() => setEpoch(epoch => epoch + 1)}>重新连接来源</Button>
-          <Button onClick={() => navigate('configuration')}>管理来源与 Agent 配置</Button>
-          <p className='gr-muted'>来源地址与账户分别配置。多个来源会同时显示在大厅。</p>
-        </div>
+        <SourcesPanel
+          states={states}
+          port={port}
+          configure={() => navigate('configuration')}
+          changed={() => setEpoch(value => value + 1)}
+        />
       )}
     </PageShell>
   )

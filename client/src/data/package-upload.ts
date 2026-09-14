@@ -1,3 +1,4 @@
+import { verifyHtmlUi } from '../../../sdk/html-ui.mjs'
 import { array, number, object, string } from './http.js'
 export const PACKAGE_LIMIT = 600 * 1024
 export type PackagePreview = {
@@ -32,8 +33,18 @@ export async function inspectPackage(text: string): Promise<PackagePreview> {
   if (!/^[a-z0-9-]{1,64}$/.test(id) || !/^\d+\.\d+\.\d+$/.test(version)) throw new Error('玩法 ID 或版本格式不兼容')
   string(document.rules)
   const ui = object(document.ui)
-  if (ui.format !== 'scene-v1') throw new Error('需要 scene-v1 声明式界面；不接受 HTML 包')
-  string(ui.render)
+  if (ui.format === 'html-v1') {
+    await verifyHtmlUi(
+      ui,
+      async content =>
+        [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(content)))].map(x =>
+          x.toString(16).padStart(2, '0')
+        ).join(''),
+    )
+  } else {
+    if (ui.format !== 'scene-v1') throw new Error('不支持此游戏界面格式')
+    string(ui.render)
+  }
   const min = number(manifest.minPlayers)
   const max = number(manifest.maxPlayers)
   if (!Number.isInteger(min) || !Number.isInteger(max) || min < 2 || max > 8 || max < min) {

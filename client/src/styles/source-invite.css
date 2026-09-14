@@ -1,0 +1,127 @@
+.gr-sources-layout {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 28px;
+  min-height: 0;
+  flex: 1;
+}
+.gr-sources-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-right: 20px;
+  border-right: 1px solid var(--gr-border);
+  min-width: 0;
+  overflow: auto;
+}
+.gr-source-option {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-start;
+  text-align: left;
+  min-width: 0;
+  padding: 12px;
+}
+.gr-source-option > span:not(.gr-symbol) {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 4px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.gr-source-option small {
+  color: var(--gr-muted);
+  font-weight: 400;
+}
+.gr-source-option[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--gr-text) 8%, transparent);
+}
+.gr-source-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+  overflow: auto;
+}
+.gr-source-content p {
+  margin: 4px 0 0;
+  overflow-wrap: anywhere;
+}
+.gr-source-facts {
+  margin: 0;
+}
+.gr-source-facts > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding-block: 16px;
+  border-bottom: 1px solid var(--gr-border);
+}
+.gr-source-facts dt {
+  color: var(--gr-muted);
+}
+.gr-source-facts dd {
+  margin: 0;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+.gr-invite-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 540px) minmax(280px, 1fr);
+  gap: 28px;
+  min-height: 0;
+  flex: 1;
+}
+.gr-invite-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+.gr-invite-editor > p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.gr-invite-preview {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  gap: 12px;
+}
+.gr-invite-preview > .gr-confirmation-summary {
+  flex: 1;
+}
+.gr-invite-join {
+  display: flex;
+  justify-content: flex-end;
+}
+.gr-invite-join button {
+  width: 200px;
+}
+@container game-room (max-width: 700px) {
+  .gr-sources-layout, .gr-invite-layout {
+    display: flex;
+    flex-direction: column;
+    overflow: auto;
+    gap: 20px;
+  }
+  .gr-sources-list {
+    flex: none;
+    border-right: 0;
+    padding-right: 0;
+    max-height: 230px;
+  }
+  .gr-source-content, .gr-invite-preview {
+    flex: none;
+    overflow: visible;
+  }
+  .gr-invite-preview > .gr-confirmation-summary {
+    min-height: 400px;
+  }
+  .gr-invite-join button {
+    width: 100%;
+  }
+}

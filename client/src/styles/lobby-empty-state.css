@@ -1,0 +1,199 @@
+.gr-lobby-empty {
+  box-sizing: border-box;
+  display: flex;
+  flex: 1 0 auto;
+  min-height: min-content;
+  width: 100%;
+  padding: 24px;
+  text-align: center;
+}
+.gr-lobby-empty-group {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  margin: auto;
+}
+.gr-lobby-empty-scene {
+  flex: none;
+  width: min(310px, 100%);
+  height: auto;
+  aspect-ratio: 320 / 180;
+  margin-bottom: 18px;
+  overflow: clip;
+}
+.gr-lobby-empty-drawing {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.gr-lobby-empty-board {
+  stroke: color-mix(in srgb, var(--gr-muted) 52%, transparent);
+  stroke-width: 1;
+}
+.gr-lobby-empty-white {
+  fill: #e4e4df;
+  stroke: color-mix(in srgb, var(--gr-text) 25%, transparent);
+  stroke-width: 1;
+}
+.gr-lobby-empty-black {
+  fill: #252625;
+  stroke: color-mix(in srgb, var(--gr-muted) 85%, transparent);
+  stroke-width: 1;
+}
+.gr-lobby-empty-paper {
+  fill: var(--gr-surface);
+  stroke: color-mix(in srgb, var(--gr-text) 58%, transparent);
+  stroke-width: 1;
+}
+.gr-lobby-empty-suit {
+  stroke: #85866a;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.gr-lobby-empty-suit[data-warm="true"] {
+  stroke: #a17c74;
+}
+.gr-lobby-empty-rank {
+  fill: var(--gr-text);
+  stroke: none;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+}
+.gr-lobby-empty-leaf {
+  fill: #85866a;
+  opacity: 0.7;
+}
+.gr-lobby-empty-accent {
+  stroke: #85866a;
+  opacity: 0.6;
+}
+.gr-lobby-empty-create .gr-symbol {
+  margin: 0;
+}
+.gr-lobby-empty-copy {
+  max-width: 360px;
+}
+.gr-lobby-empty-copy h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.4px;
+  line-height: 1.4;
+}
+.gr-lobby-empty-copy p {
+  margin: 9px 0 21px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--gr-muted);
+}
+.gr-lobby-empty-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.gr-root .gr-lobby-empty-create {
+  min-height: 34px;
+  padding: 6px 12px;
+  gap: 7px;
+  border: 1px solid color-mix(in srgb, var(--gr-text) 24%, transparent);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--gr-text);
+  font-size: 12px;
+  font-weight: 500;
+}
+.gr-root .gr-lobby-empty-reset {
+  min-height: 34px;
+  padding: 6px 8px;
+  color: var(--gr-muted);
+  font-size: 12px;
+  font-weight: 400;
+}
+@container game-room (max-width: 400px) {
+  .gr-lobby-empty {
+    padding: 24px 20px;
+  }
+  .gr-lobby-empty-copy h2 {
+    font-size: 18px;
+  }
+}
+
+.gr-lobby-empty-move {
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation-duration: 14s;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+.gr-lobby-empty-move {
+  animation-name: gr-lobby-place;
+}
+@keyframes gr-lobby-place {
+  0%, 22%, 100% {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.85);
+  }
+  2%, 18% {
+    opacity: 1;
+    transform: none;
+  }
+}
+.gr-lobby-empty-card-position, .gr-lobby-empty-card-angle {
+  transition: transform 650ms cubic-bezier(0.22, 0.68, 0.32, 1);
+}
+.gr-lobby-empty-card-angle {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.gr-lobby-empty-card-played {
+  animation: gr-lobby-play-up 1600ms ease-out both;
+}
+.gr-lobby-empty-card-enter {
+  animation: gr-lobby-card-enter 450ms ease-out both;
+}
+@keyframes gr-lobby-play-up {
+  0% {
+    opacity: 1;
+    transform: none;
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-48px);
+  }
+}
+@keyframes gr-lobby-card-enter {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gr-lobby-empty-card-position, .gr-lobby-empty-card-angle {
+    transition: none;
+  }
+  .gr-lobby-empty-move {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+  .gr-lobby-empty-move[data-move="2"],
+  .gr-lobby-empty-move[data-move="3"],
+  .gr-lobby-empty-move[data-move="4"],
+  .gr-lobby-empty-move[data-move="5"] {
+    opacity: 0;
+  }
+}

@@ -1,0 +1,101 @@
+.gr-game-surface {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  min-height: 0;
+  flex: 1;
+}
+.gr-scene-root {
+  min-width: 0;
+}
+.gr-game-status {
+  color: var(--gr-muted);
+  padding-block: 12px;
+  overflow-wrap: anywhere;
+}
+.gr-game-recovery {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--gr-border);
+  border-radius: 12px;
+}
+.gr-game-recovery p {
+  flex: 1;
+  margin: 6px 0 0;
+  font-size: 12px;
+}
+.gr-spectator {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+  border: 1px solid var(--gr-border);
+  border-radius: 16px;
+  overflow: hidden;
+  background: var(--gr-surface);
+}
+.gr-spectator-header {
+  padding: 18px;
+  padding-inline-end: calc(var(--gr-toolbar-end-inset) - 1px);
+  border-bottom: 1px solid var(--gr-border);
+}
+.gr-spectator-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.gr-spectator-heading > button {
+  margin-left: auto;
+}
+.gr-spectator-header h2 {
+  margin: 16px 0 8px;
+  font-size: 20px;
+  overflow-wrap: anywhere;
+}
+.gr-spectator-header p {
+  margin: 0;
+  color: var(--gr-muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.gr-spectator-scene {
+  flex: 1;
+  overflow: auto;
+  min-height: 0;
+  min-width: 0;
+  padding: 16px;
+}
+.gr-spectator-footer {
+  padding: 12px 18px;
+  border-top: 1px solid var(--gr-border);
+}
+.gr-spectator-footer p {
+  margin: 0;
+  font-size: 12px;
+}
+@container game-room (max-width: 400px) {
+  .gr-game-recovery {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+.gr-html-scene-root {
+  flex: 1;
+  height: auto;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  background: transparent;
+}
+.gr-html-scene-root > iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}

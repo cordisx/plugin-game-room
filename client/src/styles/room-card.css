@@ -1,0 +1,326 @@
+.gr-game-room-card {
+  position: relative;
+  min-width: 0;
+  height: 224px;
+  border: 1px solid #ffffff29;
+  border-radius: 18px;
+  background-size: cover;
+  background-position: center;
+  color: #eee;
+  box-shadow: 0 9px 24px #0002;
+  container-type: inline-size;
+}
+.gr-game-room-card[data-game="fallback"] {
+  background:
+    radial-gradient(ellipse at 8% 70%, #5d4a70, transparent 65%),
+    linear-gradient(130deg, #353646, #252933);
+}
+.gr-game-room-card:has(details[open]) {
+  z-index: 5;
+}
+.gr-card-header {
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  top: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.gr-card-game {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 9px;
+  border: 1px solid #ffffff25;
+  border-radius: 12px;
+  background: #20272050;
+  font-size: 11px;
+  backdrop-filter: blur(8px);
+  max-width: 46%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.gr-card-symbol {
+  display: inline-block;
+  width: 17px;
+  height: 17px;
+  flex: none;
+  background: currentColor;
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+}
+.gr-card-status {
+  position: absolute;
+  top: -20px;
+  right: -20px;
+  width: 24px;
+  height: 24px;
+  border: 3px solid var(--cx-surface, #151617);
+  border-radius: 50%;
+  background: #add394;
+}
+.gr-card-status[data-status="已结束"],
+.gr-card-status[data-status="已满"] {
+  background: #989da6;
+}
+.gr-card-status[data-status="进行中"],
+.gr-card-status[data-status="已加入"] {
+  background: #8db7d3;
+}
+.gr-card-status[data-status="版本不兼容"] {
+  background: #d5ae75;
+}
+.gr-card-content {
+  position: absolute;
+  top: 48px;
+  left: 47%;
+  right: 14px;
+  bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.gr-card-title {
+  display: block;
+  color: inherit;
+  text-align: left;
+  border: 0;
+  padding: 0;
+  background: none;
+  font: inherit;
+  font-size: 18px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+.gr-card-people {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  margin-top: 13px;
+  padding-bottom: 5px;
+  min-width: 0;
+}
+.gr-card-seat {
+  position: relative;
+  width: 26px;
+  height: 26px;
+  flex: 0 0 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #eee7;
+  background: #81967b;
+  color: #eee;
+  box-shadow: inset 0 0 0 1px #23312a;
+}
+.gr-card-seat + .gr-card-seat {
+  margin-left: -7px;
+}
+.gr-card-seat[data-index="1"] {
+  background: #bd9179;
+}
+.gr-card-seat[data-index="2"] {
+  background: #8794ad;
+}
+.gr-card-seat > svg {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  fill: #f5e6d5;
+}
+.gr-card-seat > img {
+  width: calc(100% - 2px);
+  height: calc(100% - 2px);
+  border-radius: inherit;
+  object-fit: cover;
+}
+.gr-card-seat > .gr-card-seat-robot {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.gr-card-seat-empty {
+  border: 1px solid #d7decd40;
+  background: #303b35;
+  color: #d7decd;
+}
+.gr-card-seat-count {
+  position: absolute;
+  right: -5px;
+  bottom: -5px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  border-radius: 5px;
+  background: #eee6d5;
+  color: #263128;
+  border: 1px solid #29352e;
+  display: grid;
+  place-items: center;
+  font-size: 9px;
+  line-height: 1;
+  font-weight: 600;
+}
+.gr-card-meta {
+  font-size: 11px;
+  color: #c3c6bb;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 11px 0;
+}
+.gr-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: auto;
+  height: 30px;
+}
+.gr-card-actions .gr-card-primary {
+  height: 30px;
+  min-height: 30px;
+  border: 1px solid #f6ead6;
+  border-radius: 12px;
+  background: linear-gradient(#f5efdf, #e8ddc7) #e8ddc7;
+  color: #202b23;
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+  font-size: 12px;
+  padding: 0 6px;
+  white-space: nowrap;
+}
+.gr-card-actions .gr-card-icon-button {
+  width: 30px;
+  height: 30px;
+  min-height: 30px;
+  flex: 0 0 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #ffffff40;
+  border-radius: 10px;
+  background: #ffffff09;
+  color: #eee;
+  padding: 0;
+  list-style: none;
+  cursor: pointer;
+}
+.gr-card-icon-button > span {
+  display: flex;
+}
+.gr-card-icon-button::-webkit-details-marker {
+  display: none;
+}
+.gr-card-actions button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.gr-card-more {
+  position: relative;
+  flex: none;
+}
+.gr-card-menu {
+  position: absolute;
+  z-index: 10;
+  right: 0;
+  bottom: 36px;
+  width: 178px;
+  padding: 5px;
+  border-radius: 10px;
+  border: 1px solid #ffffff26;
+  background: #292b2c;
+  box-shadow: 0 12px 32px #0007;
+}
+.gr-card-menu button {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  border: 0;
+  background: none;
+  color: #eee;
+  text-align: left;
+  padding: 8px;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 12px;
+  line-height: 20px;
+  min-height: 36px;
+  cursor: pointer;
+}
+.gr-card-menu-icon {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  line-height: 1;
+}
+.gr-card-menu-label {
+  grid-column: 2;
+  min-width: 0;
+}
+.gr-card-menu button:hover {
+  background: #ffffff10;
+}
+.gr-card-menu p {
+  margin: 5px;
+  font-size: 11px;
+  color: #c3c6bb;
+}
+.gr-card-fallback {
+  position: absolute;
+  left: 23.5%;
+  top: 50%;
+  transform: translate(-50%, -50%) rotate(-14deg);
+  color: #b6a5cc;
+}
+.gr-card-fallback .gr-card-symbol {
+  width: 92px;
+  height: 92px;
+}
+.gr-game-room-card :is(button, summary):focus-visible {
+  outline: 2px solid #a8c9eb;
+  outline-offset: 3px;
+}
+@container (max-width: 340px) {
+  .gr-card-content {
+    left: 45%;
+    right: 12px;
+  }
+  .gr-card-title {
+    font-size: 16px;
+  }
+  .gr-card-game {
+    max-width: 43%;
+  }
+}
+
+.gr-card-symbol[data-icon="agent"] {
+  mask-image: url("../assets/icons/agent.svg");
+}
+.gr-card-symbol[data-icon="gomoku"] {
+  mask-image: url("../assets/icons/gomoku.svg");
+}
+.gr-card-symbol[data-icon="holdem"] {
+  mask-image: url("../assets/icons/holdem.svg");
+}
+.gr-card-symbol[data-icon="dice"] {
+  mask-image: url("../assets/icons/dice.svg");
+}
+.gr-card-symbol[data-icon="seat"] {
+  mask-image: url("../assets/icons/seat.svg");
+}

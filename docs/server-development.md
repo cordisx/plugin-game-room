@@ -28,19 +28,12 @@ cookies. Uploaded UI is a server-side WASM render function; clients receive only
 validated declarative scenes, never author HTML or JavaScript. Sessions are sensitive:
 client credential storage belongs to the client's secure transport, not game UI.
 
-Optional shared Token economy configuration (all three required):
-
-```sh
-ECONOMY_URL=https://economy.example/
-ECONOMY_SERVICE_ID=game-service
-ECONOMY_SERVICE_TOKEN=operator-provisioned-service-credential
-```
-
-Inject the token from a deployment secret; never place it in client assets or Git.
-Use one configured economic instance per game server. Account linking uses a
-one-time proof, never a user economic session. See the [API](server-api.md).
-Absent economic configuration is a working score/local-chips server and token
-operations explicitly return unavailable.
+Optional Token spend configuration uses `SPEND_SERVICE_ORIGIN` and
+`SPEND_SERVICE_PRIVATE_KEY`, provisioned together by the operator. See the
+[local wallet spend runbook](local-wallet-spend.md). Former `ECONOMY_URL`, service
+IDs and bearer credentials are non-operative; Game never contacts that wallet.
+Absent spend configuration leaves score/local-chips available and explicitly
+disables Token games.
 
 For a prefilled real local review environment, use the [demo preview recipe](server-preview.md).
 
@@ -97,7 +90,7 @@ docker compose -f deploy/compose.yaml config
 docker compose -f deploy/compose.yaml up --build -d
 ```
 
-Set the environment shown above before starting; empty economic settings leave
+Set the environment shown above before starting; empty spend settings leave
 Token unavailable. TLS ingress is a separate operator responsibility. The supplied
 systemd unit assumes a `game-room` service account, built application at
 `/opt/game-room`, Node at `/usr/bin/node`, and mode-0600 `/etc/game-room.env`.
@@ -110,16 +103,9 @@ Compose syntax is checked offline with the installed standalone `docker-compose`
 CLI; the Docker Compose subcommand is not installed here. The compiled Node entry and production
 runtime dependencies are smoke-tested separately; that is not a Docker runtime test.
 
-Economic identity is pinned on first successful link as instanceId + serviceId +
-canonical URL, persisted separately from credentials and copied into token rooms.
-Changing any component returns `economy_instance_changed`; credential rotation for
-the same identity is possible, but switching currency instances is not an implicit
-migration. Use a separately initialized game-server identity for another economy,
-or implement an explicit audited migration before reusing account links. Agreement
-reads and settlement acknowledgements must match pinned identity and terms; server
-also checks the economic settled payout record against its requested allocation.
-An unexpected already-settled agreement without a matching game settlement remains
-pending for operator investigation; it is never labelled refunded or successful.
+The spend service origin, server ID and public key are pinned persistently. Key
+rotation or an origin move cannot silently replace old pending decisions. Restore
+the original operator secret and service identity before recovery.
 
 The installed CI workflow is `.github/workflows/server.yml`; it runs the full
 owner gate, Docker build and constrained container smoke on Linux. The container

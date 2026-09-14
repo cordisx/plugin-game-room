@@ -6,6 +6,7 @@ import type {
   RestrictedContentV1,
 } from '@cordisx/protocol/restricted-content/v1'
 import { Button } from 'cordisx/ui'
+import '../styles/game-status.css'
 import { RequestFailure } from '../data/http.js'
 import type { Seat } from '../data/model.js'
 import type { GameRoomPort } from '../data/port.js'
@@ -28,6 +29,7 @@ export function GameSurface(
   const [status, setStatus] = useState('正在加载对局界面')
   const [recovery, setRecovery] = useState<{ seat: Seat; action: unknown } | null>(null)
   const [recovering, setRecovering] = useState(false)
+  const recoveryPending = useRef(false)
   const [recoveryEpoch, setRecoveryEpoch] = useState(0)
   const [mountEpoch, setMountEpoch] = useState(0)
   const identity = JSON.stringify([
@@ -42,6 +44,7 @@ export function GameSurface(
     lifecycle.current = controller
     setRecovery(null)
     setRecovering(false)
+    recoveryPending.current = false
     let active = true
     let pending = false
     published.current = -1
@@ -126,44 +129,55 @@ export function GameSurface(
     <div className='gr-game-surface'>
       <div ref={element} className='gr-scene-root' aria-label='当前席位游戏场景' />
       {recovery && (
-        <Button
-          disabled={recovering}
-          onClick={() => {
-            if (!port.act || recovering) return
-            setRecovering(true)
-            const original = recovery
-            const signal = lifecycle.current?.signal
-            if (!signal || signal.aborted) {
-              setRecovering(false)
-              return
-            }
-            void port.act(original.seat, original.action, AbortSignal.any([signal, AbortSignal.timeout(15000)])).then(
-              next => {
-                if (
-                  signal.aborted || current.current.matchId !== original.seat.matchId
-                  || current.current.seatId !== original.seat.seatId
-                ) return
-                if ((next.version ?? 0) >= (current.current.version ?? 0)) changedRef.current(next)
-                setRecovery(null)
-                setStatus('')
-                setRecoveryEpoch(value => value + 1)
-              },
-            ).catch(error => {
-              if (!signal.aborted) setStatus(error instanceof Error ? error.message : '结果仍未确认')
-            }).finally(() => {
-              if (!signal.aborted) setRecovering(false)
-            })
-          }}
-        >
-          重新确认上次动作（同一请求）
-        </Button>
+        <div className='gr-game-recovery'>
+          <div>
+            <strong>动作结果尚未确认</strong>
+            <p className='gr-muted'>重新确认上次操作的结果，不提交新动作。</p>
+          </div>
+          <Button
+            disabled={recovering}
+            onClick={() => {
+              if (!port.act || recoveryPending.current) return
+              recoveryPending.current = true
+              setRecovering(true)
+              const original = recovery
+              const signal = lifecycle.current?.signal
+              if (!signal || signal.aborted) {
+                recoveryPending.current = false
+                setRecovering(false)
+                return
+              }
+              void port.act(original.seat, original.action, AbortSignal.any([signal, AbortSignal.timeout(15000)])).then(
+                next => {
+                  if (
+                    signal.aborted || current.current.matchId !== original.seat.matchId
+                    || current.current.seatId !== original.seat.seatId
+                  ) return
+                  if ((next.version ?? 0) >= (current.current.version ?? 0)) changedRef.current(next)
+                  setRecovery(null)
+                  setStatus('')
+                  setRecoveryEpoch(value => value + 1)
+                },
+              ).catch(error => {
+                if (!signal.aborted) setStatus(error instanceof Error ? error.message : '结果仍未确认')
+              }).finally(() => {
+                if (!signal.aborted) {
+                  recoveryPending.current = false
+                  setRecovering(false)
+                }
+              })
+            }}
+          >
+            {recovering ? '确认中…' : '重试确认'}
+          </Button>
+        </div>
       )}
       {seat.sceneError && (
         <div className='gr-error' role='alert'>
-          本局因游戏界面错误中止：{seat.sceneError}。结算状态：{seat.settlementState}。
+          本局因游戏界面错误中止：{seat.sceneError}。结算状态：{seat.settlementState ?? '未提供'}。
         </div>
       )}
-      {status && <div className='gr-source-notice' role='status'>{status}</div>}
+      {status && <div className='gr-game-status' role='status'>{status}</div>}
     </div>
   )
 }

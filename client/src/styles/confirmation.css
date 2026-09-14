@@ -1,0 +1,180 @@
+.gr-confirmation {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  container: confirmation / inline-size;
+}
+.gr-confirmation-workspace {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 600px) minmax(280px, 1fr);
+  gap: 32px;
+  padding-bottom: 20px;
+}
+.gr-confirmation-editor {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  scrollbar-gutter: stable;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding-right: 12px;
+}
+.gr-confirmation-editor p, .gr-confirmation-summary p {
+  margin: 0;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.gr-confirmation-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.gr-confirmation-heading p {
+  font-size: 12px;
+}
+.gr-confirmation-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.gr-confirmation-section h3 {
+  margin: 0;
+  font-size: 15px;
+}
+.gr-confirmation-facts {
+  margin: 0;
+  font-size: 13px;
+}
+.gr-confirmation-facts > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding-block: 12px;
+  border-bottom: 1px solid var(--gr-border);
+}
+.gr-confirmation-facts dt {
+  color: var(--gr-muted);
+}
+.gr-confirmation-facts dd {
+  margin: 0;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+.gr-confirmation-prose {
+  white-space: pre-wrap;
+}
+.gr-confirmation-consent {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  border-top: 1px solid var(--gr-border);
+  padding-block: 16px;
+  line-height: 1.6;
+}
+.gr-confirmation-consent input {
+  margin-top: 4px;
+  flex: none;
+}
+.gr-confirmation-footer, .gr-confirmation-compact {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-top: 1px solid var(--gr-border);
+  padding-top: 12px;
+}
+.gr-confirmation-footer > .gr-muted {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.gr-confirmation-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.gr-confirmation-submit {
+  width: 200px;
+  min-height: 38px;
+}
+.gr-confirmation-summary {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  border: 1px solid var(--gr-border);
+  border-radius: 16px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--gr-surface) 65%, transparent);
+}
+.gr-confirmation-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 12px;
+  border-bottom: 1px solid var(--gr-border);
+}
+.gr-confirmation-tabs [aria-selected="true"] {
+  background: color-mix(in srgb, var(--gr-text) 8%, transparent);
+}
+.gr-confirmation-summary-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow: auto;
+  min-height: 0;
+  padding: 12px 20px;
+}
+.gr-confirmation-ids {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.gr-confirmation-ids summary {
+  cursor: pointer;
+}
+@container confirmation (max-width: 700px) {
+  .gr-confirmation-workspace {
+    display: flex;
+    flex-direction: column;
+    overflow: auto;
+    gap: 20px;
+  }
+  .gr-confirmation-editor {
+    overflow: visible;
+    flex: none;
+    padding-right: 0;
+  }
+  .gr-confirmation-summary {
+    flex: none;
+  }
+  .gr-confirmation-summary-body {
+    overflow: visible;
+  }
+  .gr-confirmation-footer {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .gr-confirmation-actions {
+    flex-wrap: wrap;
+  }
+  .gr-confirmation-submit {
+    flex: 1;
+    width: auto;
+    min-width: 160px;
+  }
+}
+
+.gr-confirmation-form,
+.gr-confirmation-section,
+.gr-confirmation-heading,
+.gr-confirmation-consent,
+.gr-confirmation-facts {
+  flex: none;
+}

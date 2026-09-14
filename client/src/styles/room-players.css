@@ -1,0 +1,90 @@
+.gr-room-players {
+  display: grid;
+  gap: 8px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+.gr-room-players > li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding-block: 10px;
+  border-bottom: 1px solid var(--gr-border);
+}
+.gr-room-player-avatar {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  overflow: hidden;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--gr-text) 10%, transparent);
+}
+.gr-room-player-avatar img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.gr-room-player-copy {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  gap: 2px;
+  line-height: 18px;
+}
+.gr-room-player-copy strong {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.gr-room-player-copy > span {
+  color: var(--gr-muted);
+  font-size: 11px;
+}
+.gr-room-player-owner {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  color: var(--gr-muted);
+}
+
+.gr-room-player-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex: none;
+  gap: 4px;
+  min-width: 68px;
+}
+.gr-root .gr-room-player-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  min-height: 32px;
+  min-width: 32px;
+  padding: 0;
+}
+
+.gr-room-player-copy strong > span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gr-room-player-avatar .gr-symbol, .gr-room-player-action .gr-symbol {
+  margin: 0;
+}

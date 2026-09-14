@@ -1,0 +1,11 @@
+{
+  "$schema": "https://raw.githubusercontent.com/cordisx/cordisx-protocol/main/schemas/plugin-package.v11.schema.json",
+  "schemaVersion": 11,
+  "id": "game-room",
+  "dependencies": [],
+  "runtimeManifest": {
+    "path": "./runtime-manifest.json",
+    "schema": "https://raw.githubusercontent.com/cordisx/cordisx-protocol/main/schemas/plugin-manifest.v11.schema.json",
+    "digest": "sha256:c89ed1ac42493db83f42e5b0a9c9ea854feba78e9b9f3a6209bac04f001e5412"
+  }
+}

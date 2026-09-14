@@ -29,7 +29,14 @@ test('Host HTTP separates configured public discovery from bearer-scoped account
       used.push(request.connection)
       assert(request.deadline > Date.now())
       assert(request.signal)
-      return { status: 'accepted', value: { statusCode: 200, contentType: 'application/json', body: '{}' } }
+      return {
+        status: 'accepted',
+        value: {
+          statusCode: 200,
+          contentType: 'application/json',
+          body: request.path === '/v1/me' ? '{"account":{"id":"alice"}}' : '{}',
+        },
+      }
     },
     revoke: async () => ({ status: 'accepted', value: null }),
     dispose() {},
@@ -184,4 +191,59 @@ test('public discovery enforces the streamed byte boundary and propagates abort'
     server.closeAllConnections()
     await new Promise<void>(resolve => server.close(() => resolve()))
   }
+})
+
+test('guest session uses public credential exchange without requesting a user bearer', async () => {
+  const source = { id: 'guest-server', name: 'Guest', url: 'http://127.0.0.1:8787', accountId: '', enabled: true }
+  const publicConnection: HttpConnectionV1 = {
+    contract: 'cordisx.http-connection/v1',
+    id: 'public',
+    origin: source.url,
+    credential: 'none',
+  }
+  const guestConnection: HttpConnectionV1 = { ...publicConnection, id: 'guest', credential: 'bearer' }
+  const used: string[] = []
+  const client: HttpClientV1 = {
+    contract: 'cordisx.http-client/v1',
+    authorize: async input => {
+      assert.equal(input.credential, 'none')
+      return { status: 'accepted', value: publicConnection }
+    },
+    exchange: async input => {
+      assert.equal(input.connection.id, 'public')
+      assert.equal(input.path, '/v1/guests')
+      assert.equal(input.credentialField, 'token')
+      return {
+        status: 'accepted',
+        value: {
+          connection: guestConnection,
+          response: {
+            statusCode: 200,
+            contentType: 'application/json',
+            body: '{"account":{"id":"visitor","guest":true}}',
+          },
+        },
+      }
+    },
+    request: async input => {
+      used.push(input.connection.id)
+      return {
+        status: 'accepted',
+        value: {
+          statusCode: 200,
+          contentType: 'application/json',
+          body: input.path === '/v1/me' ? '{"account":{"id":"visitor"}}' : '{}',
+        },
+      }
+    },
+    revoke: async () => ({ status: 'accepted', value: null }),
+    dispose() {},
+  }
+  const transport = new HostHttpTransport(client)
+  const signal = new AbortController().signal
+  await transport.connectGuest(source, signal)
+  await transport.request({ source, path: '/v1/me', authenticated: true, signal })
+  await transport.request({ source, path: '/v1/rooms', method: 'POST', body: {}, authenticated: true, signal })
+  assert.deepEqual(used, ['guest', 'guest'])
+  await transport.dispose()
 })

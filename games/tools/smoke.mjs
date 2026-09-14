@@ -20,6 +20,7 @@ export async function smoke(pkg) {
         mode: ctx.mode,
         canAct: setup.turn === seat && !setup.done,
       }
+      if (pkg.ui.format === 'html-v1') continue
       const { value: scene } = await invoke(pkg.ui.render, 'render', [observation], uiContext)
       validateScene(scene)
     }

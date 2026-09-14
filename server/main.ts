@@ -1,15 +1,35 @@
+import * as managedCodec from '@cordisx/protocol/managed-source/v1'
+import { requireThat } from './errors.js'
+import { loadManagedAccountTrust } from './managed-trust.js'
+import { configuredAccessPolicy } from './access-policy.js'
 import { createGameServer } from './http.js'
-import { HttpEconomy } from './economy.js'
-const economy = process.env.ECONOMY_URL && process.env.ECONOMY_SERVICE_TOKEN && process.env.ECONOMY_SERVICE_ID
-  ? new HttpEconomy(process.env.ECONOMY_URL, process.env.ECONOMY_SERVICE_TOKEN, process.env.ECONOMY_SERVICE_ID)
+const port = Number(process.env.PORT ?? 8787)
+const bindHost = process.env.BIND_HOST ?? '127.0.0.1'
+const managedAccount = process.env.MANAGED_SOURCE_TRUST
+  ? { trust: loadManagedAccountTrust(process.env.MANAGED_SOURCE_TRUST), codec: managedCodec }
   : undefined
+if (managedAccount) {
+  const host = bindHost === '::1' ? '[::1]' : bindHost
+  requireThat(
+    managedAccount.trust.binding.origin === new URL(`http://${host}:${port}`).origin,
+    'managed_binding_mismatch',
+  )
+}
+requireThat(
+  !!process.env.SPEND_SERVICE_ORIGIN === !!process.env.SPEND_SERVICE_PRIVATE_KEY,
+  'invalid_spend_configuration',
+)
 const app = createGameServer({
+  managedAccount,
+  accessPolicy: configuredAccessPolicy(process.env),
+  ...(process.env.SPEND_SERVICE_ORIGIN && process.env.SPEND_SERVICE_PRIVATE_KEY
+    ? { walletSpend: { origin: process.env.SPEND_SERVICE_ORIGIN, privateKey: process.env.SPEND_SERVICE_PRIVATE_KEY } }
+    : {}),
   database: process.env.DATABASE_PATH ?? '.data/game-room.sqlite',
-  economy,
   allowedOrigins: (process.env.ALLOWED_ORIGINS ?? '').split(',').filter(Boolean),
 })
 await app.engine.serial(() => app.engine.tick())
-app.server.listen(Number(process.env.PORT ?? 8787), process.env.BIND_HOST ?? '127.0.0.1', () => {
+app.server.listen(port, bindHost, () => {
   console.log(`Game Room ${app.store.serverId} listening on ${JSON.stringify(app.server.address())}`)
 })
 for (const signal of ['SIGTERM', 'SIGINT']) {

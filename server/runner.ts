@@ -6,7 +6,15 @@ export interface Invocation {
   rules: string
   method: 'setup' | 'act' | 'timeout' | 'observe' | 'validate'
   args: Json[]
-  ctx: { seats: string[]; config: Json; seatIndex: number | null; mode: Mode; stake: number; policy: SettlementPolicy }
+  ctx: {
+    participants?: { name: string; kind: string }[]
+    seats: string[]
+    config: Json
+    seatIndex: number | null
+    mode: Mode
+    stake: number
+    policy: SettlementPolicy
+  }
   seed: string
   cursor: number
 }
@@ -28,6 +36,13 @@ export function invokeUi(
     { kind: 'ui', render: input.render, observation: input.observation, context: input.context, validate },
     { ...limits, outputLimit: limits.outputLimit ?? 65536 },
   )
+}
+/** Independent strategy source receives only the seat projection and public UI context.
+ * No rules, state, RNG seed/cursor, account identities or platform random are sent. */
+export function invokeBot(source: string, observation: Json, context: ViewContext, validate = false) {
+  return invokeUi({ render: `${source}\n;globalThis.render = globalThis.bot;`, observation, context }, {
+    outputLimit: 16384,
+  }, validate)
 }
 function launch(input: Record<string, unknown>, limits: RuntimeLimits): Promise<{ value: Json; cursor: number }> {
   return new Promise((resolve, reject) => {
@@ -57,28 +72,4 @@ function launch(input: Record<string, unknown>, limits: RuntimeLimits): Promise<
     })
   })
 }
-export function transition(value: Json, seats: number): Transition {
-  object(value)
-  requireThat(Object.hasOwn(value, 'state'), 'invalid_transition', 422)
-  requireThat(value.turn === null || integer(value.turn, 0, seats - 1), 'invalid_transition', 422)
-  if (value.done !== undefined) {
-    object(value.done)
-    const winners = value.done.winners
-    requireThat(
-      Array.isArray(winners) && winners.length <= seats && winners.every(w => integer(w, 0, seats - 1))
-        && new Set(winners).size === winners.length,
-      'invalid_result',
-      422,
-    )
-    requireThat(value.turn === null, 'invalid_result', 422)
-    const scores = value.done.scores
-    requireThat(
-      scores === undefined
-        || (Array.isArray(scores) && scores.length === seats
-          && scores.every(s => typeof s === 'number' && Number.isFinite(s))),
-      'invalid_result',
-      422,
-    )
-  } else requireThat(value.turn !== null, 'invalid_transition', 422)
-  return value as unknown as Transition
-}
+export { transition } from './runner-contract.js'

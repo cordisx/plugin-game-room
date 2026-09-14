@@ -1,0 +1,33 @@
+.gr-room-play {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 340px);
+  align-items: start;
+  gap: 24px;
+}
+.gr-room-play-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.gr-room-bot-controls,
+.gr-room-ready-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.gr-room-bot-controls > p {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--gr-muted);
+}
+.gr-room-ready-controls > span {
+  margin-right: auto;
+  color: var(--gr-muted);
+}
+@container game-room (max-width: 850px) {
+  .gr-room-play {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

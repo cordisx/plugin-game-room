@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 const root = new URL('../dist/runtime/', import.meta.url)
 const artifact = JSON.parse(readFileSync(new URL('artifact.json', root), 'utf8'))
 assert.equal(artifact.contract, 'cordisx.plugin-generation-artifact/v1')
@@ -28,4 +28,17 @@ assert(
       .includes(name)
   ),
 )
+const source = new URL('../src/', import.meta.url)
+function verifyResource(relative) {
+  const url = new URL(relative, root)
+  for (const entry of readdirSync(url, { withFileTypes: true })) {
+    const path = `${relative}/${entry.name}`
+    if (entry.isDirectory()) verifyResource(path)
+    else {
+      assert.deepEqual(readFileSync(new URL(path, root)), readFileSync(new URL(path, source)))
+      assert(!indexed.has(`./${path}`), 'Skill documentation must remain outside the browser runtime graph')
+    }
+  }
+}
+verifyResource('skills')
 console.info(`Verified ${indexed.size} indexed runtime files and complete lazy CSS graph.`)

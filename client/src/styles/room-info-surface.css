@@ -1,0 +1,94 @@
+/* Each built-in detail surface owns a game-specific material palette.
+   List cards and games without dedicated artwork retain their existing theme. */
+.gr-room-info-surface[data-game-theme="gomoku"] {
+  --gr-surface: #eee1c7;
+  --gr-text: #433123;
+  --gr-muted: #756149;
+  --gr-border: rgb(100 74 43 / 20%);
+  background: var(--gr-surface);
+  color: var(--gr-text);
+}
+/* The public Host projection follows the application preference, including
+   an explicit preference that differs from the operating system. */
+:where([data-cordisx-app-theme="dark"])
+  .gr-room-info-surface[data-game-theme="gomoku"] {
+  --gr-surface: #30251d;
+  --gr-text: #f2e6d2;
+  --gr-muted: #c0a98a;
+  --gr-border: rgb(216 184 140 / 20%);
+  --gr-detail-action: #d6ba91;
+  --gr-detail-action-text: #30251d;
+  --gr-detail-title-shadow: 0 1px 8px rgb(35 19 8 / 55%);
+}
+.gr-room-info-surface[data-game-theme="holdem"] {
+  --gr-surface: #dee9d8;
+  --gr-text: #203c2c;
+  --gr-muted: #526e59;
+  --gr-border: rgb(49 89 59 / 20%);
+  --gr-detail-action: #315e45;
+  --gr-detail-action-text: #f2f5ec;
+  --gr-detail-art-shade: 0 24 15;
+  --gr-detail-title-shadow: 0 1px 8px rgb(235 246 235 / 35%);
+  background: var(--gr-surface);
+  color: var(--gr-text);
+}
+:where([data-cordisx-app-theme="dark"])
+  .gr-room-info-surface[data-game-theme="holdem"] {
+  --gr-surface: #133126;
+  --gr-text: #eff2e6;
+  --gr-muted: #a9bca0;
+  --gr-border: rgb(172 202 164 / 20%);
+  --gr-detail-action: #a5c8a8;
+  --gr-detail-action-text: #122b20;
+  --gr-detail-title-shadow: 0 1px 8px rgb(0 20 12 / 55%);
+}
+.gr-room-info-hero:is([data-game-theme="gomoku"], [data-game-theme="holdem"]) {
+  background: var(--gr-surface);
+}
+.gr-room-info-hero:is([data-game-theme="gomoku"], [data-game-theme="holdem"])
+  .gr-room-info-hero-image {
+  object-position: right top;
+}
+.gr-room-info-hero:is([data-game-theme="gomoku"], [data-game-theme="holdem"])::before {
+  background: linear-gradient(
+    180deg,
+    rgb(var(--gr-detail-art-shade, 45 25 12) / 16%) 0%,
+    rgb(var(--gr-detail-art-shade, 45 25 12) / 12%) 48%,
+    color-mix(in srgb, var(--gr-surface) 55%, transparent) 76%,
+    var(--gr-surface) 100%
+  );
+}
+.gr-room-info-hero:is([data-game-theme="gomoku"], [data-game-theme="holdem"])
+  .gr-room-info-hero-copy {
+  margin-block-start: 88px;
+}
+.gr-room-info-hero:is([data-game-theme="gomoku"], [data-game-theme="holdem"])
+  .gr-room-info-hero-copy
+  :where(h2) {
+  color: var(--gr-text);
+  text-shadow: var(--gr-detail-title-shadow, 0 1px 8px rgb(255 248 236 / 35%));
+}
+.gr-room-info-surface:is([data-game-theme="gomoku"], [data-game-theme="holdem"])
+  .gr-inspector-join {
+  background: var(--gr-detail-action, #624831);
+  border-color: var(--gr-detail-action, #624831);
+  color: var(--gr-detail-action-text, #fff8ec);
+}
+.gr-room-info-surface:is([data-game-theme="gomoku"], [data-game-theme="holdem"])
+  :where(.gr-square-button) {
+  color: var(--gr-text);
+}
+.gr-room-info-surface:is([data-game-theme="gomoku"], [data-game-theme="holdem"])
+  :where(.gr-square-button, .gr-inspector-source-link):hover:where(:not(:disabled)) {
+  background: color-mix(in srgb, var(--gr-text) 10%, transparent);
+}
+.gr-room-info-surface:is([data-game-theme="gomoku"], [data-game-theme="holdem"])
+  .gr-inspector-join:where(:hover:not(:disabled)) {
+  filter: brightness(1.08);
+}
+@media (max-height: 700px) {
+  .gr-room-info-hero:is([data-game-theme="gomoku"], [data-game-theme="holdem"])
+    .gr-room-info-hero-copy {
+    margin-block-start: 64px;
+  }
+}

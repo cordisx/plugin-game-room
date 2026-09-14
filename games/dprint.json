@@ -6,7 +6,7 @@
     "semiColons": "asi"
   },
   "includes": [
-    "**/*.{js,mjs,json,md}"
+    "**/*.{js,mjs,json,md,css}"
   ],
   "excludes": [
     "node_modules/**",
@@ -16,6 +16,7 @@
   "plugins": [
     "npm:@dprint/typescript@0.96.1",
     "npm:@dprint/json@0.23.0",
-    "npm:@dprint/markdown@0.23.3"
+    "npm:@dprint/markdown@0.23.3",
+    "https://plugins.dprint.dev/g-plane/malva-v0.16.0.wasm"
   ]
 }

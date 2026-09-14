@@ -1,3 +1,8 @@
+import { GameSpend, type GameSpendRecord } from './game-spend.js'
+import { DisplayProfiles } from './display-profile.js'
+import { allocateSeat, orderSeats } from './seat-positions.js'
+import { waitingObservation } from './waiting.js'
+import { validateGameConfig } from '../sdk/game-config.mjs'
 import { parseScene, type Scene } from '../sdk/scene.js'
 import { randomBytes } from 'node:crypto'
 import type {
@@ -14,11 +19,12 @@ import type {
 import type { Account } from './accounts.js'
 import { digest } from './accounts.js'
 import { ApiError, canonical, integer, object, requireThat } from './errors.js'
-import { Store } from './store.js'
+import type { GameStore as Store } from './store-contract.js'
 import { Packages } from './packages.js'
 import { invoke, invokeUi, transition } from './runner.js'
-import { type EconomyAdapter, type FundingTerms, payouts } from './economy.js'
-
+import { addRulesBots, runRulesBot } from './rules-bots.js'
+import { historicalTokenRoom, writableRoom } from './legacy-transactions.js'
+import { type EconomyAdapter, type FundingTerms } from './economy.js'
 export interface Room extends RoomCard {
   state: Json
   seed: string
@@ -37,27 +43,39 @@ interface Command {
   response: string
 }
 export class Engine {
+  private disposed = false
+  dispose() {
+    this.disposed = true
+  }
+  get isDisposed() {
+    return this.disposed
+  }
   private queue: Promise<unknown> = Promise.resolve()
   constructor(
     readonly store: Store,
     readonly packages: Packages,
-    readonly economy?: EconomyAdapter,
+    _retiredEconomy?: EconomyAdapter,
     readonly now = Date.now,
+    readonly spend?: GameSpend,
   ) {}
-  serial<T>(fn: () => Promise<T>): Promise<T> {
+  async serial<T>(fn: () => Promise<T>): Promise<T> {
     const next = this.queue.then(fn)
     this.queue = next.catch(() => {})
     return next
   }
-  load(id: string): Room {
-    const row = this.store.db.prepare('SELECT body FROM rooms WHERE id=?').get(id) as { body: string } | undefined
+  async load(id: string): Promise<Room> {
+    const row = await this.store.db.prepare('SELECT body FROM rooms WHERE id=?').get(id) as {
+      body: string
+    } | undefined
     requireThat(row, 'room_not_found', 404)
     return JSON.parse(row.body)
   }
-  all(): Room[] {
-    return (this.store.db.prepare('SELECT body FROM rooms').all() as { body: string }[]).map(r => JSON.parse(r.body))
+  async all(): Promise<Room[]> {
+    return (await this.store.db.prepare('SELECT body FROM rooms').all() as {
+      body: string
+    }[]).map(r => JSON.parse(r.body))
   }
-  card(room: Room): RoomCard {
+  async card(room: Room): Promise<RoomCard> {
     const {
       id,
       matchId,
@@ -101,13 +119,24 @@ export class Engine {
       reviewState,
       status,
       version,
-      seats,
+      seats: await Promise.all(seats.map(async (seat) => {
+        if (seat.kind !== 'human') {
+          return seat
+        }
+        const profile = await new DisplayProfiles(this.store).read(seat.accountId)
+        return {
+          ...seat,
+          ...(profile.displayName ? { name: profile.displayName } : {}),
+          ...(profile.avatar ? { avatar: profile.avatar } : {}),
+        }
+      })),
       turn,
       deadline,
       result,
       settlement,
       funding,
       economyIdentity,
+      ...(room.walletSpend ? { walletSpend: { ...room.walletSpend, termsHash: null, acceptBefore: null } } : {}),
     })
   }
   seat(room: Room, accountId: string, seatId?: string) {
@@ -116,18 +145,24 @@ export class Engine {
     requireThat(selected >= 0, 'not_a_member', 403)
     return selected
   }
-  view(room: Room, accountId: string, seatId?: string): RoomView {
+  async view(room: Room, accountId: string, seatId?: string): Promise<RoomView> {
     const i = this.seat(room, accountId, seatId)
     return {
-      ...this.card(room),
+      ...await this.card(room),
       selfSeatId: room.seats[i].id,
-      observation: structuredClone(room.observations[room.seats[i].id] ?? null),
+      observation: room.status === 'waiting' || room.status === 'funding'
+        ? waitingObservation(room, i)
+        : structuredClone(room.observations[room.seats[i].id] ?? null),
       scene: structuredClone(room.scenes?.[room.seats[i].id] ?? null),
       sceneError: room.sceneErrors?.[room.seats[i].id] ?? null,
     }
   }
-  list(accountId?: string) {
-    return this.all().filter(r => !accountId || r.seats.some(s => s.accountId === accountId)).map(r => this.card(r))
+  async list(accountId?: string) {
+    return await Promise.all(
+      (await this.all()).filter(r => !accountId || r.seats.some(s => s.accountId === accountId)).map(async (r) =>
+        await this.card(r)
+      ),
+    )
   }
   private consent(room: Room, consent: Consent | undefined) {
     if (room.mode === 'token') {
@@ -158,7 +193,10 @@ export class Engine {
       }
       let rendered: Json
       try {
-        const ui = this.packages.get(room.packageHash).ui
+        const ui = (await this.packages.get(room.packageHash)).ui
+        if (ui.format === 'html-v1') {
+          continue
+        }
         requireThat(ui.format === 'scene-v1', 'unsupported_ui_format')
         rendered = (await invokeUi({
           render: ui.render,
@@ -166,7 +204,7 @@ export class Engine {
           context: {
             seatIndex: i,
             seatCount: room.seats.length,
-            mode: room.mode,
+            mode: room.mode === 'token' ? 'local-chips' : room.mode,
             canAct: room.status === 'playing' && room.turn === i,
           },
         })).value
@@ -186,8 +224,15 @@ export class Engine {
     room: Room,
     expected: number | null,
     kind: string,
-    command?: { accountId: string; seatId: string; key: string; digest: string },
-    extra?: () => void,
+    command?: {
+      accountId: string
+      seatId: string
+      key: string
+      digest: string
+      response?: RoomView
+    },
+    extra?: () => Promise<void>,
+    spendRecord?: GameSpendRecord,
   ): Promise<Room> {
     // Author projections run before committing a rule transition and before any
     // settlement can be dispatched. Economic acknowledgements reuse that projection
@@ -195,69 +240,90 @@ export class Engine {
     if (['started', 'funded', 'action', 'timeout'].includes(kind) && ['playing', 'finished'].includes(room.status)) {
       await this.observations(room)
     }
-    this.store.atomic(() => {
-      if (expected !== null) requireThat(this.load(room.id).version === expected, 'version_conflict', 409)
-      this.store.db.prepare('INSERT INTO rooms VALUES (?,?) ON CONFLICT(id) DO UPDATE SET body=excluded.body').run(
-        room.id,
-        JSON.stringify(room),
+    if (room.walletSpend && room.walletSpend.termsHash && this.spend) {
+      spendRecord ??= await this.spend.load(room.matchId)
+      if (['finished', 'aborted'].includes(room.status) && !spendRecord.decision) {
+        await this.spend.final(spendRecord, room.status === 'finished' ? 'capture' : 'refund')
+      }
+      room.walletSpend.phase = spendRecord.phase
+      room.settlement = spendRecord.phase === 'capture'
+        ? 'settled'
+        : spendRecord.phase === 'refund'
+        ? 'refunded'
+        : spendRecord.phase === 'active'
+        ? 'reserved'
+        : 'pending'
+    }
+    await this.store.atomic(async () => {
+      if (expected !== null) {
+        requireThat((await this.load(room.id)).version === expected, 'version_conflict', 409)
+      }
+      await this.store.db.prepare('INSERT INTO rooms VALUES (?,?) ON CONFLICT(id) DO UPDATE SET body=excluded.body')
+        .run(room.id, JSON.stringify(room))
+      const views = Object.fromEntries(
+        await Promise.all(room.seats.map(async (s) => [s.id, await this.view(room, s.accountId, s.id)])),
       )
-      const views = Object.fromEntries(room.seats.map(s => [s.id, this.view(room, s.accountId, s.id)]))
-      this.store.db.prepare('INSERT INTO events VALUES (?,?,?)').run(
+      await this.store.db.prepare('INSERT INTO events VALUES (?,?,?)').run(
         room.id,
         room.version,
         JSON.stringify({ version: room.version, kind, at: this.now(), views }),
       )
       if (command) {
-        this.store.db.prepare('INSERT INTO commands VALUES (?,?,?,?,?)').run(
+        command.response = views[command.seatId] as RoomView
+        await this.store.db.prepare('INSERT INTO commands VALUES (?,?,?,?,?)').run(
           room.id,
           command.seatId,
           command.key,
           command.digest,
-          JSON.stringify(this.view(room, command.accountId, command.seatId)),
+          JSON.stringify(command.response),
         )
       }
-      extra?.()
+      if (spendRecord) await this.spend!.write(room.id, spendRecord)
+      await extra?.()
     })
     return room
   }
   private addSeat(room: Room, account: Account) {
-    if (room.mode === 'token') {
-      requireThat(account.economyId, 'economy_link_required', 409)
-      room.economyAccounts[account.id] = account.economyId
-    }
-    room.seats.push({
+    const seatIndex = allocateSeat(room.seats, room.maxPlayers)
+    const seat: Room['seats'][number] = {
+      seatIndex,
       id: this.store.id('seat'),
       kind: 'human',
       participantId: null,
       accountId: account.id,
       name: account.name,
       ready: false,
-    })
+    }
+    room.seats.push(seat)
+    orderSeats(room.seats)
+    return seat
   }
-  economyIdentity(): EconomyIdentity | null {
-    const row = this.store.db.prepare('SELECT value FROM meta WHERE key=?').get('economyIdentity') as
-      | { value: string }
-      | undefined
+  async economyIdentity(): Promise<EconomyIdentity | null> {
+    const row = await this.store.db.prepare('SELECT value FROM meta WHERE key=?').get('economyIdentity') as {
+      value: string
+    } | undefined
     return row ? JSON.parse(row.value) : null
-  }
-  private assertEconomyIdentity(identity: EconomyIdentity | null) {
-    requireThat(this.economy && identity, 'economy_link_required', 409)
-    requireThat(
-      identity.gameServiceId === this.economy.serviceId && identity.url === this.economyUrl(),
-      'economy_instance_changed',
-      409,
-    )
-    requireThat(canonical(identity) === canonical(this.economyIdentity()), 'economy_instance_changed', 409)
-  }
-  private economyUrl() {
-    return new URL(this.economy!.url).href.replace(/\/$/, '')
   }
   async create(account: Account, input: CreateRoomRequest) {
     object(input)
-    const pkg = this.packages.get(input.packageHash)
+    const pkg = await this.packages.get(input.packageHash)
+    let config = input.config ?? {}
+    if (pkg.manifest.configSchema) {
+      object(config)
+      const { roomName, ...gameConfig } = config
+      requireThat(roomName === undefined || typeof roomName === 'string' && roomName.length <= 100, 'invalid_room_name')
+      try {
+        config = {
+          ...validateGameConfig(pkg.manifest.configSchema, gameConfig),
+          ...(roomName === undefined ? {} : { roomName }),
+        }
+      } catch {
+        requireThat(false, 'invalid_game_config')
+      }
+    }
     requireThat(pkg.manifest.modes.includes(input.mode), 'unsupported_mode')
-    const maxPlayers = input.maxPlayers ?? pkg.manifest.maxPlayers
-    requireThat(integer(maxPlayers, pkg.manifest.minPlayers, pkg.manifest.maxPlayers))
+    const maxPlayers = input.maxPlayers === undefined ? pkg.manifest.maxPlayers : input.maxPlayers
+    requireThat(integer(maxPlayers, pkg.manifest.minPlayers, pkg.manifest.maxPlayers), 'invalid_max_players')
     const timeout = input.turnTimeoutMs ?? 60000
     requireThat(integer(timeout, 1000, 3600000))
     const stake = input.stake ?? 0
@@ -266,9 +332,12 @@ export class Engine {
     const policy = input.policy ?? pkg.manifest.settlementPolicies?.[0] ?? 'equal-winners-v1'
     requireThat((pkg.manifest.settlementPolicies ?? ['equal-winners-v1']).includes(policy), 'unsupported_policy')
     requireThat(input.allowAgents === undefined || typeof input.allowAgents === 'boolean')
-    requireThat(input.mode !== 'token' || this.economy, 'economy_unavailable', 503)
+    requireThat(input.mode !== 'token' || this.spend, 'wallet_spend_unavailable', 503)
+    if (input.mode === 'token') {
+      await this.spend!.service.pin(this.store)
+      requireThat(await this.spend!.wallet(account.id), 'wallet_binding_required', 409)
+    }
     requireThat(JSON.stringify(input.config ?? {}).length <= 16384, 'config_too_large')
-    if (input.mode === 'token') this.assertEconomyIdentity(this.economyIdentity())
     const room: Room = {
       id: this.store.id('room'),
       creatorAccountId: account.id,
@@ -278,7 +347,7 @@ export class Engine {
       packageHash: input.packageHash,
       manifest: pkg.manifest,
       mode: input.mode,
-      config: input.config ?? {},
+      config,
       maxPlayers,
       allowAgents: input.allowAgents ?? false,
       turnTimeoutMs: timeout,
@@ -292,8 +361,18 @@ export class Engine {
       deadline: null,
       result: null,
       settlement: 'none',
+      ...(input.mode === 'token'
+        ? {
+          walletSpend: {
+            protocol: 'economy.spend/v1' as const,
+            termsHash: null,
+            acceptBefore: null,
+            phase: 'waiting' as const,
+          },
+        }
+        : {}),
       funding: null,
-      economyIdentity: input.mode === 'token' ? this.economyIdentity() : null,
+      economyIdentity: null,
       state: null,
       seed: randomBytes(32).toString('hex'),
       cursor: 0,
@@ -308,20 +387,40 @@ export class Engine {
     }
     this.consent(room, input.consent)
     this.addSeat(room, account)
-    return this.view(await this.save(room, null, 'created'), account.id)
+    // Creation already acknowledged these exact terms; funding authorization remains separate.
+    room.seats[0].ready = true
+    await addRulesBots(this, room, input.botCount ?? 0)
+    return await this.view(await this.save(room, null, 'created'), account.id)
   }
   async join(account: Account, id: string, consent?: Consent) {
-    const room = this.load(id)
-    if (room.seats.some(s => s.accountId === account.id && s.kind === 'human')) return this.view(room, account.id)
+    const room = writableRoom(await this.load(id))
+    if (room.seats.some(s => s.accountId === account.id && s.kind === 'human')) {
+      return await this.view(room, account.id)
+    }
     requireThat(room.status === 'waiting', 'room_started', 409)
     requireThat(room.seats.length < room.maxPlayers, 'room_full', 409)
     this.consent(room, consent)
     this.addSeat(room, account)
     const old = room.version++
-    return this.view(await this.save(room, old, 'joined'), account.id)
+    return await this.view(await this.save(room, old, 'joined'), account.id)
+  }
+  async bots(account: Account, id: string, input: Record<string, unknown>) {
+    const room = writableRoom(await this.load(id))
+    requireThat(room.creatorAccountId === account.id, 'creator_required', 403)
+    requireThat(room.status === 'waiting', 'room_started', 409)
+    const old = room.version++
+    if (input.removeSeatId !== undefined) {
+      const index = room.seats.findIndex(s => s.id === input.removeSeatId && s.kind === 'bot')
+      requireThat(index >= 0, 'bot_not_found', 404)
+      room.seats.splice(index, 1)
+    } else {
+      requireThat(input.add === true, 'invalid_bot_command')
+      await addRulesBots(this, room, 1, input.seatIndex)
+    }
+    return await this.view(await this.save(room, old, 'bots_changed'), account.id)
   }
   async agentSeat(account: Account, id: string, input: Record<string, unknown>) {
-    const room = this.load(id)
+    const room = writableRoom(await this.load(id))
     requireThat(room.status === 'waiting', 'room_started', 409)
     requireThat(room.allowAgents, 'agents_not_allowed', 403)
     requireThat(typeof input.participantId === 'string' && /^[a-zA-Z0-9_:-]{1,128}$/.test(input.participantId))
@@ -329,48 +428,70 @@ export class Engine {
     const prior = room.seats.find(s =>
       s.accountId === account.id && s.participantId === input.participantId && s.kind === 'agent'
     )
-    if (prior) return { seat: prior, view: this.view(room, account.id, prior.id) }
+    if (prior) {
+      return { seat: prior, view: await this.view(room, account.id, prior.id) }
+    }
     requireThat(room.seats.length < room.maxPlayers, 'room_full', 409)
     this.consent(room, input.consent as Consent | undefined)
-    this.addSeat(room, account)
-    const seat = room.seats.at(-1)!
+    const seat = this.addSeat(room, account)
     seat.kind = 'agent'
     seat.participantId = input.participantId
     seat.name = input.name
     const old = room.version++
     await this.save(room, old, 'agent_joined')
-    return { seat, view: this.view(room, account.id, seat.id) }
+    return { seat, view: await this.view(room, account.id, seat.id) }
   }
   async leave(account: Account, id: string, seatId?: string) {
-    const room = this.load(id)
+    const room = writableRoom(await this.load(id))
     const seat = this.seat(room, account.id, seatId)
+    if (room.mode === 'token' && room.walletSpend && room.status === 'funding') {
+      await this.cancelSpend(account, id)
+      return { left: true }
+    }
+    if (
+      room.status === 'playing' && room.mode !== 'token' && room.seats.some(s => s.kind === 'bot')
+      && room.seats.filter(s => s.kind === 'human').length === 1
+    ) {
+      const old = room.version++
+      this.abort(room)
+      await this.save(room, old, 'left')
+      return { left: true }
+    }
     requireThat(room.status === 'waiting', 'room_started', 409)
     const old = room.version++
     const removed = room.seats.splice(seat, 1)[0]
     delete room.observations[removed.id]
     delete room.scenes?.[removed.id]
     delete room.sceneErrors?.[removed.id]
-    if (!room.seats.some(s => s.accountId === account.id)) delete room.economyAccounts[account.id]
-    if (!room.seats.length) room.status = 'aborted'
-    else if (room.creatorAccountId === account.id) {
-      room.creatorAccountId = room.seats[0].accountId
+    if (!room.seats.some(s => s.accountId === account.id)) {
+      delete room.economyAccounts[account.id]
+    }
+    if (!room.seats.length || room.seats.every(s => s.kind === 'bot')) {
+      room.seats = []
+      room.status = 'aborted'
+    } else if (room.creatorAccountId === account.id) {
+      room.creatorAccountId = room.seats.find(s => s.kind !== 'bot')!.accountId
     }
     await this.save(room, old, 'left')
     return { left: true }
   }
   async ready(account: Account, id: string, ready: unknown, consent?: Consent, seatId?: string) {
     requireThat(typeof ready === 'boolean')
-    const room = this.load(id)
+    const room = writableRoom(await this.load(id))
     const seat = this.seat(room, account.id, seatId)
     requireThat(room.status === 'waiting', 'room_started', 409)
-    if (ready) this.consent(room, consent)
-    if (room.seats[seat].ready === ready) return this.view(room, account.id, room.seats[seat].id)
+    if (ready) {
+      this.consent(room, consent)
+    }
+    if (room.seats[seat].ready === ready) {
+      return await this.view(room, account.id, room.seats[seat].id)
+    }
     const old = room.version++
     room.seats[seat].ready = ready
-    return this.view(await this.save(room, old, 'ready'), account.id, room.seats[seat].id)
+    return await this.view(await this.save(room, old, 'ready'), account.id, room.seats[seat].id)
   }
   async nextMatch(account: Account, id: string) {
-    const room = this.load(id)
+    const room = writableRoom(await this.load(id))
     this.seat(room, account.id)
     requireThat(room.creatorAccountId === account.id, 'creator_required', 403)
     requireThat(['finished', 'aborted'].includes(room.status), 'match_not_finished', 409)
@@ -394,22 +515,31 @@ export class Engine {
     room.settlement = 'none'
     room.fundingDeadline = null
     room.matchDeadline = null
+    if (room.walletSpend) {
+      room.walletSpend = { protocol: 'economy.spend/v1', termsHash: null, acceptBefore: null, phase: 'waiting' }
+    }
     room.seats.forEach(s => {
-      s.ready = false
+      s.ready = s.kind === 'bot'
     })
-    return this.view(await this.save(room, old, 'next_match'), account.id)
+    return await this.view(await this.save(room, old, 'next_match'), account.id)
   }
-  private run(room: Room, method: 'setup' | 'act' | 'timeout' | 'observe', args: Json[], seatIndex: number | null) {
-    return invoke({
-      rules: this.packages.get(room.packageHash).rules,
+  private async run(
+    room: Room,
+    method: 'setup' | 'act' | 'timeout' | 'observe',
+    args: Json[],
+    seatIndex: number | null,
+  ) {
+    return await invoke({
+      rules: (await this.packages.get(room.packageHash)).rules,
       method,
       args,
       ctx: {
         seats: room.seats.map(s => s.id),
+        participants: room.seats.map(s => ({ name: s.name, kind: s.kind })),
         config: room.config,
         seatIndex,
-        mode: room.mode,
-        stake: room.stake,
+        mode: room.mode === 'token' ? 'local-chips' : room.mode,
+        stake: room.mode === 'token' ? 0 : room.stake,
         policy: room.policy,
       },
       seed: room.seed,
@@ -424,9 +554,8 @@ export class Engine {
     room.status = next.done ? 'finished' : 'playing'
     room.deadline = next.done ? null : this.now() + room.turnTimeoutMs
     if (next.done && room.mode === 'token') {
-      payouts(room)
       room.settlement = 'pending'
-      room.economyOp = 'settle'
+      room.economyOp = null
     }
   }
   private abort(room: Room, sceneError: SceneError | null = null) {
@@ -438,34 +567,31 @@ export class Engine {
     room.result = null
     if (room.mode === 'token' && room.economyTerms) {
       room.settlement = 'pending'
-      room.economyOp = 'cancel'
+      room.economyOp = null
     }
   }
   async start(account: Account, id: string) {
-    const room = this.load(id)
+    const room = writableRoom(await this.load(id))
     this.seat(room, account.id)
     requireThat(room.creatorAccountId === account.id, 'creator_required', 403)
-    if (room.status !== 'waiting') return this.view(room, account.id)
+    if (room.status !== 'waiting') {
+      return await this.view(room, account.id)
+    }
     requireThat(room.seats.length >= room.manifest.minPlayers && room.seats.every(s => s.ready), 'not_ready', 409)
     const old = room.version++
     room.matchDeadline = this.now() + 23 * 3600000
+    let spendRecord: GameSpendRecord | undefined
     if (room.mode === 'token') {
+      requireThat(this.spend, 'wallet_spend_unavailable', 503)
+      spendRecord = await this.spend.prepare(room)
       room.status = 'funding'
-      room.settlement = 'pending'
-      room.economyOp = 'create'
-      room.fundingDeadline = this.now() + 10 * 60000
-      room.economyTerms = {
-        matchId: room.matchId,
-        game: {
-          id: room.manifest.id,
-          version: room.manifest.version,
-          digest: room.packageHash,
-          reviewStatus: 'unreviewed',
-        },
-        participants: this.allocations(room, room.seats.map(() => room.stake)),
-        settlementPolicy: { kind: 'conserved-payouts' },
-        expiresAt: this.now() + 24 * 3600000,
+      room.walletSpend = {
+        protocol: 'economy.spend/v1',
+        termsHash: spendRecord.termsHash,
+        acceptBefore: spendRecord.terms.payload.acceptBefore,
+        phase: 'funding',
       }
+      room.fundingDeadline = spendRecord.terms.payload.acceptBefore
     } else {
       try {
         const r = await this.run(room, 'setup', [], null)
@@ -474,27 +600,25 @@ export class Engine {
         this.abort(room)
       }
     }
-    await this.save(room, old, 'started')
+    await this.save(room, old, 'started', undefined, undefined, spendRecord)
     await this.recoverRoom(room.id)
-    return this.view(this.load(id), account.id)
+    return await this.view(await this.load(id), account.id)
   }
-  private command(roomId: string, accountId: string, key: string): Command | undefined {
-    return this.store.db.prepare('SELECT digest,response FROM commands WHERE room_id=? AND account_id=? AND key=?').get(
-      roomId,
-      accountId,
-      key,
-    ) as unknown as Command | undefined
+  private async command(roomId: string, accountId: string, key: string): Promise<Command | undefined> {
+    return await this.store.db.prepare(
+      'SELECT digest,response FROM commands WHERE room_id=? AND account_id=? AND key=?',
+    ).get(roomId, accountId, key) as unknown as Command | undefined
   }
-  async action(accountId: string, id: string, input: ActionRequest, extra?: () => void, seatId?: string) {
+  async action(accountId: string, id: string, input: ActionRequest, extra?: () => Promise<void>, seatId?: string) {
     object(input)
     requireThat(typeof input.idempotencyKey === 'string' && /^[a-zA-Z0-9_:-]{1,128}$/.test(input.idempotencyKey))
     requireThat(integer(input.expectedVersion, 0, Number.MAX_SAFE_INTEGER) && Object.hasOwn(input, 'action'))
     requireThat(JSON.stringify(input.action).length <= 16384, 'action_too_large')
-    const room = this.load(id)
+    const room = writableRoom(await this.load(id))
     const seat = this.seat(room, accountId, seatId)
     const actor = room.seats[seat].id
     const hash = digest(canonical(input))
-    const prior = this.command(id, actor, input.idempotencyKey)
+    const prior = await this.command(id, actor, input.idempotencyKey)
     if (prior) {
       requireThat(prior.digest === hash, 'idempotency_conflict', 409)
       return JSON.parse(prior.response) as RoomView
@@ -510,29 +634,63 @@ export class Engine {
       this.abort(room)
     }
     const old = room.version++
-    await this.save(room, old, 'action', { accountId, seatId: actor, key: input.idempotencyKey, digest: hash }, extra)
+    const command = {
+      accountId,
+      seatId: actor,
+      key: input.idempotencyKey,
+      digest: hash,
+      response: undefined as RoomView | undefined,
+    }
+    try {
+      await this.save(room, old, 'action', command, extra)
+    } catch (error) {
+      const committed = await this.command(id, actor, input.idempotencyKey)
+      if (!committed) throw error
+      requireThat(committed.digest === hash, 'idempotency_conflict', 409)
+      return JSON.parse(committed.response) as RoomView
+    }
     // Economic completion is separately journaled. The idempotent action ACK
     // remains exactly the committed view, even when settlement completes later.
-    return this.view(room, accountId, actor)
+    requireThat(command.response, 'command_response_missing', 500)
+    return command.response
   }
-  replay(accountId: string, id: string, seatId?: string) {
-    const room = this.load(id)
+  async replay(accountId: string, id: string, seatId?: string) {
+    const room = await this.load(id)
     const actor = room.seats[this.seat(room, accountId, seatId)].id
-    const events =
-      (this.store.db.prepare('SELECT body FROM events WHERE room_id=? ORDER BY version').all(id) as { body: string }[])
-        .map(r => JSON.parse(r.body)).filter(e => e.views[actor]).map(e => ({
-          version: e.version,
-          kind: e.kind,
-          at: e.at,
-          view: e.views[actor],
-        }))
+    const events = (await this.store.db.prepare('SELECT body FROM events WHERE room_id=? ORDER BY version').all(id) as {
+      body: string
+    }[])
+      .map(r => JSON.parse(r.body)).filter(e => e.views[actor]).map(e => ({
+        version: e.version,
+        kind: e.kind,
+        at: e.at,
+        view: e.views[actor],
+      }))
     return { roomId: id, events }
   }
   async tick() {
-    for (const room of this.all()) await this.recoverRoom(room.id)
+    if (this.disposed) {
+      return
+    }
+    for (const room of await this.all()) {
+      if (historicalTokenRoom(room)) continue
+      await this.recoverRoom(room.id)
+      await runRulesBot(this, await this.load(room.id))
+    }
+  }
+  async catchUp(id: string) {
+    for (let step = 0; step < 8; step++) {
+      const snapshot = await this.load(id)
+      if (historicalTokenRoom(snapshot)) return
+      const before = snapshot.version
+      await this.recoverRoom(id)
+      await runRulesBot(this, await this.load(id))
+      if ((await this.load(id)).version === before) break
+    }
   }
   private async recoverRoom(id: string) {
-    let room = this.load(id)
+    let room = await this.load(id)
+    if (historicalTokenRoom(room)) return
     if (
       ['playing', 'funding'].includes(room.status)
       && this.now() >= (room.status === 'funding' ? room.fundingDeadline! : room.matchDeadline!)
@@ -541,99 +699,7 @@ export class Engine {
       this.abort(room)
       await this.save(room, old, 'expired')
     }
-    room = this.load(id)
-    if (room.mode === 'token' && this.economy) {
-      try {
-        this.assertEconomyIdentity(room.economyIdentity)
-        if (room.economyOp === 'create' || (room.economyOp === 'cancel' && !room.funding)) {
-          const agreement = await this.economy.create(room.economyTerms!, `${room.matchId}:agreement`)
-          requireThat(
-            agreement.instanceId === room.economyIdentity!.instanceId
-              && agreement.serviceId === room.economyIdentity!.gameServiceId,
-            'economy_instance_changed',
-            409,
-          )
-          const old = room.version++
-          room.funding = { economyUrl: this.economy.url, agreementId: agreement.id, termsHash: agreement.termsHash }
-          if (room.economyOp === 'create') room.economyOp = null
-          await this.save(room, old, 'agreement')
-        }
-        if (room.funding && !['settled', 'refunded'].includes(room.settlement)) {
-          const current = await this.economy.get(room.funding.agreementId)
-          requireThat(
-            current.id === room.funding.agreementId && current.termsHash === room.funding.termsHash
-              && current.instanceId === room.economyIdentity!.instanceId
-              && current.serviceId === room.economyIdentity!.gameServiceId,
-            'economy_terms_mismatch',
-            503,
-          )
-          if (current.state === 'expired' || current.state === 'cancelled') {
-            const old = room.version++
-            if (['playing', 'funding'].includes(room.status)) this.abort(room)
-            room.settlement = 'refunded'
-            room.economyOp = null
-            await this.save(room, old, 'economy_refunded')
-          } else if (current.state === 'settled' && room.economyOp !== 'settle') {
-            if (room.status === 'aborted' && room.economyOp === null) return
-            const old = room.version++
-            if (['playing', 'funding'].includes(room.status)) this.abort(room)
-            room.settlement = 'pending'
-            room.economyOp = null
-            await this.save(room, old, 'unexpected_economy_settlement')
-          }
-        }
-        if (room.economyOp === 'cancel' && room.funding) {
-          const agreement = await this.economy.cancel(room.funding.agreementId, `${room.matchId}:cancel`)
-          requireThat(agreement.state === 'cancelled' || agreement.state === 'expired', 'economy_invalid_state', 503)
-          const old = room.version++
-          room.settlement = 'refunded'
-          room.economyOp = null
-          await this.save(room, old, 'refunded')
-        } else if (room.economyOp === 'settle' && room.funding) {
-          const amounts = payouts(room)
-          const expectedPayouts = this.allocations(room, amounts).map(({ accountId, amount }) => ({
-            accountId,
-            amount,
-          }))
-          const agreement = await this.economy.settle(
-            room.funding.agreementId,
-            room.funding.termsHash,
-            expectedPayouts,
-            `${room.matchId}:settle`,
-          )
-          requireThat(
-            agreement.state === 'settled' && agreement.id === room.funding.agreementId
-              && agreement.termsHash === room.funding.termsHash,
-            'economy_invalid_state',
-            503,
-          )
-          requireThat(agreement.outcomeId === canonical(expectedPayouts), 'economy_payout_mismatch', 503)
-          const old = room.version++
-          room.settlement = 'settled'
-          room.economyOp = null
-          await this.save(room, old, 'settled')
-        } else if (room.status === 'funding' && room.funding) {
-          const agreement = await this.economy.get(room.funding.agreementId)
-          const old = room.version
-          if (agreement.state !== 'open') {
-            room.version++
-            this.abort(room)
-            await this.save(room, old, 'funding_cancelled')
-          } else if (room.seats.every(s => agreement.reservations.includes(room.economyAccounts[s.accountId]))) {
-            room.version++
-            room.settlement = 'reserved'
-            try {
-              const r = await this.run(room, 'setup', [], null)
-              this.apply(room, transition(r.value, room.seats.length), r.cursor)
-            } catch {
-              this.abort(room)
-            }
-            await this.save(room, old, 'funded')
-          }
-        }
-      } catch { /* The durable operation remains pending; a later tick retries. */ }
-    }
-    room = this.load(id)
+    room = await this.load(id)
     if (room.status === 'playing' && this.now() >= room.deadline!) {
       const old = room.version++
       try {
@@ -645,54 +711,46 @@ export class Engine {
       await this.save(room, old, 'timeout')
     }
   }
-  private allocations(room: Room, amounts: number[]) {
-    const allocations = new Map<string, { accountId: string; amount: number; participantIds: string[] }>()
-    room.seats.forEach((s, i) => {
-      const accountId = room.economyAccounts[s.accountId]
-      const entry = allocations.get(accountId) ?? { accountId, amount: 0, participantIds: [] }
-      entry.amount += amounts[i]
-      entry.participantIds.push(s.id)
-      allocations.set(accountId, entry)
-    })
-    return [...allocations.values()]
+  async spendState(account: Account, id: string) {
+    const room = writableRoom(await this.load(id))
+    this.seat(room, account.id)
+    requireThat(this.spend && room.walletSpend?.termsHash, 'spend_transaction_not_found', 404)
+    return this.spend.load(room.matchId)
   }
-  async linkEconomy(account: Account, code: unknown) {
-    requireThat(this.economy, 'economy_unavailable', 503)
-    requireThat(typeof code === 'string' && code.length <= 4096)
-    requireThat(
-      !this.all().some(r =>
-        r.mode === 'token' && ['waiting', 'funding', 'playing'].includes(r.status)
-        && r.seats.some(s => s.accountId === account.id)
-      ),
-      'economy_link_locked',
-      409,
-    )
-    const identity = await this.economy.redeem(code, account.id, `${digest(account.id + ':' + code)}:link`)
-    requireThat(
-      identity.gameServiceId === this.economy.serviceId && identity.gameAccountId === account.id,
-      'economy_identity_mismatch',
-      403,
-    )
-    const binding = { instanceId: identity.instanceId, gameServiceId: this.economy.serviceId, url: this.economyUrl() }
-    const pinned = this.economyIdentity()
-    requireThat(!pinned || canonical(pinned) === canonical(binding), 'economy_instance_changed', 409)
-    requireThat(
-      typeof identity.accountId === 'string' && typeof identity.instanceId === 'string',
-      'economy_invalid_identity',
-      503,
-    )
-    requireThat(
-      !this.store.db.prepare('SELECT id FROM accounts WHERE economy_id=? AND id<>?').get(
-        identity.accountId,
-        account.id,
-      ),
-      'economy_account_in_use',
-      409,
-    )
-    this.store.atomic(() => {
-      this.store.db.prepare('INSERT OR IGNORE INTO meta VALUES (?,?)').run('economyIdentity', JSON.stringify(binding))
-      this.store.db.prepare('UPDATE accounts SET economy_id=? WHERE id=?').run(identity.accountId, account.id)
-    })
-    return identity
+  async reservation(account: Account, id: string, input: unknown) {
+    const room = writableRoom(await this.load(id))
+    this.seat(room, account.id)
+    requireThat(this.spend && room.walletSpend?.termsHash, 'spend_transaction_not_found', 404)
+    const record = await this.spend.load(room.matchId)
+    if (!await this.spend.accept(account, record, input)) {
+      return { transaction: record, view: await this.view(room, account.id) }
+    }
+    const old = room.version++
+    if (this.spend.complete(record)) {
+      record.phase = 'active'
+      try {
+        const result = await this.run(room, 'setup', [], null)
+        this.apply(room, transition(result.value, room.seats.length), result.cursor)
+      } catch {
+        this.abort(room)
+      }
+    }
+    await this.save(room, old, room.status === 'playing' ? 'funded' : 'spend_reserved', undefined, undefined, record)
+    return { transaction: record, view: await this.view(room, account.id) }
+  }
+  async cancelSpend(account: Account, id: string) {
+    const room = writableRoom(await this.load(id))
+    this.seat(room, account.id)
+    requireThat(this.spend && room.walletSpend?.termsHash, 'spend_transaction_not_found', 404)
+    const record = await this.spend.load(room.matchId)
+    if (record.decision) return { transaction: record, view: await this.view(room, account.id) }
+    requireThat(room.status === 'funding', 'spend_already_started', 409)
+    const old = room.version++
+    this.abort(room)
+    await this.save(room, old, 'spend_cancelled', undefined, undefined, record)
+    return { transaction: record, view: await this.view(room, account.id) }
+  }
+  async linkEconomy(_account: Account, _code: unknown) {
+    throw new ApiError(410, 'legacy_economy_protocol_retired')
   }
 }

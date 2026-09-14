@@ -112,11 +112,12 @@ For Gomoku choose two seats, empty configuration and `equal-winners-v1`. For
 Hold'em choose 2–8 seats and `conserved-payouts-v1`; a local-chip config is
 `{"initialStack":1000,"smallBlind":10,"bigBlind":20}`. All seats join and ready
 before the creator starts. Token mode follows the server's exact terms and
-consent schema, including package hash, policy and each seat's stake. Tokens are
-virtual entertainment currency, with no real-money cashout.
+consent schema, including package hash and each seat's own fee. The rules execute
+with match-local chips and zero wallet stake. Results never create Token income
+or distribute another participant's wallet principal. See [local wallet spend](local-wallet-spend.md).
 
 A complete release additionally needs the actual trusted Host scene renderer and
-its native action path, plus any real economic service used by token mode. Local
+its native action path, plus the public native original-wallet spend capability used by Token fees. Local
 QuickJS tests and HTTP checks do not imply deployment or user acceptance. Earlier
 HTML browser-fixture screenshots are historical design work and do not verify
 the scene renderer.

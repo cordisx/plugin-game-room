@@ -8,7 +8,15 @@
     "rootDir": ".",
     "skipLibCheck": true,
     "declaration": true,
-    "types": ["node"]
+    "types": [
+      "node"
+    ],
+    "allowJs": true
   },
-  "include": ["server/**/*.ts", "sdk/**/*.ts", "tests/server/**/*.ts"]
+  "include": [
+    "server/**/*.ts",
+    "sdk/**/*.ts",
+    "tests/server/**/*.ts",
+    "sdk/**/*.mjs"
+  ]
 }

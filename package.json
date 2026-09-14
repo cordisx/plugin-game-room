@@ -16,20 +16,36 @@
     "test": "tsx --test --test-concurrency=1 tests/server/*.test.ts",
     "format": "dprint fmt",
     "format:check": "dprint check",
-    "lint": "eslint server sdk tests/server deploy/*.mjs",
+    "lint": "eslint server sdk tests/server scripts deploy/*.mjs",
     "check": "npm run format:check && npm run lint && npm run typecheck && npm test && npm run build && npm run test:production",
-    "test:production": "node tests/server/production-smoke.mjs"
+    "test:production": "node tests/server/production-smoke.mjs",
+    "build:workers": "node scripts/build-workers.mjs",
+    "db:generate": "drizzle-kit generate --config deploy/workers-drizzle.config.ts",
+    "test:workers": "npm run build && npm run build:workers && node scripts/workerd-smoke.mjs && node scripts/workerd-wallet-spend.mjs && node scripts/workerd-security.mjs && node scripts/workerd-real-games.mjs && node scripts/workerd-availability.mjs",
+    "test:online-wallet-fixture": "npm run build && node scripts/verify-online-wallet-smoke.mjs"
   },
   "dependencies": {
-    "quickjs-emscripten": "0.32.0"
+    "@cordisx/protocol": "file:sdk/experimental/protocol-wallet-spend-r36-final-normal.tgz",
+    "@jitl/quickjs-wasmfile-release-sync": "0.32.0",
+    "quickjs-emscripten": "0.32.0",
+    "quickjs-emscripten-core": "0.32.0",
+    "@cordisx/economy": "file:sdk/experimental/cordisx-economy-r38-normal.tgz"
   },
   "devDependencies": {
     "@cordisx/eslint-config": "github:cordisx/cordisxmono#32fa3b257cd5a7bfa0bb2d5f1012ca18665d1637",
     "@types/node": "26.5.0",
     "@typescript-eslint/parser": "8.70.0",
     "dprint": "0.57.4",
+    "drizzle-kit": "0.31.10",
+    "drizzle-orm": "0.45.1",
+    "esbuild": "0.28.2",
     "eslint": "10.10.0",
+    "miniflare": "4.20260730.0",
     "tsx": "4.23.13",
-    "typescript": "6.0.3"
+    "typescript": "6.0.3",
+    "cordisx": "file:sdk/experimental/cordisx-host-wallet-spend-r37-final-normal.tgz"
+  },
+  "overrides": {
+    "@cordisx/protocol": "$@cordisx/protocol"
   }
 }

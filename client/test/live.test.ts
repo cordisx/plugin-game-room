@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { pathToFileURL } from 'node:url'
-import { LivePort } from '../src/data/live.js'
+import { LivePort } from '../src/data/live-restored.js'
 import { SourceAggregator } from '../src/data/aggregate.js'
 import { consentFor, decodeInvitation, encodeInvitation, type Source, type SourceState } from '../src/data/model.js'
 import { type HttpRequest, type HttpTransport, RequestFailure } from '../src/data/http.js'
@@ -130,8 +130,12 @@ test('real two-server HTTP: exact packages, two-player match, lost ACK, replay, 
     let bobSeat = await bob.join(invitation, signal)
     assert.equal(aliceSeat.room.game.packageHash, game.packageHash)
     assert.equal(aliceSeat.room.game.publisherId, bobSource.accountId)
-    aliceSeat = await port.ready(aliceSeat, consentFor(aliceSeat.room), signal)
-    bobSeat = await bob.ready(bobSeat, consentFor(bobSeat.room), signal)
+    aliceSeat = await port.ready(aliceSeat, true, consentFor(aliceSeat.room), signal)
+    assert.equal(aliceSeat.ready, true)
+    aliceSeat = await port.ready(aliceSeat, false, undefined, signal)
+    assert.equal(aliceSeat.ready, false)
+    aliceSeat = await port.ready(aliceSeat, true, consentFor(aliceSeat.room), signal)
+    bobSeat = await bob.ready(bobSeat, true, consentFor(bobSeat.room), signal)
     aliceSeat = await port.start(aliceSeat, signal)
     assert.equal(aliceSeat.status, 'playing')
     assert(aliceSeat.scene)
@@ -151,7 +155,7 @@ test('real two-server HTTP: exact packages, two-player match, lost ACK, replay, 
     const next = await port.nextMatch(aliceSeat, signal)
     assert.notEqual(next.matchId, aliceSeat.matchId)
     assert.equal(next.status, 'waiting')
-    assert.equal(next.observation, null)
+    assert.equal((next.observation as { phase: string }).phase, 'waiting')
     let states: SourceState[] = []
     const aggregate = new SourceAggregator(port, value => {
       states = value
@@ -169,4 +173,55 @@ test('real two-server HTTP: exact packages, two-player match, lost ACK, replay, 
   } finally {
     for (const instance of instances) await instance.close()
   }
+})
+
+test('guest-capable sources never request a bearer login; protected sources retain credential login', async () => {
+  const source: Source = {
+    id: 's',
+    name: 'Server',
+    url: 'http://127.0.0.1:8787',
+    accountId: 'registered',
+    enabled: true,
+  }
+  const calls: string[] = []
+  let active = ''
+  let guests = true
+  const http: HttpTransport = {
+    connect: async () => {
+      calls.push('login')
+      active = 'registered'
+    },
+    connectGuest: async () => {
+      calls.push('guest')
+      active = 'visitor'
+    },
+    request: async request => {
+      if (request.path === '/v1/handshake') {
+        return {
+          protocol: 'game-room/1',
+          serverId: 's',
+          gamePackageVersion: 1,
+          uiFormats: ['scene-v1'],
+          access: { guests },
+        }
+      }
+      if (request.path === '/v1/packages') return { packages: [] }
+      if (request.path === '/v1/rooms' || request.path === '/v1/me/rooms') return { rooms: [] }
+      if (request.path === '/v1/me') return { account: { id: active } }
+      throw new Error(request.path)
+    },
+    dispose() {},
+  }
+  const port = new LivePort([source], http)
+  const signal = new AbortController().signal
+  await port.list(source, signal)
+  await port.connect(source.id)
+  assert.equal(port.connectionKind(source.id), 'guest')
+  await assert.rejects(port.connect(source.id, 'account'), /免密钥访客连接/)
+  assert.equal(port.connectionKind(source.id), 'guest')
+  assert.deepEqual(calls, ['guest'])
+  guests = false
+  await port.list(source, signal)
+  await port.connect(source.id)
+  assert.deepEqual(calls, ['guest', 'login'])
 })

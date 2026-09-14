@@ -9,9 +9,9 @@ services:
       - game-room-data:/data
     environment:
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-}
-      ECONOMY_URL: ${ECONOMY_URL:-}
-      ECONOMY_SERVICE_ID: ${ECONOMY_SERVICE_ID:-}
-      ECONOMY_SERVICE_TOKEN: ${ECONOMY_SERVICE_TOKEN:-}
+      AUTH_POLICY: ${AUTH_POLICY:-login-required}
+      SPEND_SERVICE_ORIGIN: ${SPEND_SERVICE_ORIGIN:-}
+      SPEND_SERVICE_PRIVATE_KEY: ${SPEND_SERVICE_PRIVATE_KEY:-}
     restart: unless-stopped
     read_only: true
     tmpfs:

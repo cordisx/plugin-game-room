@@ -14,6 +14,8 @@ import type { GameRoomPort } from './port.js'
 const games: import('./model.js').Game[] = [
   {
     id: 'holdem',
+    minPlayers: 2,
+    maxPlayers: 8,
     name: '德州扑克',
     version: '1.0.0',
     icon: '♠',
@@ -25,6 +27,8 @@ const games: import('./model.js').Game[] = [
   },
   {
     id: 'gomoku',
+    minPlayers: 2,
+    maxPlayers: 2,
     name: '五子棋',
     version: '1.0.0',
     icon: '◉',
@@ -111,6 +115,14 @@ export class SamplePort implements GameRoomPort {
   async create(sourceId: string, draft: CreateRoom, signal: AbortSignal): Promise<Invitation> {
     this.ensure(signal)
     const game = games.find(game => game.id === draft.gameId)!
+    const capacity = draft.maxPlayers === undefined ? game.maxPlayers! : draft.maxPlayers
+    if (!Number.isSafeInteger(capacity) || capacity < game.minPlayers! || capacity > game.maxPlayers!) {
+      throw new Error('人数超出游戏允许范围')
+    }
+    const count = draft.botCount ?? 0
+    if (!Number.isSafeInteger(count) || count < 0 || count > capacity - 1 || count && !game.rulesBot) {
+      throw new Error('规则电脑数量不可用')
+    }
     const room: Room = {
       ...this.rooms[0]!,
       id: String(Date.now()),
@@ -120,8 +132,10 @@ export class SamplePort implements GameRoomPort {
       mode: draft.mode,
       stake: draft.stake,
       economyId: draft.mode === 'token' ? `${sourceId}-economy` : undefined,
-      occupied: 0,
-      capacity: game.id === 'gomoku' ? 2 : 6,
+      occupied: 1 + count,
+      players: ['你', ...Array.from({ length: count }, (_, index) => `规则电脑 ${index + 1}`)],
+      owned: true,
+      capacity,
       allowAgents: draft.allowAgents,
     }
     this.rooms.push(room)
@@ -134,12 +148,12 @@ export class SamplePort implements GameRoomPort {
     if (room.occupied >= room.capacity || room.state !== 'waiting') throw new Error('房间已开始或没有空位')
     return { room, seatId: 'sample-seat', ready: false, consentRequired: true, observation: null, legalActions: [] }
   }
-  async ready(seat: Seat, consent: Consent, signal: AbortSignal): Promise<Seat> {
+  async ready(seat: Seat, ready: boolean, consent: Consent | undefined, signal: AbortSignal): Promise<Seat> {
     this.ensure(signal)
-    if (consent.gameVersion !== seat.room.game.version || consent.stake !== seat.room.stake) {
+    if (ready && (!consent || consent.gameVersion !== seat.room.game.version || consent.stake !== seat.room.stake)) {
       throw new Error('房间条款已变更，请重新确认')
     }
-    return { ...seat, ready: true, consentRequired: false }
+    return { ...seat, ready, consentRequired: !ready }
   }
   async leave(_seat: Seat, signal: AbortSignal) {
     this.ensure(signal)

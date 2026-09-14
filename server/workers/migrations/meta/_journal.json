@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1789306233389,
+      "tag": "0000_game_backend",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1789357940644,
+      "tag": "0001_local_wallet_spend",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1789359080417,
+      "tag": "0002_fine_eternity",
+      "breakpoints": true
+    }
+  ]
+}

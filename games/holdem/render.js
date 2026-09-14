@@ -46,7 +46,7 @@ globalThis.render = (view, context) => {
   return scene([
     text(
       view.result
-        ? `本手结束 · 你的筹码 ${player.stack}`
+        ? (player ? `本手结束 · 你的筹码 ${player.stack}` : '本手结束 · 观战')
         : view.turn === view.selfSeat && context.canAct
         ? '轮到你行动'
         : `等待 ${view.turn + 1} 号位`,
@@ -79,8 +79,9 @@ globalThis.render = (view, context) => {
         text(card(value), 'accent')
       ),
     ),
-    text('你的底牌', 'muted'),
-    row(player.hole.map(value => text(card(value), 'accent'))),
+    ...(player
+      ? [text('你的底牌', 'muted'), row(player.hole.map(value => text(card(value), 'accent')))]
+      : [text('观战 · 仅展示公共信息', 'muted')]),
     { type: 'stack', direction: 'horizontal', children: controls },
     text('单手无限注 · 超时自动过牌或弃牌 · 筹码总额守恒', 'muted'),
   ])

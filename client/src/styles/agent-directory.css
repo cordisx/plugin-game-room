@@ -1,0 +1,128 @@
+.gr-agent-directory {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  gap: 20px;
+  font-size: 13px;
+}
+.gr-agent-picker {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  flex: none;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--gr-border);
+}
+.gr-agent-picker .gr-agent-choice {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 72px;
+  gap: 6px;
+  padding: 8px 4px;
+  font-size: 12px;
+  font-weight: 400;
+}
+.gr-agent-choice[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--gr-text) 10%, transparent);
+  box-shadow: inset 0 0 0 1px var(--gr-border);
+}
+.gr-agent-choice:hover:not(:disabled) {
+  background-image: linear-gradient(
+    color-mix(in srgb, var(--gr-text) 3%, transparent),
+    color-mix(in srgb, var(--gr-text) 3%, transparent)
+  );
+}
+.gr-agent-choice > span:last-child {
+  max-width: 72px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.gr-agent-detail {
+  width: 880px;
+  max-width: 100%;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: minmax(96px, 140px) minmax(0, 1fr) 32px;
+  gap: 24px;
+  min-height: 0;
+  overflow: auto;
+  align-items: start;
+}
+.gr-agent-portrait {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--gr-text) 8%, var(--gr-surface));
+  font-size: 36px;
+  overflow: hidden;
+}
+.gr-agent-information {
+  min-width: 0;
+}
+.gr-agent-information h2 {
+  margin: 4px 0 16px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.gr-agent-facts {
+  margin: 0 0 20px;
+}
+.gr-agent-facts > div {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 12px;
+  padding: 7px 0;
+  border-bottom: 1px solid
+    color-mix(in srgb, var(--gr-border) 45%, transparent);
+}
+.gr-agent-facts dt {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--gr-muted);
+}
+.gr-agent-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.gr-agent-information .gr-agent-dispatch {
+  min-height: 32px;
+  font-size: 13px;
+  gap: 6px;
+}
+.gr-agent-detail-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  position: sticky;
+  top: 0;
+}
+.gr-agent-detail-tabs [aria-selected="true"] {
+  background: var(--cx-hover);
+}
+.gr-agent-participation {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--gr-border);
+}
+@container game-room (max-width: 540px) {
+  .gr-agent-detail {
+    width: 880px;
+    max-width: 100%;
+    box-sizing: border-box;
+    grid-template-columns: 64px minmax(0, 1fr) 32px;
+    gap: 10px;
+  }
+  .gr-agent-portrait {
+    font-size: 24px;
+  }
+  .gr-agent-facts > div {
+    grid-template-columns: 1fr;
+    gap: 5px;
+  }
+}

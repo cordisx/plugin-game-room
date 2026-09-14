@@ -107,3 +107,62 @@ test('human authorization is outside the network budget and can be cancelled', a
   cancelled.dispose()
   await waiting
 })
+
+test('room state and multiple sources compose; joinable excludes incompatible rooms', async () => {
+  const port = new SamplePort()
+  const states: SourceState[] = await Promise.all(
+    port.sources.map(async source => ({
+      source,
+      state: 'online',
+      snapshot: await port.list(source, new AbortController().signal),
+    })),
+  )
+  const base = { search: '', gameId: '', sourceId: '', vacancy: false, agents: false }
+  const all = filterRooms(states, { ...base, status: 'all' })
+  assert.ok(all.length > 0)
+  assert.deepEqual(filterRooms(states, { ...base, status: 'active' }), all.filter(room => room.state !== 'finished'))
+  const sourceIds = states.map(state => state.source.id)
+  assert.deepEqual(filterRooms(states, { ...base, status: 'all', sourceIds }), all)
+  assert.deepEqual(
+    filterRooms(states, { ...base, status: 'all', sourceIds: [sourceIds[0]!] }),
+    all.filter(room => room.sourceId === sourceIds[0]),
+  )
+  const available = all.filter(room => room.compatible && room.state === 'waiting' && room.occupied < room.capacity)
+  assert.deepEqual(filterRooms(states, { ...base, status: 'available' }), available)
+  if (available[0]) {
+    available[0].compatible = false
+    assert.ok(!filterRooms(states, { ...base, status: 'available' }).includes(available[0]))
+  }
+})
+
+test('an unsettled source preparation reaches its separate deadline and exits loading', async () => {
+  const port = Object.assign(new SamplePort(), { prepareSource: () => new Promise<void>(() => {}) })
+  const events: SourceState[][] = []
+  const aggregate = new SourceAggregator(port, states => events.push(states), 5, 10)
+  await aggregate.refresh()
+  assert.ok(events.at(-1)!.every(state => state.state === 'offline' && state.error === '来源连接准备超时'))
+  aggregate.dispose()
+})
+
+test('background source refresh retains the last successful listing while the next read is held', async () => {
+  const port = new SamplePort(), events: SourceState[][] = []
+  const aggregate = new SourceAggregator(port, states => events.push(states))
+  await aggregate.refresh()
+  const previous = events.at(-1)![0]!.snapshot
+  const original = port.list.bind(port)
+  let release!: () => void
+  const held = new Promise<void>(resolve => {
+    release = resolve
+  })
+  port.list = async (source, signal) => {
+    await held
+    return original(source, signal)
+  }
+  const pending = aggregate.refresh()
+  await tick()
+  assert.equal(events.at(-1)![0]!.state, 'online')
+  assert.equal(events.at(-1)![0]!.snapshot, previous)
+  release()
+  await pending
+  aggregate.dispose()
+})

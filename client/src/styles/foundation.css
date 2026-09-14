@@ -1,4 +1,10 @@
 .gr-root {
+  --gr-toolbar-action-size: 28px;
+  --gr-toolbar-icon-size: 16px;
+  --gr-toolbar-action-radius: 8px;
+  --gr-toolbar-end-inset: 12px;
+  --gr-toolbar-frame-border: 0px;
+  --gr-content-inset: 16px;
   --gr-border: var(--cx-border, #34373b);
   --gr-muted: var(--cx-muted, #999fa8);
   --gr-surface: var(--cx-surface-raised, #202225);
@@ -9,7 +15,7 @@
   flex-direction: column;
   height: 100%;
   min-height: 0;
-  overflow: hidden;
+  overflow: visible;
   box-sizing: border-box;
   container: game-room / inline-size;
 }
@@ -119,4 +125,54 @@
 .gr-input:focus-visible {
   outline: 2px solid var(--cx-primary, #82a8ff);
   outline-offset: 2px;
+}
+
+.gr-root .gr-square-button {
+  position: relative;
+  box-sizing: border-box;
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  min-height: 34px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 34px;
+  border-radius: 9px;
+  gap: 0;
+}
+.gr-square-button .gr-symbol, .gr-card-icon-button .gr-symbol {
+  margin: 0;
+}
+.gr-root .gr-toolbar-icon {
+  position: relative;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--gr-toolbar-action-size);
+  height: var(--gr-toolbar-action-size);
+  min-width: var(--gr-toolbar-action-size);
+  min-height: var(--gr-toolbar-action-size);
+  flex: 0 0 var(--gr-toolbar-action-size);
+  padding: 0;
+  border: 0;
+  border-radius: var(--gr-toolbar-action-radius);
+  gap: 0;
+  background: transparent;
+  color: var(--color-text-tertiary, var(--gr-muted));
+}
+.gr-toolbar-icon .gr-symbol {
+  margin: 0;
+}
+.gr-root .gr-toolbar-icon:hover:where(:not(:disabled)) {
+  background: var(
+    --color-background-surface-hover,
+    color-mix(in srgb, currentColor 8%, transparent)
+  );
+}
+.gr-root .gr-toolbar-icon:focus-visible {
+  outline: 2px solid var(--color-accent, var(--cx-primary, #82a8ff));
+  outline-offset: 1px;
 }

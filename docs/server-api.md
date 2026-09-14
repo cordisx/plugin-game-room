@@ -14,7 +14,7 @@ allowlist, not authentication. Each configured source has its own URL and server
 - `GET /health` → `{ok:true}`.
 - `GET /v1/handshake` → `{protocol:"game-room/1",serverId,gamePackageVersion:1,
   runtime:"quickjs-wasm",uiFormats:["scene-v1"],modes:["score","local-chips","token"],economyAvailable,
-  economy:{url,gameServiceId,instanceId:string|null}|null}`.
+  economy:null,walletSpend:{contract:"economy.spend/v1",serviceOrigin,servicePublicKey,serverId}|null}`.
 - `POST /v1/accounts` `{name,password}` → `{account:{id,name},token}`.
 - `POST /v1/sessions` `{name,password}` → same. Name 3–40 ASCII letters/digits,
   underscore/hyphen, case-insensitive; password 12–256 characters.
@@ -230,47 +230,14 @@ seat's turn → 403 not_your_turn. Expired turn rejects; server tick executes ti
 Concurrent mutations serialize and commit state, replay, command ACK and grant
 budget atomically. Each room commit also checks the expected persisted version.
 
-## Token consent, linking and recovery
+## Token fees and historical recovery
 
-Token coins are virtual entertainment currency, with no fiat/cash paths. Unreviewed
-packages are permitted. Creation/join/Agent-seat addition and ready require exact
-`consent:{packageHash,stake,policy,reviewState:"unreviewed"}` for token mode.
-Each human sees the game version/hash, review state, per-seat stake and policy.
-Without economy configuration token creation fails 503 economy_unavailable.
-
-The game server never receives the user's economic bearer. From handshake obtain
-`economy.url` and `gameServiceId`. User contacts economy directly:
-`POST /v1/link-proofs {gameServiceId,gameAccountId}` with their economy session and
-Idempotency-Key. They send resulting short-lived opaque code to the game server:
-`POST /v1/economy/link {code}`. Server redeems it using its own service credential,
-verifies service/account audience, and saves only economic accountId. A `token`
-field is rejected. A link cannot change while that owner has active token rooms;
-two game accounts on one server cannot link the same economic account. First link
-pins instanceId + serviceId + canonical URL persistently; mismatches return 409
-economy_instance_changed, including reused account IDs after a server restart.
-
-Starting token mode persists funding terms before creating the economic agreement.
-All seats owned by one account aggregate into one participant's amount and
-participantIds (seat IDs), included in economy termsHash. Each owner then explicitly
-reserves through **economy's** `/v1/reserve {agreementId,termsHash}` with their own
-session after seeing the total stake and covered seats. The game server cannot
-reserve. It starts rules only after every participant reserved.
-
-`equal-winners-v1` splits the entire pot equally among unique winners; remainder in
-ascending seat order; empty winners return each stake. `conserved-payouts-v1` accepts
-one nonnegative safe-integer final amount per seat and requires exact sum = total
-escrow. These outputs aggregate per owner for settlement. Games never mint or
-choose nonparticipant recipients. Economic agreements use a conserved-payouts
-policy and bind game hash; the game platform additionally enforces the selected
-room policy. The wallet discloses the server's allocation authority.
-
-`server/economy.ts` adapts the economy owner's `/agreements`, `/agreements/:id`,
-`/settle`, `/cancel`, `/link-proofs/redeem`. Creation/cancel/settle use distinct
-stable matchId-based idempotency keys. Persisted pending operations retry after
-outages or restart; economic failure never pretends success. Invalid runtime results
-abort and request refunds, including partially reserved matches. Funding window is
-10 minutes, match ceiling 23 hours, escrow expiry 24 hours from start request.
-The economy is the authority for expired refunds; game never extends a term.
+New Token games use the [local wallet spend flow](local-wallet-spend.md). Exact
+package/stake/review consent remains necessary to join, but only the public native
+wallet capability can authorize a local hold. Game has no wallet bearer or outgoing
+wallet service client. Game results affect scores and match-local chips; they never
+allocate Token winnings. Legacy `/v1/economy/link` returns 410. Historical pending
+orders remain read-only and do not retry the retired agreement protocol.
 
 ## Scoped Agent grants
 

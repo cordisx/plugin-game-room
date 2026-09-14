@@ -39,6 +39,8 @@ globalThis.render = (view, context) => {
     text(
       view.lastMove
         ? `最后落子：${view.lastMove.x + 1} 列 ${view.lastMove.y + 1} 行`
+        : view.selfSeat === null
+        ? '观战 · 等待落子'
         : '选择空位落子',
       'muted',
     ),

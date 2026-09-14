@@ -7,7 +7,7 @@ export const rules = `globalThis.game={
  act(s,a,ctx){if(a.type!=='move')throw Error('invalid_action');s.n++;return s.n>=2?{state:s,turn:null,done:{winners:[1],scores:[0,1]}}:{state:s,turn:1}},
  timeout(s,ctx){return {state:s,turn:null,done:{winners:[1-ctx.seatIndex]}}}
 };`
-export function game(source = rules): GamePackage {
+export function game(source = rules): GamePackage & { ui: { format: 'scene-v1'; render: string } } {
   return {
     packageVersion: 1,
     manifest: {
@@ -49,7 +49,7 @@ export async function harness(options: ServerOptions = {}) {
   const alice = await register('alice')
   const bob = await register('bobby')
   const stranger = await register('charlie')
-  async function room(pkg = game(), extra: Record<string, unknown> = {}) {
+  async function room(pkg: GamePackage = game(), extra: Record<string, unknown> = {}) {
     const published = await request('/v1/packages', alice.token, pkg)
     assert.equal(published.status, 200, JSON.stringify(published.body))
     const meta = published.body

@@ -1,9 +1,9 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { game, harness, rules } from './helpers.js'
-test('one owner controls several Agents without observations, commands or budgets crossing seats', async t => {
+await test('one owner controls several Agents without observations, commands or budgets crossing seats', async (t) => {
   const h = await harness()
-  t.after(() => h.app.close())
+  t.after(async () => await h.app.close())
   const pkg = game(
     rules.replace('s.n>=2?', 's.n>=3?').replace(':{state:s,turn:1}', ':{state:s,turn:(ctx.seatIndex+1)%3}').replace(
       'scores:[0,1]',
@@ -62,9 +62,9 @@ test('one owner controls several Agents without observations, commands or budget
   await h.request(path + '/next-match', h.alice.token, {})
   assert.equal((await h.request('/v1/agent/observation', grants[0].token)).body.error.code, 'grant_scope_changed')
 })
-test('exhausted Agent budget rolls back action, replay and room version together', async t => {
+await test('exhausted Agent budget rolls back action, replay and room version together', async (t) => {
   const h = await harness()
-  t.after(() => h.app.close())
+  t.after(async () => await h.app.close())
   const room = await h.room(
     game(rules.replace('s.n>=2?', 's.n>=4?').replace(':{state:s,turn:1}', ':{state:s,turn:1-ctx.seatIndex}')),
   )

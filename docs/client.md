@@ -45,11 +45,11 @@ Manager. No private routing or Host selectors are used.
   through Host capture and resumes the original operation after `/v1/me`. Resume
   buttons require authenticated `/v1/me/rooms` evidence; full or completed rooms
   without that evidence cannot claim an owned seat.
-- `data/host-http.ts` uses public authorize/request/exchange. Game and economy use
-  separate opaque connections even at one origin. Derived Agent credentials stay
+- `data/host-http.ts` uses public authorize/request/exchange. Game and Agent authentication use opaque source-scoped connections. Wallet
+  fees use the separate public `ctx.walletSpend` capability; see [local wallet spend](local-wallet-spend.md). Derived Agent credentials stay
   in Host; exchanges return redacted metadata and handles. Requests forward abort
   and deadlines; grant revocation invalidates the local derived handle. Public discovery
-  uses a `none` connection, while account, Agent and economy operations retain separate
+  uses a `none` connection, while account and Agent operations retain separate
   bearer-scoped Host connections.
 - `data/package-upload.ts` parses/hash-checks JSON without evaluating author source.
   Server QuickJS produces scene-v1. `GameSurface` only publishes through public

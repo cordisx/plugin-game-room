@@ -1,0 +1,1 @@
+Room backgrounds generated for this project from the user-selected design. Text and controls are rendered separately. Original masters remain in the room-card-assets-v1 review bundle. No remote image loading.

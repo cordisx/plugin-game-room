@@ -3,10 +3,10 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends git ca-certificates && rm -rf /var/lib/apt/lists/*
 RUN git config --global url.https://github.com/.insteadOf ssh://git@github.com/
 COPY package.json package-lock.json ./
+COPY sdk ./sdk
 RUN npm ci
 COPY tsconfig.json ./
 COPY server ./server
-COPY sdk ./sdk
 RUN npm run build
 RUN npm prune --omit=dev
 
