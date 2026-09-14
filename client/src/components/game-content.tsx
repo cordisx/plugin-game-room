@@ -13,7 +13,7 @@ import type { GameRoomPort } from '../data/port.js'
 import { consentFor, type Seat } from '../data/model.js'
 import { RequestFailure } from '../data/http.js'
 import { type KnownHtmlUi, loadKnownHtmlUi } from '../data/known-html-ui.js'
-import { canResumeFinishedGame, performGameAction } from '../data/game-action.js'
+import { canResumeFinishedGame, leaveGameView, performGameAction } from '../data/game-action.js'
 import gomokuPresentation from '../data/gomoku-presentation.json' with { type: 'json' }
 import '../styles/game-status.css'
 
@@ -43,6 +43,7 @@ export function GameSurface(
   const [error, setError] = useState('')
   const [exitApproval, setExitApproval] = useState(false)
   const [working, setWorking] = useState(false)
+  const [exitError, setExitError] = useState('')
   useEffect(() => {
     if (props.exitRequest) setExitApproval(true)
   }, [props.exitRequest])
@@ -60,7 +61,14 @@ export function GameSurface(
       if (!controller.signal.aborted) setError(e.message)
     })
     return () => controller.abort()
-  }, [props.port, props.seat.room.sourceId, props.seat.room.game.packageHash, props.seat.status, props.syncRevision, gomokuPresentation.digest])
+  }, [
+    props.port,
+    props.seat.room.sourceId,
+    props.seat.room.game.packageHash,
+    props.seat.status,
+    props.syncRevision,
+    gomokuPresentation.digest,
+  ])
 
   let content
   if (props.seat.closed) {
@@ -105,14 +113,18 @@ export function GameSurface(
       )}
       {exitApproval && (
         <div className='gr-game-recovery' role='dialog' aria-label='确认退出'>
-          <p>确认离开本局？进行中的对局仍按原有规则处理。</p>
+          <p>
+            {props.seat.status === 'playing' ? '返回大厅？对局会继续计时，可随时返回。' : '确认离开房间，返回大厅？'}
+          </p>
+          {exitError && <p role='status'>{exitError}</p>}
           <Button onClick={() => setExitApproval(false)}>取消</Button>
           <Button
             disabled={working}
             onClick={() => {
               setWorking(true)
-              void props.port.leave(props.seat, new AbortController().signal).then(props.exited)
-                .catch(e => setError(e.message)).finally(() => setWorking(false))
+              setExitError('')
+              void leaveGameView(props.port, props.seat, new AbortController().signal).then(props.exited)
+                .catch(() => setExitError('暂时未能退出，请重试。')).finally(() => setWorking(false))
             }}
           >
             确认
@@ -142,7 +154,11 @@ function snapshot(seat: Seat, waitingUi: boolean): RoomSnapshot {
     observation: ['waiting', 'funding'].includes(seat.status ?? '') && !waitingUi
       ? null
       : seat.observation && typeof seat.observation === 'object' && !Array.isArray(seat.observation)
-      ? { ...seat.observation, turnDeadline: seat.turnDeadline ?? null, canResumeUndo: canResumeFinishedGame(seat) } as GameUiSnapshotV1['observation']
+      ? {
+        ...seat.observation,
+        turnDeadline: seat.turnDeadline ?? null,
+        canResumeUndo: canResumeFinishedGame(seat),
+      } as GameUiSnapshotV1['observation']
       : seat.observation as GameUiSnapshotV1['observation'],
     status: seat.status ?? 'waiting',
     canAct: (seat.status === 'playing' && !!seat.legalActions?.length) || canResumeFinishedGame(seat),

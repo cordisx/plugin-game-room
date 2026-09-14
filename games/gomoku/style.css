@@ -197,6 +197,13 @@ main:has(> .gomoku) > :not(.sr-only) {
   color: light-dark(#a33423, #ffb4a8);
 }
 
-main:has(> .gomoku) > .room-lifecycle {
-  min-height: 44px;
+.gomoku-undo > button {
+  height: 40px;
+  min-width: 112px;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }

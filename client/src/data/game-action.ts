@@ -17,3 +17,9 @@ export async function performGameAction(port: GameRoomPort, seat: Seat, payload:
   if (seat.status !== 'playing' || !port.act) throw new Error('当前回合无法落子')
   return port.act(seat, payload, signal)
 }
+
+/** Leaving the view is distinct from removing a seat in a waiting room. */
+export async function leaveGameView(port: GameRoomPort, seat: Seat, signal: AbortSignal) {
+  if (seat.closed || ['playing', 'finished', 'aborted'].includes(seat.status ?? '')) return
+  await port.leave(seat, signal)
+}

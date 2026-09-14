@@ -137,7 +137,9 @@ globalThis.ui = (() => {
     if (roomActions.includes('next-round')) {
       lifecycle.append(button('下一局准备', () => GameUI.requestNextRound(), false, 'primary'))
     }
-    if (lifecycle.children.length || current.observation?.kind === 'gomoku') root.append(lifecycle)
+    const gameControls = current.observation?.kind === 'gomoku' ? root.querySelector('.gomoku-undo') : null
+    if (gameControls) gameControls.append(...lifecycle.children)
+    else if (lifecycle.children.length) root.append(lifecycle)
     if (notice) {
       const el = node('p', 'notice', notice)
       el.setAttribute('role', 'status')

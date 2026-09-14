@@ -30,3 +30,21 @@ test('finished score game resumes its original seat through explicit undo, never
   }
   assert.equal(calls, 1)
 })
+
+test('returning to lobby after start or finish never calls the waiting-seat removal endpoint', async () => {
+  const { leaveGameView } = await import('../src/data/game-action.js')
+  let calls = 0
+  const port = {
+    leave: async () => {
+      calls++
+    },
+  } as unknown as GameRoomPort
+  const signal = new AbortController().signal
+  for (const status of ['playing', 'finished', 'aborted'] as const) {
+    await leaveGameView(port, { status } as Seat, signal)
+  }
+  assert.equal(calls, 0)
+  await leaveGameView(port, { status: 'waiting' } as Seat, signal)
+  await leaveGameView(port, { status: 'funding' } as Seat, signal)
+  assert.equal(calls, 2)
+})
