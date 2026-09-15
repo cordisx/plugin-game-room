@@ -33,6 +33,9 @@ globalThis.renderGame = (
     const status = node('h2', '', v.phase === 'funding' ? '等待投入确认' : '等待开局')
     status.setAttribute('role', 'status')
     center.append(status)
+    if (v.phase === 'waiting') {
+      center.append(node('span', 'muted', `至少 ${v.minPlayers} 人即可开局`))
+    }
     stage.append(center)
     for (let i = 0; i < count; i++) {
       const ordinal = identities.findIndex((p, ordinal) => (p.seatIndex ?? ordinal) === i)

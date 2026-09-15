@@ -18,7 +18,12 @@ try {
       JSON.stringify(built)
     }); await build('holdem', ${JSON.stringify(built)});`,
   ])
-  gomoku = JSON.parse(readFileSync(join(built, 'gomoku-1.5.12.json'), 'utf8'))
+  gomoku = JSON.parse(
+    readFileSync(
+      join(built, `gomoku-${JSON.parse(readFileSync('games/gomoku/manifest.json', 'utf8')).version}.json`),
+      'utf8',
+    ),
+  )
   holdem = JSON.parse(readFileSync(join(built, 'texas-holdem-1.4.10.json'), 'utf8'))
 } finally {
   rmSync(built, { recursive: true })
@@ -140,13 +145,13 @@ await test('real Holdem rules support selected bounds and starting below capacit
       maxPlayers,
     )
   }
-  const partial = await h.request('/v1/rooms', h.alice.token, { packageHash, mode: 'score', maxPlayers: 6 })
+  const partial = await h.request('/v1/rooms', h.alice.token, { packageHash, mode: 'score', maxPlayers: 8 })
   const path = `/v1/rooms/${partial.body.id}`
   await h.request(path + '/join', h.bob.token, {})
   await h.request(path + '/ready', h.bob.token, { ready: true })
   const started = await h.request(path + '/start', h.alice.token, {})
   assert.equal(started.body.status, 'playing')
-  assert.equal(started.body.maxPlayers, 6)
+  assert.equal(started.body.maxPlayers, 8)
   assert.equal(
     ((await h.app.engine.load(partial.body.id)).state as {
       players: unknown[]

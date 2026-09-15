@@ -79,8 +79,8 @@ export function generalCreateSchema(
     maxPlayers: label(
       Schema.natural().min(game?.minPlayers ?? 2).max(game?.maxPlayers ?? 2).default(game?.maxPlayers ?? 2).required()
         .disabled((game?.minPlayers ?? 2) === (game?.maxPlayers ?? 2))
-        .description('包含房主、真人、规则电脑和 Agent，不含观战'),
-      '房间人数',
+        .description(`至少 ${game?.minPlayers ?? 2} 人即可开局，无需坐满；含房主、电脑和 Agent，不含观战`),
+      '最大人数',
     ),
     botCount: label(
       Schema.natural().max(
