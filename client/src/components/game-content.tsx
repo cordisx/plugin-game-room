@@ -73,6 +73,7 @@ export function GameSurface(
     loadAttempt,
     gomokuPresentation.digest,
     holdemPresentation.digest,
+    'holdem-shared-layout-v1',
   ])
 
   let content

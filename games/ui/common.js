@@ -137,13 +137,15 @@ globalThis.ui = (() => {
     if (roomActions.includes('next-round')) {
       lifecycle.append(button('下一局准备', () => GameUI.requestNextRound(), false, 'primary'))
     }
-    const gameControls = current.observation?.kind === 'gomoku' ? root.querySelector('.gomoku-undo') : null
+    const gameControls = root.querySelector('.holdem > .actions')
+      ?? (current.observation?.kind === 'gomoku' ? root.querySelector('.gomoku-undo') : null)
     if (gameControls) gameControls.append(...lifecycle.children)
     else if (lifecycle.children.length) root.append(lifecycle)
     if (notice) {
       const el = node('p', 'notice', notice)
       el.setAttribute('role', 'status')
-      root.append(el)
+      if (root.querySelector('.holdem')) gameControls?.append(el)
+      else root.append(el)
     }
   }
   GameUI.subscribe(value => {

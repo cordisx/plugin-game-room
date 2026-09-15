@@ -22,8 +22,11 @@ globalThis.renderGame = (
   const container = node('section', 'holdem')
   container.dataset.phase = v.phase === 'waiting' || v.phase === 'funding' ? v.phase : 'playing'
   container.setAttribute('aria-label', '德州扑克桌面')
+  const stage = node('div', 'table-stage')
+  const actions = node('div', 'actions')
+  actions.setAttribute('aria-label', '游戏操作')
+  container.append(stage, actions)
   if (v.phase === 'waiting' || v.phase === 'funding') {
-    const stage = node('div', 'table-stage')
     const identities = state.participants ?? v.participants
     const count = v.capacity ?? Math.max(v.minPlayers, v.participants.length)
     const selfPosition = identities[v.selfSeat]?.seatIndex ?? v.selfSeat ?? 0
@@ -83,7 +86,6 @@ globalThis.renderGame = (
       seat.append(pill)
       stage.append(seat)
     }
-    container.append(stage)
     return container
   }
 
@@ -124,7 +126,6 @@ globalThis.renderGame = (
   )
   title.setAttribute('role', 'status')
   container.append(title)
-  const stage = node('div', 'table-stage')
   stage.dataset.players = v.players.length
   const felt = node('div', 'table-felt')
   stage.append(felt)
@@ -208,12 +209,9 @@ globalThis.renderGame = (
       stage.append(bet)
     }
   })
-  container.append(stage)
   if (state.readOnly) {
-    container.append(node('p', 'spectator-note muted', '只读观战 · 不展示私有底牌'))
+    actions.append(node('p', 'spectator-note muted', '只读观战 · 不展示私有底牌'))
   }
-  const actions = node('div', 'actions')
-  actions.setAttribute('aria-label', '合法行动')
   if (state.canAct && !state.readOnly && !v.result) {
     const lower = node('div', 'action-bar')
     const raise = v.legalActions.find(action => action.type === 'raise')
@@ -305,9 +303,8 @@ globalThis.renderGame = (
     }
     actions.append(lower)
   }
-  container.append(actions)
   if (v.result) {
-    container.append(node(
+    actions.append(node(
       'p',
       'muted',
       v.result.winners.length
