@@ -87,7 +87,7 @@ function EnabledGameRoomPage({ page, runtime }: { page: string; runtime: ClientR
   const [sourceOwnerRevision, setSourceOwnerRevision] = useState(0)
   const currentSourceOwner = () => runtime.currentUser?.status === 'available' ? runtime.currentUser.subject : undefined
   const sourceOwner = useRef(currentSourceOwner())
-  const states = useSourceStates(port, epoch, 2000, sourceOwnerRevision)
+  const states = useSourceStates(port, epoch, 2000, `${sourceOwnerRevision}:${currentSourceOwner() ?? 'unavailable'}`)
   const [filters, setFilters] = useState<Filters>(() => runtime.lobbyFilters ?? defaultLobbyFilters())
   if (page === 'lobby') {
     runtime.lobbyFilters = filters

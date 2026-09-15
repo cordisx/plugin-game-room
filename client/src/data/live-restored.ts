@@ -404,10 +404,7 @@ export class LivePort implements GameRoomPort {
   }
   async list(source: Source, signal: AbortSignal): Promise<SourceSnapshot> {
     if (this.disposed) throw new Error('客户端已关闭')
-    const [discovery] = await Promise.all([
-      this.discovery(source, '/v1/handshake', signal),
-      this.refreshWallet(signal).catch(() => signal.throwIfAborted()),
-    ])
+    const discovery = await this.discovery(source, '/v1/handshake', signal)
     const handshake = object(discovery)
     if (handshake.serverId !== source.id) {
       return {

@@ -1,19 +1,34 @@
+import { cachedSourceStates, cacheSourceStates } from './source-state-cache.js'
 import { useEffect, useRef, useState } from 'cordisx/react'
 import { SourceAggregator } from './aggregate.js'
 import type { SourceState } from './model.js'
 import type { GameRoomPort } from './port.js'
 
 /** One effect owns the source and serializes background and explicit refreshes. */
-export function useSourceStates(port: GameRoomPort, revision: number, pollMs = 2000, ownerRevision = 0): SourceState[] {
-  const [state, setState] = useState<{ owner: GameRoomPort; ownerRevision: number; states: SourceState[] }>({
+export function useSourceStates(
+  port: GameRoomPort,
+  revision: number,
+  pollMs = 2000,
+  ownerRevision: number | string = 0,
+): SourceState[] {
+  const [state, setState] = useState<{ owner: GameRoomPort; ownerRevision: number | string; states: SourceState[] }>({
     owner: port,
     ownerRevision,
-    states: [],
+    states: cachedSourceStates(port, ownerRevision),
   })
   const request = useRef<(() => void) | undefined>(undefined)
   const previousRevision = useRef(revision)
   useEffect(() => {
-    const aggregate = new SourceAggregator(port, states => setState({ owner: port, ownerRevision, states }))
+    const aggregate = new SourceAggregator(
+      port,
+      states => {
+        cacheSourceStates(port, ownerRevision, states)
+        setState({ owner: port, ownerRevision, states })
+      },
+      15000,
+      30000,
+      cachedSourceStates(port, ownerRevision),
+    )
     let closed = false
     let busy = false
     let dirty = false

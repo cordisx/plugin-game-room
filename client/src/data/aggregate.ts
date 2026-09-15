@@ -11,7 +11,10 @@ export class SourceAggregator {
     private publish: (states: SourceState[]) => void,
     private timeoutMs = 15000,
     private prepareTimeoutMs = 30000,
-  ) {}
+    initialStates: readonly SourceState[] = [],
+  ) {
+    this.states = initialStates.map(state => ({ ...state, source: { ...state.source } }))
+  }
   async refresh(): Promise<void> {
     if (this.disposed) return
     this.cancel()
