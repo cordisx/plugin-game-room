@@ -1,5 +1,7 @@
 # Architecture checkpoint — 2026-09-09
 
+The new requested Token pool and multi-hand target is described in [Token 抵押对局](token-pool-games.md). It supersedes the fee-only product goal below, but is not yet implemented end to end; existing transactions retain their original protocol.
+
 ## User-approved scope
 
 The source requirement is manager task 01a08270-8be3-7fa3-a46d-c47e67efd2f1. The user authorized full implementation and independent parallel tasks.
