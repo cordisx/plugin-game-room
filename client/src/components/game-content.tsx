@@ -7,6 +7,7 @@ import type {
   IsolatedGameUiV1,
 } from '@cordisx/protocol/isolated-game-ui/v1'
 import type { RestrictedContentV1 } from '@cordisx/protocol/restricted-content/v1'
+import { LobbyEmptyState } from './lobby-empty-state.js'
 import { Button } from 'cordisx/ui'
 import { GameSurface as SceneSurface } from './game-surface.js'
 import type { GameRoomPort } from '../data/port.js'
@@ -97,7 +98,7 @@ export function GameSurface(
         <Button onClick={() => setLoadAttempt(value => value + 1)}>重新加载</Button>
       </div>
     )
-  } else if (loaded === undefined) content = <p role='status'>正在加载游戏界面…</p>
+  } else if (loaded === undefined) content = <LobbyEmptyState kind='loading' loadingTitle='正在准备游戏…' />
   else if (loaded === null || loaded.bundle === null) content = <SceneSurface {...props} />
   else {
     content = (
@@ -197,6 +198,7 @@ function HtmlGameSurface(
   const latest = useRef(props)
   latest.current = props
   const [status, setStatus] = useState('')
+  const [loading, setLoading] = useState(true)
   const unavailable = useRef(false)
   const [mountAttempt, setMountAttempt] = useState(0)
   useEffect(() => {
@@ -214,6 +216,12 @@ function HtmlGameSurface(
       return
     }
     setStatus('')
+    setLoading(true)
+    const element = root.current
+    const loaded = (event: Event) => {
+      if (active && event.target instanceof HTMLIFrameElement) setLoading(false)
+    }
+    element.addEventListener('load', loaded, true)
     unavailable.current = false
     void props.htmlService.mount({
       element: root.current,
@@ -295,6 +303,7 @@ function HtmlGameSurface(
     })
     return () => {
       active = false
+      element.removeEventListener('load', loaded, true)
       abort.abort()
       mounted.current?.dispose()
       mounted.current = undefined
@@ -312,7 +321,12 @@ function HtmlGameSurface(
   }, [props.seat.version, props.seat.observation, props.waitingUi])
   return (
     <>
-      <div className='gr-html-scene-root' ref={root} />
+      {loading && !status && (
+        <div className='gr-game-loading' role='status'>
+          <LobbyEmptyState kind='loading' loadingTitle='正在准备游戏…' />
+        </div>
+      )}
+      <div className='gr-html-scene-root' ref={root} aria-busy={loading} />
       {status && (
         <div role='status'>
           <p>{status}</p>

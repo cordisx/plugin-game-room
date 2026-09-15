@@ -1,3 +1,4 @@
+import type { GameRoomPort } from '../data/port.js'
 import { reconcileCreateSelection } from '../data/create-source-selection.js'
 import type { CreatePreferences } from '../data/create-preferences.js'
 import { TokenAmount } from './token-amount.js'
@@ -14,7 +15,20 @@ import { CreateRoomPreview } from './create-room-preview.js'
 import '../styles/create-room.css'
 
 export function CreateRoomPanel(
-  { states, create, busy, publish, configure, context, tokenAvailable, tokenStatus, preferences, officialOrigins }: {
+  {
+    states,
+    create,
+    busy,
+    publish,
+    configure,
+    context,
+    tokenAvailable,
+    tokenStatus,
+    preferences,
+    officialOrigins,
+    assetPort,
+  }: {
+    assetPort?: GameRoomPort
     preferences?: CreatePreferences
     officialOrigins?: readonly string[]
     states: SourceState[]
@@ -53,6 +67,12 @@ export function CreateRoomPanel(
     ? '钱包支付功能暂不可用。'
     : '钱包连接暂不可用，恢复后即可使用。'
   const game = catalog.find(item => item.packageHash === gameId)
+  useEffect(() => {
+    if (!sourceId || !gameId || !assetPort?.gameUiPackage) return
+    const controller = new AbortController()
+    void assetPort.gameUiPackage(sourceId, gameId, controller.signal).catch(() => {})
+    return () => controller.abort()
+  }, [assetPort, sourceId, gameId])
   const selectedPackage = source?.snapshot?.games.find(item => item.packageHash === gameId)
   const [name, setName] = useState('朋友来一局')
   const [mode, setMode] = useState<CreateRoom['mode']>('score')

@@ -300,6 +300,7 @@ function EnabledGameRoomPage({ page, runtime }: { page: string; runtime: ClientR
       )}
       {page === 'create' && (
         <CreateRoomPanel
+          assetPort={port}
           tokenAvailable={port.walletMode?.() === 'canonical-local'
             ? sourceId => !!port.economyAvailable?.(sourceId)
             : undefined}

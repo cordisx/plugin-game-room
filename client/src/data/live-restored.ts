@@ -1,3 +1,4 @@
+import { GameUiAssets } from './game-ui-assets.js'
 import { GameWalletSpend } from './game-wallet-spend.js'
 import type { WalletSpendV1 } from '@cordisx/protocol/wallet-spend/v1'
 import { SourceAccountSessions } from './source-account-sessions.js'
@@ -31,6 +32,7 @@ import type { GameRoomPort } from './port.js'
 import { array, type HttpTransport, number, object, RequestFailure, string } from './http.js'
 export class LivePort implements GameRoomPort {
   readonly kind = 'live' as const
+  private uiAssets?: GameUiAssets
   private displays = new SourceDisplayProfiles()
   private displayUserSubject?: string
   setCurrentUser(state: CurrentUserState) {
@@ -354,23 +356,9 @@ export class LivePort implements GameRoomPort {
   }
   async gameUiPackage(sourceId: string, packageHash: string, signal: AbortSignal) {
     const source = this.source(sourceId)
-    const meta = object(
-      await this.http.request({
-        source,
-        path: `/v1/packages/${packageHash}`,
-        authenticated: false,
-        signal,
-      }),
-    )
-    const bundle = await this.http.request({
-      source,
-      path: `/v1/packages/${packageHash}/ui`,
-      authenticated: false,
-      signal,
-    })
-    if (meta.hash !== packageHash) throw new Error('游戏包身份不匹配')
-    return { bundle, digest: string(meta.uiSha256) }
+    return (this.uiAssets ??= new GameUiAssets()).load(this.http, source, packageHash, signal)
   }
+
   async spectate(room: Room, signal: AbortSignal) {
     const source = this.source(room.sourceId)
     const value = object(
@@ -536,6 +524,7 @@ export class LivePort implements GameRoomPort {
     const pkg = this.packages.get(sourceId)?.find(pkg => pkg.hash === draft.packageHash)
     if (!pkg) throw new Error('此来源玩法目录已变更，请刷新')
     if (draft.botCount && !this.botSources.has(sourceId)) throw new Error('此服务器尚未支持规则电脑')
+    void this.gameUiPackage(sourceId, draft.packageHash, signal).catch(() => {})
     const manifest = object(pkg.manifest)
     const policies = Array.isArray(manifest.settlementPolicies) ? manifest.settlementPolicies : ['equal-winners-v1']
     const view = object(
@@ -584,6 +573,7 @@ export class LivePort implements GameRoomPort {
     }
     const card = this.cards.get(key)
     if (!card) throw new Error('此来源没有该房间')
+    void this.gameUiPackage(source.id, string(card.packageHash), signal).catch(() => {})
     // The server's join operation also returns an existing human seat, and
     // checks capacity and current state atomically. No speculative GET needed.
     if (card.mode !== 'token') {

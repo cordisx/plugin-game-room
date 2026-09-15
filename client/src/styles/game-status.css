@@ -99,3 +99,11 @@
   height: 100%;
   border: 0;
 }
+
+.gr-game-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  background: var(--gr-surface);
+}

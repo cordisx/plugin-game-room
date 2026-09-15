@@ -138,13 +138,14 @@ function AnimatedCards() {
 export interface LobbyEmptyStateProps {
   kind: 'lobby' | 'game' | 'filter' | 'search' | 'loading'
   game?: { id: string; name: string }
-  create: () => void
+  create?: () => void
+  loadingTitle?: string
   reset?: () => void
 }
 
-export function LobbyEmptyState({ kind, game, create, reset }: LobbyEmptyStateProps) {
+export function LobbyEmptyState({ kind, game, create, reset, loadingTitle }: LobbyEmptyStateProps) {
   const title = kind === 'loading'
-    ? '正在加载房间…'
+    ? loadingTitle ?? '正在加载房间…'
     : kind === 'search'
     ? '还没有找到这一局'
     : kind === 'filter'
