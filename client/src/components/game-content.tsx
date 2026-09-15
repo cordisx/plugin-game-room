@@ -1,3 +1,4 @@
+import holdemPresentation from '../data/holdem-presentation.json' with { type: 'json' }
 import { useEffect, useRef, useState } from 'cordisx/react'
 import type {
   GameUiBundleV1,
@@ -71,6 +72,7 @@ export function GameSurface(
     loadPhase,
     loadAttempt,
     gomokuPresentation.digest,
+    holdemPresentation.digest,
   ])
 
   let content

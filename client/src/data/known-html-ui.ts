@@ -1,3 +1,4 @@
+import holdemPresentation from './holdem-presentation.json' with { type: 'json' }
 import gomokuPresentation from './gomoku-presentation.json' with { type: 'json' }
 import digests from './local-html-digests.json' with { type: 'json' }
 import type { GameUiBundleV1 } from '@cordisx/protocol/isolated-game-ui/v1'
@@ -72,6 +73,12 @@ export async function loadKnownHtmlUi(
   // A presentation-only fix for these exact immutable packages. Rules and match identity stay pinned.
   if (isGomokuClockPresentation(room.game.packageHash, value.digest)) {
     return { bundle: await verifiedHtmlUi(gomokuPresentation.bundle, gomokuPresentation.digest), waitingUi: true }
+  }
+  if (
+    room.game.packageHash === '19e9d9b59470d32ac3c451e8e51ff10e1d9974da25951889cc74ea6790a3d940'
+    && value.digest === '437c90626af8a0737581fc6cff6345ab52c0bafadc401f2e537591fbc5322b9a'
+  ) {
+    return { bundle: await verifiedHtmlUi(holdemPresentation.bundle, holdemPresentation.digest), waitingUi: true }
   }
   const presentation = knownWaitingPresentation(room.game.packageHash, value.digest, status)
   if (!presentation) return { bundle: source, waitingUi: room.game.waitingUi === true }

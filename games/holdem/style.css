@@ -278,6 +278,9 @@ main:has(> .holdem) > :not(.sr-only) {
   margin-top: 4px;
 }
 .actions {
+  box-sizing: border-box;
+  min-height: 112px;
+  justify-content: flex-end;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -354,6 +357,9 @@ main:has(> .holdem) > :not(.sr-only) {
   white-space: nowrap;
 }
 @media (max-width: 520px) {
+  .actions {
+    min-height: 148px;
+  }
   .amount-bar {
     grid-template-columns: 1fr auto;
     width: min(100%, 320px);
