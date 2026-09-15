@@ -10,26 +10,45 @@
   overflow: hidden;
 }
 .gr-room-owner-actions {
+  box-sizing: border-box;
   display: flex;
+  align-items: center;
   justify-content: flex-end;
-  flex: 0 0 auto;
-  padding: 16px;
+  flex: 0 0 64px;
+  height: 64px;
+  padding: 12px 16px;
   border-top: 1px solid var(--gr-border);
 }
-.gr-room-owner-actions [role="group"] {
+.gr-room-close-confirm {
   display: flex;
   align-items: center;
   gap: 8px;
-  flex-wrap: wrap;
+  width: 100%;
+  min-width: 0;
 }
-.gr-room-owner-actions {
-  gap: 12px;
-  flex-wrap: wrap;
+.gr-room-close-confirm > span {
+  flex: 1;
+  min-width: 0;
+  color: var(--gr-muted);
+  font-size: 12px;
+  line-height: 18px;
 }
 .gr-room-owner-actions button {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
   gap: 8px;
+  height: 36px;
+  padding: 0 10px;
+  white-space: nowrap;
+}
+.gr-room-close-confirm > .gr-room-close-submit {
+  color: light-dark(#963f3d, #e6aaa4);
+  background: light-dark(#f7eae8, #442d2c);
+}
+.gr-room-close-confirm > .gr-room-close-submit:hover:where(:not(:disabled)) {
+  background: light-dark(#f0d9d6, #563635);
 }
 .gr-room-details-pane-scroll {
   display: flex;

@@ -43,17 +43,22 @@ export function PreparePanel({ seat, detailsOpen, closeDetails, busy, sources, b
         <RoomSummary room={seat.room} sources={sources} busy={busy} bots={bots} />
         {seat.canCloseRoom && closeRoom && (
           <div className='gr-room-owner-actions'>
-            <Button variant='ghost' disabled={busy} onClick={() => setConfirmClose(true)}>
-              <Symbol name='close' size={16} />
-              关闭房间
-            </Button>
-            {confirmClose && (
-              <div role='group' aria-label='确认关闭房间'>
-                <span>关闭后所有玩家将退出房间。</span>
-                <Button disabled={busy} onClick={() => setConfirmClose(false)}>取消</Button>
-                <Button disabled={busy} onClick={closeRoom}>确认关闭</Button>
-              </div>
-            )}
+            {confirmClose
+              ? (
+                <div className='gr-room-close-confirm' role='group' aria-label='确认关闭房间' aria-busy={busy}>
+                  <span>关闭后所有玩家将退出</span>
+                  <Button variant='ghost' disabled={busy} onClick={() => setConfirmClose(false)}>取消</Button>
+                  <Button className='gr-room-close-submit' variant='ghost' disabled={busy} onClick={closeRoom}>
+                    {busy ? '关闭中…' : '关闭房间'}
+                  </Button>
+                </div>
+              )
+              : (
+                <Button variant='ghost' disabled={busy} onClick={() => setConfirmClose(true)}>
+                  <Symbol name='close' size={16} />
+                  关闭房间
+                </Button>
+              )}
           </div>
         )}
       </RoomDetailsPane>
