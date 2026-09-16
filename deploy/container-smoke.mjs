@@ -10,7 +10,7 @@ try {
   const handshake = await (await fetch(`http://127.0.0.1:${port}/v1/handshake`)).json()
   assert.deepEqual(handshake.uiFormats, ['scene-v1', 'html-v1'])
   const account = await app.accounts.register('container-user', 'container-smoke-password')
-  assert.equal(app.accounts.authenticate(account.token).id, account.account.id)
+  assert.equal((await app.accounts.authenticate(account.token)).id, account.account.id)
   const rule = await invoke({
     rules: 'globalThis.game={setup(ctx){return {n:ctx.random()}}}',
     method: 'setup',
