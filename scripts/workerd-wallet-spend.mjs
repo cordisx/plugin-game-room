@@ -4,12 +4,12 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Miniflare } from 'miniflare'
-import { Economy, LocalSpendEngine } from '@cordisx/economy/server'
+import { Economy, LocalPoolEngine, LocalSpendEngine } from '@cordisx/economy/server'
 import { canonical, verifySigned } from '@cordisx/economy/spend'
 import { applyWorkersMigrations } from './apply-workers-migrations.mjs'
 import { game } from '../dist/tests/server/helpers.js'
 const directory = mkdtempSync(join(tmpdir(), 'workerd-wallet-'))
-const service = generateKeyPairSync('ed25519')
+const service = generateKeyPairSync('ed25519'), walletKeys = [0, 1].map(() => generateKeyPairSync('ed25519'))
 const mf = new Miniflare({
   modules: true,
   scriptPath: 'dist/server/index.js',
@@ -19,6 +19,9 @@ const mf = new Miniflare({
   d1Databases: ['DB'],
   bindings: {
     AUTH_POLICY: 'guest-allowed',
+    SPEND_TRUSTED_WALLET_KEYS: JSON.stringify(
+      walletKeys.map(k => k.publicKey.export({ type: 'spki', format: 'der' }).toString('base64url')),
+    ),
     SPEND_SERVICE_ORIGIN: 'https://workerd-game.example',
     SPEND_SERVICE_PRIVATE_KEY: service.privateKey.export({ type: 'pkcs8', format: 'pem' }).toString(),
   },
@@ -47,7 +50,7 @@ try {
   for (const [i, name] of ['alice', 'bobby'].entries()) {
     const account = (await request('/v1/accounts', undefined, { name, password: 'correct-horse-battery' })).value
     accounts.push(account)
-    const id = 'wallet-' + i, key = generateKeyPairSync('ed25519')
+    const id = 'wallet-' + i, key = walletKeys[i]
     economy.auth.createAccount('original', id)
     // Temporary trusted server fixture; never the Native authority or original usage ledger.
     economy.store.transaction(() =>
@@ -55,7 +58,8 @@ try {
     )
     const engine = new LocalSpendEngine(economy.store, 'original', id, key.privateKey),
       session = engine.openSession(() => {})
-    wallets.push({ engine, session })
+    const pool = new LocalPoolEngine(engine, key.privateKey)
+    wallets.push({ engine: pool, session: pool.openSession(() => {}) })
     const challenge = (await request('/v1/wallet-bindings/challenge', account.token, {})).value
     await request('/v1/wallet-bindings', account.token, session.bindGameAccount(session.quoteBinding(challenge)))
   }
@@ -97,7 +101,7 @@ try {
   const bytes = canonical(final.decision)
   for (const [i, w] of wallets.entries()) {
     const settled = w.engine.applyDecision(final.decision, () => {})
-    assert.equal(settled[0].settlement.payload.captured, final.phase === 'capture' ? 10 : 0)
+    assert.equal(settled.paid, final.decision.payload.allocations[i].paid)
     assert.deepEqual(w.engine.applyDecision(final.decision, () => {}), settled)
     const owned = (await request('/v1/me/spend-transactions', accounts[i].token)).value
     assert.equal(owned.transactions.length, 1)
@@ -106,8 +110,8 @@ try {
   assert.equal(canonical((await request(path + '/spend', accounts[0].token)).value.decision), bytes)
   const publicRooms = (await request('/v1/rooms')).value
   for (const w of wallets) {
-    assert(!JSON.stringify(publicRooms).includes(w.engine.walletId))
-    assert(!JSON.stringify(publicRooms).includes(w.engine.walletPublicKey))
+    assert(!JSON.stringify(publicRooms).includes(w.engine.wallet.walletId))
+    assert(!JSON.stringify(publicRooms).includes(w.engine.wallet.walletPublicKey))
   }
   assert(!JSON.stringify(publicRooms).includes('requestIds'))
   assert(!JSON.stringify(publicRooms).includes('signature'))
@@ -133,13 +137,24 @@ try {
     await request(closePath + '/spend-receipts', accounts[0].token, reservations[0].reservation)
     if (active) await request(closePath + '/spend-receipts', accounts[1].token, reservations[1].reservation)
     await request(closePath + '/close', accounts[1].token, {}, 403)
+    if (active) {
+      await request(closePath + '/close', accounts[0].token, {}, 409)
+      for (const [i, a] of accounts.entries()) {
+        const view = (await request(closePath, a.token)).value
+        await request(closePath + '/actions', a.token, {
+          expectedVersion: view.version,
+          idempotencyKey: 'close-finish-' + i,
+          action: { type: 'move' },
+        })
+      }
+    }
     await request(closePath + '/close', accounts[0].token, {})
     const refund = (await request(closePath + '/spend', accounts[1].token)).value
-    assert.equal(refund.phase, 'refund')
+    assert.equal(refund.phase, active ? 'capture' : 'refund')
     assert(await verifySigned(refund.decision, identity.servicePublicKey))
     for (const w of wallets) {
       const settled = w.engine.applyDecision(refund.decision, () => {})
-      assert.equal(settled[0].settlement.payload.captured, 0)
+      assert.equal(settled.exited, true)
       assert.deepEqual(w.engine.applyDecision(refund.decision, () => {}), settled)
     }
     await request(closePath + '/close', accounts[0].token, {})

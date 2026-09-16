@@ -98,7 +98,7 @@ export function RoomDetails(
               </div>
               <div>
                 <dt>
-                  {room.mode === 'token' ? <TokenIcon /> : <Symbol name='coins' size={15} />}席位费用
+                  {room.mode === 'token' ? <TokenIcon /> : <Symbol name='coins' size={15} />}每人抵押
                 </dt>
                 <dd>
                   {room.mode === 'token'
@@ -145,7 +145,7 @@ export function RoomDetails(
               {room.mode === 'token' ? <TokenIcon /> : <Symbol name='coins' size={15} />}结算约定
             </h3>
             <p>{settlementLabel(room.settlement, room.mode)}</p>
-            <p className='gr-inspector-muted'>入座后确认本局规则与费用条款。</p>
+            <p className='gr-inspector-muted'>入座后确认抵押，结束时按游戏结果分配。</p>
           </>
         )}
         {tab === 'source' && (
@@ -217,7 +217,7 @@ export function RoomDetails(
             || (room.mode === 'token'
               ? (
                 <>
-                  <TokenAmount value={room.stake} /> · 加入后确认费用
+                  <TokenAmount value={room.stake} /> · 加入后确认抵押
                 </>
               )
               : economyLabel(room.mode))}

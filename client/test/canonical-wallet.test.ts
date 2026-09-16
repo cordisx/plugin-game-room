@@ -13,6 +13,7 @@ const sources = [{ id: 'remote-a', url: 'https://a.example', name: 'A', accountI
 }]
 const binding = (source: typeof sources[number]) => ({
   contract: 'economy.spend/v1',
+  pool: 'economy.pool/v1',
   serviceOrigin: source.url,
   serverId: source.id,
   servicePublicKey: 'a'.repeat(59),
@@ -94,4 +95,12 @@ test('legacy wallet URL or substituted source identity cannot activate spending'
   f.wallet.discover(sources[0], binding(sources[0]))
   assert.throws(() => f.wallet.discover(sources[0], { ...binding(sources[0]), servicePublicKey: 'b'.repeat(59) }))
   for (const name of ['connect', 'proof', 'quote', 'reserve']) assert.equal(name in f.wallet, false)
+})
+
+test('old fee-only sources remain available for receipt recovery but cannot offer new Token pools', async () => {
+  const f = fixture(), { pool: _pool, ...legacy } = binding(sources[0])
+  await f.wallet.balances(signal())
+  f.wallet.discover(sources[0], legacy)
+  assert.equal(f.wallet.supportsService(sources[0].id), false)
+  assert.equal(f.wallet.binding(sources[0].id).serverId, sources[0].id)
 })

@@ -60,6 +60,7 @@ export class Packages {
       )
       requireThat(typeof input.ui.render === 'string' && input.ui.render.length <= 256 * 1024, 'invalid_ui_renderer')
     }
+    requireThat(m.playerExit === undefined || typeof m.playerExit === 'boolean', 'invalid_player_exit')
     requireThat(m.rulesBot === undefined || m.rulesBot === 'rules-bot-v1', 'unsupported_bot')
     requireThat((m.rulesBot !== undefined) === (input.bot !== undefined), 'invalid_bot')
     if (input.bot !== undefined) {
@@ -83,7 +84,7 @@ export class Packages {
     await invoke({
       rules: input.rules,
       method: 'validate',
-      args: [],
+      args: m.playerExit ? ['exit'] : [],
       ctx: { seats: [], config: {}, seatIndex: null, mode: 'score', stake: 0, policy: 'equal-winners-v1' },
       seed: '',
       cursor: 0,

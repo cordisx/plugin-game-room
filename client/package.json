@@ -34,13 +34,13 @@
   },
   "devDependencies": {
     "@cordisx/eslint-config": "github:cordisx/cordisxmono#c63c2e8c2ba7e11502934a52ad2ce3734e804cdc",
-    "@cordisx/protocol": "file:sdk/experimental/protocol-managed-https-r45.tgz",
+    "@cordisx/protocol": "file:sdk/experimental/protocol-token-pool-r46.tgz",
     "@deepseek-ai/cordis": "4.0.1",
     "@deepseek-ai/schemastery": "3.18.1",
     "@projectwallace/stylelint-plugin": "0.7.0",
     "@types/react": "^19.2.18",
     "@typescript-eslint/parser": "8.69.0",
-    "cordisx": "file:sdk/experimental/cordisx-host-wallet-native-read-r41-normal.tgz",
+    "cordisx": "file:sdk/experimental/cordisx-host-token-pool-r46.tgz",
     "dprint": "0.57.1",
     "esbuild": "^0.28.2",
     "eslint": "9.39.4",
@@ -53,7 +53,7 @@
     "node": ">=22.19"
   },
   "dependencies": {
-    "@cordisx/economy": "file:sdk/experimental/cordisx-economy-r38-normal.tgz",
+    "@cordisx/economy": "file:sdk/experimental/cordisx-economy-token-pool-r46.tgz",
     "@cordisx/game-room-agents": "file:../agents",
     "reicon": "1.2.1"
   },

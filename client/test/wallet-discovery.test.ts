@@ -37,6 +37,7 @@ for (const code of ['source-unavailable', 'denied', 'outcome-unknown'] as const)
             economy: null,
             walletSpend: {
               contract: 'economy.spend/v1',
+              pool: 'economy.pool/v1',
               serviceOrigin: source.url,
               serverId: source.id,
               servicePublicKey: 'a'.repeat(59),
@@ -53,6 +54,7 @@ for (const code of ['source-unavailable', 'denied', 'outcome-unknown'] as const)
     // Public capability double only; refusal must never be swallowed by explicit spend authorization.
     port.setWalletSpend({
       contract: 'cordisx.wallet-spend/v1',
+      pool: { contract: 'cordisx.wallet-pool/v1' },
       authorizeSource: async () => {
         approvals++
         return { status: 'unavailable', code }
@@ -67,6 +69,7 @@ for (const code of ['source-unavailable', 'denied', 'outcome-unknown'] as const)
     })
     try {
       await aggregate.refresh()
+      await port.refreshWallet(new AbortController().signal)
       assert.equal(states[0]!.state, 'online')
       assert.equal(paths.filter(path => path === '/v1/handshake').length, 1)
       assert.equal(port.isConnected(source.id), true)

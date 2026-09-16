@@ -30,7 +30,7 @@ test('creation schema defaults bots to zero, caps Gomoku at one, and explains un
   assert.throws(() => schema({ ...value, botCount: .5 }))
   const token = generalCreateSchema(states, 'source', game, true)
   assert.throws(() => token({ ...value, mode: 'token', stake: 100, botCount: 1 }))
-  assert.match(JSON.stringify(token), /独立资金身份/)
+  assert.match(JSON.stringify(token), /Token 房间不支持规则电脑/)
   const legacy = generalCreateSchema(states, 'source', { ...game, rulesBot: false })
   assert.throws(() => legacy({ ...value, botCount: 1 }))
   assert.equal(legacy(value).botCount, 0)

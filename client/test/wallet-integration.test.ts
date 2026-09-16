@@ -51,6 +51,7 @@ test('provider retirement immediately removes balances, ledger and link capabili
   await f.lifecycle.refresh(signal())
   f.lifecycle.adapter.discover(game, {
     contract: 'economy.spend/v1',
+    pool: 'economy.pool/v1',
     serviceOrigin: game.url,
     serverId: game.id,
     servicePublicKey: 'a'.repeat(59),

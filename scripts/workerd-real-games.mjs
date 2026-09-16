@@ -72,7 +72,7 @@ try {
         maxPlayers: 2,
         policy: pkg.manifest.settlementPolicies?.[0] ?? 'equal-winners-v1',
         turnTimeoutMs: 600000,
-        config: pkg.manifest.id === 'gomoku' ? { boardSize: 15 } : {},
+        config: pkg.manifest.id === 'gomoku' ? { boardSize: 15, rounds: 2 } : { rounds: 2 },
       })
       const path = `/v1/rooms/${encodeURIComponent(room.id)}`
       await request(`${path}/join`, accounts[1].token, {})
@@ -80,17 +80,24 @@ try {
       room = await request(`${path}/start`, accounts[0].token, {})
       assert.equal(room.status, 'playing')
       let count = 0
+      let roundMoves = 0
+      let advances = 0
       while (room.status === 'playing') {
         assert(count < 120, 'Game exceeded bounded verification actions')
         const actor = accounts[room.turn]
         assert(actor, 'Unexpected turn')
         room = await request(path, actor.token)
-        if (pkg.manifest.id === 'texas-holdem') {
+        if (pkg.manifest.id === 'texas-holdem' && !room.observation.betweenHands) {
           assert.deepEqual(room.observation.players[1 - room.turn].hole, [null, null])
         }
-        const action = pkg.manifest.id === 'gomoku'
-          ? { type: 'place', x: Math.floor(count / 2), y: count % 2 }
-          : { type: room.observation.legalActions.some(item => item.type === 'call') ? 'call' : 'check' }
+        const advance = room.observation.legalActions.find(item => ['next-round', 'next-hand'].includes(item.type))
+        const action = advance ?? (pkg.manifest.id === 'gomoku'
+          ? { type: 'place', x: Math.floor(roundMoves / 2), y: roundMoves % 2 }
+          : { type: room.observation.legalActions.some(item => item.type === 'call') ? 'call' : 'check' })
+        if (advance) {
+          advances++
+          roundMoves = 0
+        } else roundMoves++
         const command = {
           expectedVersion: room.version,
           idempotencyKey: `${runId}:${pkg.manifest.id}:${count}`,
@@ -104,6 +111,7 @@ try {
         )
         count++
       }
+      assert.equal(advances, 1, 'Configured second round must require an explicit advance')
       assert.equal(room.status, 'finished')
       assert.equal(room.settlement, 'none')
       const replay = await request(`${path}/replay`, accounts[0].token)

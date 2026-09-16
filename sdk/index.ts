@@ -7,6 +7,7 @@ export type Json = null | boolean | number | string | Json[] | { [key: string]: 
 export type SettlementPolicy = 'equal-winners-v1' | 'conserved-payouts-v1'
 export type Mode = 'score' | 'local-chips' | 'token'
 export interface Manifest {
+  playerExit?: boolean
   waitingUi?: boolean
   rulesBot?: 'rules-bot-v1'
   spectating?: boolean
@@ -48,6 +49,8 @@ export interface GameResult {
 export interface Transition {
   state: Json
   turn: number | null
+  /** Cumulative final cashout per seat; null means still participating. */
+  cashouts?: (number | null)[]
   done?: GameResult
 }
 /** Platform observation before authoritative setup; HTML UIs render their own waiting surface. */
@@ -63,6 +66,7 @@ export interface WaitingObservation {
 export interface GameRules {
   setup(ctx: RuleContext): Transition
   act(state: Json, action: Json, ctx: RuleContext): Transition
+  exit?(state: Json, ctx: RuleContext): Transition
   timeout(state: Json, ctx: RuleContext): Transition
   observe(state: Json, seatIndex: number, ctx: RuleContext): Json
 }
@@ -123,7 +127,7 @@ export interface RoomCard {
   deadline: number | null
   result: GameResult | null
   walletSpend?: {
-    protocol: 'economy.spend/v1'
+    protocol: 'economy.spend/v1' | 'economy.pool/v1'
     termsHash: string | null
     acceptBefore: number | null
     phase: 'waiting' | 'funding' | 'active' | 'capture' | 'refund'

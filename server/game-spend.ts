@@ -1,273 +1,257 @@
-import { randomBytes } from 'node:crypto'
+import { canonical, digest, parseSigned, type Signed, verifySigned } from '@cordisx/economy/spend'
 import {
-  canonical,
-  digest,
-  parseDecision,
-  parseReservation,
-  parseSigned,
-  parseTerms,
-  parseWalletBinding,
-  type Signed,
-  type SpendDecision,
-  type SpendReservation,
-  type SpendTerms,
-  verifySigned,
-  type WalletBinding,
-  type WalletChallenge,
-} from '@cordisx/economy/spend'
-import type { GameStore } from './store-contract.js'
-import type { Room } from './engine.js'
+  parsePoolDecision,
+  parsePoolReservation,
+  parsePoolTerms,
+  type PoolDecision,
+  type PoolReservation,
+  type PoolTerms,
+} from '@cordisx/economy/pool'
+import { allocateTokenPool } from '../sdk/pool-allocation.js'
 import type { Account } from './accounts.js'
-import { ApiError, requireThat } from './errors.js'
-import { GameServiceKey } from './game-service-key.js'
-export interface GameSpendRecord {
-  terms: Signed<SpendTerms>
+import type { Room } from './engine.js'
+import { requireThat } from './errors.js'
+import { LegacyGameSpend, type LegacyGameSpendRecord } from './game-spend-legacy.js'
+import type { GameServiceKey } from './game-service-key.js'
+import type { GameStore } from './store-contract.js'
+export interface GamePoolRecord {
+  terms: Signed<PoolTerms>
   termsHash: string
   requestIds: Record<string, string>
-  receipts: Record<string, Signed<SpendReservation>>
+  receipts: Record<string, Signed<PoolReservation>>
   phase: 'funding' | 'active' | 'capture' | 'refund'
-  decision: Signed<SpendDecision> | null
+  decision: Signed<PoolDecision> | null
+  decisions: Signed<PoolDecision>[]
 }
-/** Game owns declarations and durable finality, never wallet custody or a wallet HTTP client. */
-function signedInput<T>(input: unknown, parser: (input: unknown) => T): Signed<T> {
-  try {
-    return parseSigned(input, parser)
-  } catch {
-    throw new ApiError(400, 'invalid_spend_payload')
-  }
-}
+export type GameSpendRecord = LegacyGameSpendRecord | GamePoolRecord
+export const isPool = (r: GameSpendRecord): r is GamePoolRecord => 'decisions' in r
+/** Old transactions can recover; all newly prepared games use separately versioned pool terms. */
 export class GameSpend {
-  constructor(readonly store: GameStore, readonly service: GameServiceKey, readonly now = Date.now) {}
-  async challenge(account: Account) {
-    await this.service.pin(this.store)
-    const payload: WalletChallenge = {
-      contract: 'economy.spend-wallet-challenge/v1',
-      ...this.service.binding(),
-      gameAccountId: account.id,
-      nonce: randomBytes(32).toString('hex'),
-      expiresAt: this.now() + 180000,
-    }
-    const signed = this.service.sign(payload)
-    await this.store.db.prepare('INSERT INTO game_wallet_challenges VALUES (?,?,?,?)').run(
-      payload.nonce,
-      account.id,
-      payload.expiresAt,
-      canonical(signed),
-    )
-    return signed
+  private readonly legacy: LegacyGameSpend
+  constructor(readonly store: GameStore, readonly service: GameServiceKey, readonly now = Date.now) {
+    this.legacy = new LegacyGameSpend(store, service, now)
   }
-  async wallet(accountId: string): Promise<Signed<WalletBinding> | undefined> {
-    const row = await this.store.db.prepare('SELECT body FROM game_wallet_bindings WHERE account_id=?').get(accountId)
-    return row ? parseSigned(JSON.parse(String(row.body)), parseWalletBinding) : undefined
+  challenge(account: Account) {
+    return this.legacy.challenge(account)
   }
-  async bind(account: Account, input: unknown) {
-    const signed = signedInput(input, parseWalletBinding), binding = signed.payload
-    const { walletId: _walletId, walletPublicKey: _walletKey, contract: _contract, ...challenge } = binding
+  wallet(accountId: string) {
+    return this.legacy.wallet(accountId)
+  }
+  async requirePoolWallet(accountId: string) {
+    const binding = await this.wallet(accountId)
+    requireThat(binding, 'wallet_binding_required', 409)
     requireThat(
-      binding.gameAccountId === account.id
-        && canonical({
-            serviceOrigin: binding.serviceOrigin,
-            servicePublicKey: binding.servicePublicKey,
-            serverId: binding.serverId,
-          }) === canonical(this.service.binding()),
-      'wallet_binding_mismatch',
+      this.service.trustedWalletPublicKeys.has(binding.payload.walletPublicKey),
+      'wallet_authority_not_enrolled',
       403,
     )
-    requireThat(await verifySigned(signed, binding.walletPublicKey), 'invalid_wallet_signature', 403)
-    return this.store.atomic(async () => {
-      const prior = await this.wallet(account.id)
-      if (prior && canonical(prior) === canonical(signed)) return prior
-      requireThat(binding.expiresAt > this.now(), 'invalid_wallet_challenge', 403)
-      const known = await this.store.db.prepare(
-        'SELECT body FROM game_wallet_challenges WHERE nonce=? AND account_id=?',
-      ).get(binding.nonce, account.id)
-      requireThat(
-        known
-          && canonical(JSON.parse(String(known.body)).payload)
-            === canonical({ ...challenge, contract: 'economy.spend-wallet-challenge/v1' }),
-        'invalid_wallet_challenge',
-        403,
-      )
-      requireThat(
-        !prior
-          || prior.payload.walletId === binding.walletId && prior.payload.walletPublicKey === binding.walletPublicKey,
-        'wallet_key_changed',
-        409,
-      )
-      await this.store.requireChanges(
-        'DELETE FROM game_wallet_challenges WHERE nonce=? AND account_id=? AND expires>?',
-        [binding.nonce, account.id, this.now()],
-        1,
-        'invalid_wallet_challenge',
-      )
-      if (!prior) {
-        await this.store.db.prepare('INSERT INTO game_wallet_bindings VALUES (?,?)').run(account.id, canonical(signed))
-      }
-      return prior ?? signed
-    })
   }
-  async prepare(room: Room): Promise<GameSpendRecord> {
-    await this.service.pin(this.store)
-    const accounts = [...new Set(room.seats.map(seat => seat.accountId))]
-    const participants = await Promise.all(accounts.map(async gameAccountId => {
-      const binding = await this.wallet(gameAccountId)
-      requireThat(binding, 'wallet_binding_required', 409)
-      return {
-        gameAccountId,
-        walletId: binding.payload.walletId,
-        walletPublicKey: binding.payload.walletPublicKey,
-        amount: room.stake * room.seats.filter(seat => seat.accountId === gameAccountId).length,
-      }
-    }))
+  bind(account: Account, input: unknown) {
+    return this.legacy.bind(account, input)
+  }
+  async prepare(room: Room): Promise<GamePoolRecord> {
+    requireThat(room.seats.every(s => s.kind !== 'bot'), 'token_bot_unfunded', 409)
+    const old = await this.legacy.prepare(room)
     requireThat(
-      new Set(participants.map(p => p.walletId)).size === participants.length,
-      'wallet_already_participating',
-      409,
+      old.terms.payload.participants.every(p => this.service.trustedWalletPublicKeys.has(p.walletPublicKey)),
+      'wallet_authority_not_enrolled',
+      403,
     )
-    const payload = parseTerms({
-      contract: 'economy.spend-terms/v1',
-      ...this.service.binding(),
-      matchId: room.matchId,
-      game: {
-        id: room.manifest.id,
-        version: room.manifest.version,
-        digest: room.packageHash,
-        reviewStatus: room.reviewState,
-      },
-      participants,
-      policy: 'capture-and-release',
-      acceptBefore: this.now() + 600000,
+    const terms = parsePoolTerms({
+      ...old.terms.payload,
+      contract: 'economy.pool-terms/v1',
+      policy: room.policy === 'conserved-payouts-v1' ? 'remaining-chips' : 'winner-weights',
+      rounds: Number((room.config as Record<string, unknown>).rounds ?? 1),
     })
-    const termsHash = await digest(payload)
+    const termsHash = await digest(terms)
     const requestIds = Object.fromEntries(
       await Promise.all(
-        participants.map(
-          async participant => [
-            participant.gameAccountId,
-            'spend:' + await digest({ ...this.service.binding(), matchId: room.matchId, termsHash, ...participant }),
+        terms.participants.map(
+          async p => [
+            p.gameAccountId,
+            'pool:' + await digest({ ...this.service.binding(), matchId: room.matchId, termsHash, ...p }),
           ],
         ),
       ),
     )
-    return { terms: this.service.sign(payload), termsHash, requestIds, receipts: {}, phase: 'funding', decision: null }
+    return {
+      terms: this.service.sign(terms),
+      termsHash,
+      requestIds,
+      receipts: {},
+      phase: 'funding',
+      decision: null,
+      decisions: [],
+    }
   }
   async load(matchId: string): Promise<GameSpendRecord> {
-    const row = await this.store.db.prepare('SELECT body FROM game_spend_transactions WHERE match_id=?').get(matchId)
-    requireThat(row, 'spend_transaction_not_found', 404)
-    return JSON.parse(String(row.body))
+    return await this.legacy.load(matchId) as GameSpendRecord
   }
   async transactions(accountId: string) {
-    const rows = await this.store.db.prepare(
-      'SELECT t.room_id,t.body FROM game_spend_transactions t JOIN game_spend_participants p ON t.match_id=p.match_id WHERE p.account_id=?',
-    ).all(accountId)
-    return rows.flatMap(row => {
-      const transaction = JSON.parse(String(row.body)) as GameSpendRecord
-      return transaction.terms.payload.participants.some(p => p.gameAccountId === accountId)
-        ? [{ roomId: String(row.room_id), transaction }]
-        : []
-    })
+    return await this.legacy.transactions(accountId) as { roomId: string; transaction: GameSpendRecord }[]
   }
   async ownedTransaction(accountId: string, matchId: string) {
-    const transaction = await this.load(matchId)
-    requireThat(transaction.terms.payload.participants.some(p => p.gameAccountId === accountId), 'not_participant', 403)
-    return transaction
-  }
-  async accept(account: Account, record: GameSpendRecord, input: unknown) {
-    const receipt = signedInput(input, parseReservation), p = receipt.payload
-    const participant = record.terms.payload.participants.find(participant => participant.gameAccountId === account.id)
-    requireThat(
-      participant
-        && canonical({
-            gameAccountId: p.gameAccountId,
-            walletId: p.walletId,
-            walletPublicKey: p.walletPublicKey,
-            amount: p.amount,
-          }) === canonical(participant)
-        && p.matchId === record.terms.payload.matchId && p.termsHash === record.termsHash
-        && p.serviceOrigin === this.service.origin && p.servicePublicKey === this.service.publicKey
-        && p.serverId === this.service.serverId,
-      'reservation_binding_mismatch',
-      403,
-    )
-    requireThat(await verifySigned(receipt, participant.walletPublicKey), 'invalid_reservation_signature', 403)
-    const prior = record.receipts[account.id]
-    requireThat(!prior || canonical(prior) === canonical(receipt), 'reservation_conflict', 409)
-    if (record.decision || prior) return false
-    requireThat(
-      record.phase === 'funding' && this.now() < record.terms.payload.acceptBefore,
-      'spend_admission_closed',
-      409,
-    )
-    requireThat(
-      !Object.values(record.receipts).some(other =>
-        other.payload.reservationId === p.reservationId || other.payload.nonce === p.nonce
-      ),
-      'reservation_conflict',
-      409,
-    )
-    record.receipts[account.id] = receipt
-    return true
+    const record = await this.load(matchId)
+    requireThat(record.terms.payload.participants.some(p => p.gameAccountId === accountId), 'not_participant', 403)
+    return record
   }
   complete(record: GameSpendRecord) {
     return record.terms.payload.participants.every(p => record.receipts[p.gameAccountId])
   }
-  async final(record: GameSpendRecord, action: 'capture' | 'refund') {
+  async accept(account: Account, record: GameSpendRecord, input: unknown) {
+    if (!isPool(record)) return this.legacy.accept(account, record, input)
+    const receipt = parseSigned(input, parsePoolReservation), p = receipt.payload, t = record.terms.payload
+    const own = t.participants.find(p => p.gameAccountId === account.id)
+    requireThat(
+      own
+        && canonical(own)
+          === canonical({
+            gameAccountId: p.gameAccountId,
+            walletId: p.walletId,
+            walletPublicKey: p.walletPublicKey,
+            amount: p.amount,
+          })
+        && p.termsHash === record.termsHash && p.matchId === t.matchId
+        && p.serviceOrigin === t.serviceOrigin && p.servicePublicKey === t.servicePublicKey
+        && p.serverId === t.serverId,
+      'reservation_binding_mismatch',
+      403,
+    )
+    requireThat(await verifySigned(receipt, own.walletPublicKey), 'invalid_reservation_signature', 403)
+    const prior = record.receipts[account.id]
+    requireThat(!prior || canonical(prior) === canonical(receipt), 'reservation_conflict', 409)
+    if (record.decision || prior) return false
+    requireThat(record.phase === 'funding' && this.now() < t.acceptBefore, 'spend_admission_closed', 409)
+    record.receipts[account.id] = receipt
+    return true
+  }
+  private async decision(
+    record: GamePoolRecord,
+    allocations: PoolDecision['allocations'],
+    phase: PoolDecision['phase'],
+    result: unknown,
+  ) {
+    const previous = record.decisions.at(-1)
+    requireThat(!previous || previous.payload.phase === 'active', 'spend_already_final', 409)
+    requireThat(
+      !previous
+        || previous.payload.allocations.every((a, i) => !a.exited || canonical(a) === canonical(allocations[i])),
+      'cashout_changed',
+      409,
+    )
+    const total = record.terms.payload.participants.reduce((n, p) => n + p.amount, 0)
+    const payload = parsePoolDecision({
+      contract: 'economy.pool-decision/v1',
+      terms: record.terms,
+      sequence: record.decisions.length + 1,
+      previousHash: previous ? await digest(previous.payload) : null,
+      phase,
+      reservations: record.terms.payload.participants.flatMap(p =>
+        record.receipts[p.gameAccountId] ? [record.receipts[p.gameAccountId]] : []
+      ),
+      allocations,
+      remaining: total - allocations.reduce((n, a) => n + a.paid, 0),
+      resultHash: await digest(result),
+    })
+    const signed = this.service.sign(payload)
+    record.decisions.push(signed)
+    return signed
+  }
+  async checkpoint(record: GameSpendRecord, room: Room) {
+    if (!isPool(record) || record.phase !== 'active' || !room.cashouts) return
+    requireThat(
+      record.terms.payload.policy === 'remaining-chips' && this.complete(record),
+      'invalid_cashout_policy',
+      409,
+    )
+    const allocations = record.terms.payload.participants.map(p => {
+      const indices = room.seats.flatMap((s, i) => s.accountId === p.gameAccountId ? [i] : [])
+      const exited = indices.length > 0 && indices.every(i => room.cashouts![i] !== null)
+      return { walletId: p.walletId, paid: exited ? indices.reduce((n, i) => n + room.cashouts![i]!, 0) : 0, exited }
+    })
+    if (
+      !allocations.some(a => a.exited)
+      || canonical(record.decisions.at(-1)?.payload.allocations ?? []) === canonical(allocations)
+    ) return
+    await this.decision(record, allocations, 'active', { version: room.version, cashouts: room.cashouts })
+  }
+  async final(record: GameSpendRecord, action: 'capture' | 'refund', room?: Room) {
+    if (!isPool(record)) return this.legacy.final(record, action)
     if (record.decision) {
-      requireThat(record.decision.payload.action === action, 'spend_already_final', 409)
+      requireThat(record.phase === action, 'spend_already_final', 409)
       return
     }
-    requireThat(action !== 'capture' || record.phase === 'active' && this.complete(record), 'spend_not_active', 409)
-    const identity = { ...this.service.binding(), matchId: record.terms.payload.matchId, termsHash: record.termsHash }
-    const entries = record.terms.payload.participants.flatMap(participant => {
-      const reservation = record.receipts[participant.gameAccountId]
-      return reservation ? [{ reservation, captureAmount: action === 'capture' ? participant.amount : 0 }] : []
-    })
-    const payload = parseDecision({
-      contract: 'economy.spend-decision/v1',
-      ...identity,
-      decisionId: 'decision:' + await digest(identity),
-      action,
-      entries,
-    })
-    record.phase = action
-    record.decision = this.service.sign(payload)
-  }
-  /** Called exclusively inside the same transaction as the corresponding room/event/command write. */
-  async write(roomId: string, record: GameSpendRecord) {
-    const prior = await this.store.db.prepare('SELECT body FROM game_spend_transactions WHERE match_id=?').get(
-      record.terms.payload.matchId,
+    requireThat(
+      action === 'refund' || record.phase === 'active' && this.complete(record) && room?.result,
+      'spend_not_active',
+      409,
     )
-    if (prior) {
-      const previous = JSON.parse(String(prior.body)) as GameSpendRecord
+    // Once any player has cashed out, principal refunds would undo realized game results.
+    requireThat(action !== 'refund' || record.decisions.length === 0, 'pool_requires_final_result', 409)
+    const t = record.terms.payload
+    let payouts = t.participants.map(p => p.amount)
+    if (action === 'capture') {
+      const result = room!.result!
+      const seatWeights = t.policy === 'remaining-chips'
+        ? result.payouts
+        : room!.seats.map((_, i) => result.winners.includes(i) ? 1 : 0)
       requireThat(
-        previous.termsHash === record.termsHash && canonical(previous.terms) === canonical(record.terms),
-        'immutable_spend_terms',
+        seatWeights && seatWeights.length === room!.seats.length
+          && seatWeights.every(n => Number.isSafeInteger(n) && n >= 0),
+        'invalid_pool_result',
         409,
       )
-      requireThat(previous.phase !== 'active' || record.phase !== 'funding', 'spend_phase_conflict', 409)
+      const weights = t.participants.map(p =>
+        room!.seats.reduce((n, s, i) => n + (s.accountId === p.gameAccountId ? seatWeights[i] : 0), 0)
+      )
+      if (t.policy === 'remaining-chips') {
+        requireThat(
+          weights.reduce((a, b) => a + b, 0) === payouts.reduce((a, b) => a + b, 0),
+          'pool_not_conserved',
+          409,
+        )
+        payouts = weights
+      } else {payouts = allocateTokenPool(
+          payouts,
+          weights.some(Boolean) ? { kind: 'weighted', weights } : { kind: 'refund' },
+        )}
+    }
+    record.decision = await this.decision(
+      record,
+      t.participants.map((p, i) => ({ walletId: p.walletId, paid: payouts[i], exited: true })),
+      action === 'refund' ? 'refunded' : 'finished',
+      room?.result ?? { reason: 'cancelled' },
+    )
+    record.phase = action
+  }
+  async write(roomId: string, record: GameSpendRecord) {
+    if (!isPool(record)) return this.legacy.write(roomId, record)
+    const row = await this.store.db.prepare('SELECT body FROM game_spend_transactions WHERE match_id=?').get(
+      record.terms.payload.matchId,
+    )
+    if (row) {
+      const old = JSON.parse(String(row.body)) as GameSpendRecord
+      requireThat(isPool(old) && canonical(old.terms) === canonical(record.terms), 'immutable_spend_terms', 409)
       requireThat(
-        Object.entries(previous.receipts).every(([account, receipt]) =>
-          canonical(record.receipts[account]) === canonical(receipt)
-        ),
+        Object.entries(old.receipts).every(([id, r]) => canonical(record.receipts[id]) === canonical(r)),
         'reservation_conflict',
         409,
       )
       requireThat(
-        !previous.decision || canonical(previous.decision) === canonical(record.decision),
+        old.decisions.every((d, i) => canonical(d) === canonical(record.decisions[i])),
         'spend_already_final',
         409,
       )
-    }
-    if (!prior) {
-      for (const p of record.terms.payload.participants) {
+      requireThat(!old.decision || canonical(old.decision) === canonical(record.decision), 'spend_already_final', 409)
+    } else {for (const p of record.terms.payload.participants) {
         await this.store.db.prepare('INSERT INTO game_spend_participants VALUES (?,?)').run(
           p.gameAccountId,
           record.terms.payload.matchId,
         )
-      }
-    }
+      }}
     await this.store.db.prepare(
       'INSERT INTO game_spend_transactions VALUES (?,?,?) ON CONFLICT(match_id) DO UPDATE SET body=excluded.body',
-    ).run(record.terms.payload.matchId, roomId, canonical(record))
+    )
+      .run(record.terms.payload.matchId, roomId, canonical(record))
   }
 }

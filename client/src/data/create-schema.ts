@@ -75,7 +75,7 @@ export function generalCreateSchema(
       ).required(),
       '计分方式',
     ),
-    ...(token ? { stake: label(Schema.natural().min(1).max(1000000).required(), '每席位费用') } : {}),
+    ...(token ? { stake: label(Schema.natural().min(1).max(1000000).required(), '每人抵押') } : {}),
     maxPlayers: label(
       Schema.natural().min(game?.minPlayers ?? 2).max(game?.maxPlayers ?? 2).default(game?.maxPlayers ?? 2).required()
         .disabled((game?.minPlayers ?? 2) === (game?.maxPlayers ?? 2))

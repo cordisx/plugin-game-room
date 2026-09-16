@@ -9,6 +9,7 @@ interface Env {
   DB: D1Binding
   SPEND_SERVICE_ORIGIN?: string
   SPEND_SERVICE_PRIVATE_KEY?: string
+  SPEND_TRUSTED_WALLET_KEYS?: string
   AUTH_POLICY?: string
   ALLOWED_ORIGINS?: string
   MANAGED_SOURCE_TRUST?: string
@@ -45,7 +46,13 @@ async function handle(request: Request, env: Env): Promise<Response> {
     store,
     ...(managedTrust ? { managedAccount: { trust: managedTrust, codec: managedCodec } } : {}),
     ...(env.SPEND_SERVICE_ORIGIN && env.SPEND_SERVICE_PRIVATE_KEY
-      ? { walletSpend: { origin: env.SPEND_SERVICE_ORIGIN, privateKey: env.SPEND_SERVICE_PRIVATE_KEY } }
+      ? {
+        walletSpend: {
+          origin: env.SPEND_SERVICE_ORIGIN,
+          privateKey: env.SPEND_SERVICE_PRIVATE_KEY,
+          trustedWalletPublicKeys: env.SPEND_TRUSTED_WALLET_KEYS ? JSON.parse(env.SPEND_TRUSTED_WALLET_KEYS) : [],
+        },
+      }
       : {}),
     accessPolicy: configuredAccessPolicy({ AUTH_POLICY: env.AUTH_POLICY }),
     allowedOrigins: env.ALLOWED_ORIGINS?.split(',').map(value => value.trim()).filter(Boolean),

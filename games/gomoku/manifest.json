@@ -1,6 +1,6 @@
 {
   "id": "gomoku",
-  "version": "1.6.1",
+  "version": "1.7.0",
   "name": "五子棋",
   "minPlayers": 2,
   "maxPlayers": 2,
@@ -23,6 +23,13 @@
           15
         ],
         "default": 15
+      },
+      "rounds": {
+        "type": "integer",
+        "title": "游戏局数",
+        "default": 3,
+        "minimum": 1,
+        "maximum": 1000
       }
     }
   },
@@ -32,5 +39,6 @@
   "minimumViewport": {
     "width": 460,
     "height": 520
-  }
+  },
+  "playerExit": true
 }

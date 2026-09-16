@@ -1,3 +1,4 @@
+import { GameWalletPool } from './game-wallet-pool.js'
 import type {
   WalletSpendRecordV1,
   WalletSpendResultV1,
@@ -34,6 +35,14 @@ interface Transaction {
 type Request = (sourceId: string, path: string, signal: AbortSignal, body?: unknown) => Promise<unknown>
 /** Public Host capability only. Game HTTP transports public declarations, never wallet credentials. */
 export class GameWalletSpend {
+  private readonly pool = new GameWalletPool({
+    request: (...args) => this.request(...args),
+    account: id => this.account(id),
+    pin: id => this.pin(id),
+    identity: signal => this.identity(signal),
+    lease: signal => this.lease(signal),
+    accepted: result => this.accepted(result),
+  })
   private capability?: WalletSpendV1
   private generation = 0
   private pins = new Map<string, WalletSpendSourceV1>()
@@ -53,7 +62,7 @@ export class GameWalletSpend {
     this.delivered.clear()
   }
   supported() {
-    return !!this.capability && this.capability.contract === 'cordisx.wallet-spend/v1'
+    return !!this.capability?.pool && this.capability.pool.contract === 'cordisx.wallet-pool/v1'
   }
   available(id: string) {
     return !!this.capability && this.pins.has(id)
@@ -225,6 +234,13 @@ export class GameWalletSpend {
     return receipt
   }
   async quote(seat: Seat, signal: AbortSignal): Promise<FundingQuote> {
+    if (seat.walletSpend?.protocol === 'economy.pool/v1') {
+      return this.pool.quote(
+        seat,
+        await this.request(seat.room.sourceId, `/v1/rooms/${encodeURIComponent(seat.room.id)}/spend`, signal),
+        signal,
+      )
+    }
     const id = seat.room.sourceId,
       record = await this.transaction(
         id,
@@ -268,6 +284,7 @@ export class GameWalletSpend {
     }
   }
   async reserve(seat: Seat, quote: FundingQuote, signal: AbortSignal) {
+    if (quote.poolTerms) return this.pool.reserve(seat, quote, signal)
     const current = await this.quote(seat, signal)
     if (canonical(current) !== canonical(quote) || !current.signedTerms || !current.requestId) {
       throw new Error('投入条款已变化，请重新确认')
@@ -341,6 +358,13 @@ export class GameWalletSpend {
     const response = object(await this.request(id, '/v1/me/spend-transactions', signal))
     for (const entry of array(response.transactions)) {
       const value = object(entry)
+      if (
+        object(object(value.transaction).terms).payload
+        && object(object(object(value.transaction).terms).payload).contract === 'economy.pool-terms/v1'
+      ) {
+        await this.pool.recover(id, string(value.roomId), value.transaction, signal)
+        continue
+      }
       let record = await this.transaction(id, value.transaction, signal)
       if (!record.decision) {
         const latest = await this.transaction(

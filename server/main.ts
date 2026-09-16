@@ -23,7 +23,15 @@ const app = createGameServer({
   managedAccount,
   accessPolicy: configuredAccessPolicy(process.env),
   ...(process.env.SPEND_SERVICE_ORIGIN && process.env.SPEND_SERVICE_PRIVATE_KEY
-    ? { walletSpend: { origin: process.env.SPEND_SERVICE_ORIGIN, privateKey: process.env.SPEND_SERVICE_PRIVATE_KEY } }
+    ? {
+      walletSpend: {
+        origin: process.env.SPEND_SERVICE_ORIGIN,
+        privateKey: process.env.SPEND_SERVICE_PRIVATE_KEY,
+        trustedWalletPublicKeys: process.env.SPEND_TRUSTED_WALLET_KEYS
+          ? JSON.parse(process.env.SPEND_TRUSTED_WALLET_KEYS)
+          : [],
+      },
+    }
     : {}),
   database: process.env.DATABASE_PATH ?? '.data/game-room.sqlite',
   allowedOrigins: (process.env.ALLOWED_ORIGINS ?? '').split(',').filter(Boolean),

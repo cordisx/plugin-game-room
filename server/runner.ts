@@ -4,7 +4,7 @@ import { ApiError, integer, object, requireThat } from './errors.js'
 
 export interface Invocation {
   rules: string
-  method: 'setup' | 'act' | 'timeout' | 'observe' | 'validate'
+  method: 'setup' | 'act' | 'timeout' | 'observe' | 'exit' | 'validate'
   args: Json[]
   ctx: {
     participants?: { name: string; kind: string }[]

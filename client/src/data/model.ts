@@ -11,6 +11,7 @@ export type Source = {
   connectionId?: string
 }
 export type Game = {
+  playerExit?: boolean
   waitingUi?: boolean
   rulesBot?: boolean
   minPlayers?: number
@@ -140,7 +141,7 @@ export type Seat = {
   canCloseRoom?: boolean
   closed?: boolean
   walletSpend?: {
-    protocol: 'economy.spend/v1'
+    protocol: 'economy.spend/v1' | 'economy.pool/v1'
     termsHash: string | null
     acceptBefore: number | null
     phase: 'waiting' | 'funding' | 'active' | 'capture' | 'refund'

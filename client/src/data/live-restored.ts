@@ -286,6 +286,7 @@ export class LivePort implements GameRoomPort {
       publisherId,
       spectating: m.spectating === true,
       waitingUi: m.waitingUi === true,
+      playerExit: m.playerExit === true,
       rulesBot: bots && m.rulesBot === 'rules-bot-v1',
       minPlayers: m.minPlayers === undefined ? undefined : number(m.minPlayers),
       maxPlayers: m.maxPlayers === undefined ? undefined : number(m.maxPlayers),
@@ -480,6 +481,7 @@ export class LivePort implements GameRoomPort {
       turnDeadline: typeof view.deadline === 'number' ? view.deadline : null,
       closed: view.closedAt !== undefined,
       canCloseRoom: view.closedAt === undefined
+        && !(view.status === 'playing' && object(view.walletSpend ?? {}).protocol === 'economy.pool/v1')
         && view.creatorAccountId === (this.accounts.get(sourceId) ?? this.source(sourceId).accountId),
       canManageBots: view.status === 'waiting'
         && view.creatorAccountId === (this.accounts.get(sourceId) ?? this.source(sourceId).accountId),
@@ -754,6 +756,7 @@ export class LivePort implements GameRoomPort {
   async leave(seat: Seat, signal: AbortSignal) {
     if (!seat.seatId) return
     await this.request(seat.room.sourceId, `/v1/rooms/${encodeURIComponent(seat.room.id)}/leave`, signal, {})
+    await this.spend.recover(seat.room.sourceId, signal)
     this.views.delete(JSON.stringify([seat.room.sourceId, seat.room.id]))
   }
   async agents(_signal: AbortSignal): Promise<Agent[]> {

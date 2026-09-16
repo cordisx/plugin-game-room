@@ -10,6 +10,7 @@ services:
     environment:
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-}
       AUTH_POLICY: ${AUTH_POLICY:-login-required}
+      SPEND_TRUSTED_WALLET_KEYS: ${SPEND_TRUSTED_WALLET_KEYS:-[]}
       SPEND_SERVICE_ORIGIN: ${SPEND_SERVICE_ORIGIN:-}
       SPEND_SERVICE_PRIVATE_KEY: ${SPEND_SERVICE_PRIVATE_KEY:-}
     restart: unless-stopped

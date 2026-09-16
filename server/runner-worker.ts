@@ -46,7 +46,7 @@ try {
     } const result = globalThis.render(data.observation, data.context);`
     : `${
       input.method === 'validate'
-        ? "for (const key of ['setup','act','timeout','observe']) if (typeof globalThis.game?.[key] !== 'function') throw Error('missing_entry'); return 'null';"
+        ? "for (const key of ['setup','act','timeout','observe',...data.args]) if (typeof globalThis.game?.[key] !== 'function') throw Error('missing_entry'); return 'null';"
         : ''
     }
        if (typeof globalThis.game?.[${JSON.stringify(input.method)}] !== 'function') throw Error('missing_entry');

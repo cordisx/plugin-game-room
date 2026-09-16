@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
-import test from 'node:test'
 import { readFile } from 'node:fs/promises'
+import test from 'node:test'
 import '../gomoku/ui.js'
 
 test('timeout explicitly names the losing side; a connected five is distinct', () => {
@@ -19,12 +19,17 @@ test('clock uses the authoritative deadline, rounds up, and never displays negat
   assert.equal(left(61000, 99000), 0)
 })
 
-test('bundled display fix preserves the pinned rules and bot', async () => {
-  const old = JSON.parse(await readFile(new URL('../../sdk/builtin/gomoku-1.6.0.json', import.meta.url)))
+test('multi-round rules have a new version and do not replace the pinned historical package', async () => {
+  const old = JSON.parse(
+    await readFile(new URL('../../sdk/builtin/gomoku-1.6.0.json', import.meta.url)),
+  )
   const { build } = await import('../tools/package.mjs')
   const { pkg } = await build('gomoku')
-  assert.equal(pkg.rules, old.rules)
-  assert.deepEqual(pkg.bot, old.bot)
-  const local = JSON.parse(await readFile(new URL('../../client/src/data/gomoku-presentation.json', import.meta.url)))
-  assert.deepEqual(local.bundle, pkg.ui)
+  assert.equal(pkg.manifest.version, '1.7.0')
+  assert.equal(old.manifest.version, '1.6.0')
+  assert.notEqual(pkg.rules, old.rules)
+  const local = JSON.parse(
+    await readFile(new URL('../../client/src/data/gomoku-presentation.json', import.meta.url)),
+  )
+  assert.notDeepEqual(local.bundle, pkg.ui)
 })

@@ -90,7 +90,7 @@ globalThis.renderGame = (
   }
 
   const physicalLabel = ordinal =>
-    (state.participants?.[ordinal]?.seatIndex ?? observation.participants?.[ordinal]?.seatIndex
+    (state.participants?.[ordinal]?.seatIndex ?? v.participants?.[ordinal]?.seatIndex
       ?? ordinal) + 1
   const card = (value, concealed = true) => {
     const ranks = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A']
@@ -211,6 +211,12 @@ globalThis.renderGame = (
   })
   if (state.readOnly) {
     actions.append(node('p', 'spectator-note muted', '只读观战 · 不展示私有底牌'))
+  }
+  if (v.betweenHands) {
+    actions.append(node('span', 'muted', `第 ${v.handNo} / ${v.rounds} 手`))
+    if (state.canAct && !state.readOnly) {
+      actions.append(button('下一手', () => act({ type: 'next-hand' }), busy))
+    }
   }
   if (state.canAct && !state.readOnly && !v.result) {
     const lower = node('div', 'action-bar')

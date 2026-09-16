@@ -1,5 +1,6 @@
 // Modest deterministic rules opponent. Only its own cards, public board and legal menu are inspected.
 globalThis.bot = view => {
+  if (view.betweenHands) return { type: 'next-hand' }
   const own = view.players[view.selfSeat]
   const ranks = own.hole.map(card => card % 13 + 2)
   const pair = ranks[0] === ranks[1]

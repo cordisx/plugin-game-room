@@ -53,7 +53,7 @@ export function CreateRoomPreview({ game, name, source, mode, stake, agents, con
             </div>
             <div>
               <dt>
-                {mode === 'token' ? <TokenIcon /> : <Symbol name='coins' />}席位费用
+                {mode === 'token' ? <TokenIcon /> : <Symbol name='coins' />}每人抵押
               </dt>
               <dd>
                 {mode === 'token'
@@ -100,9 +100,7 @@ export function CreateRoomPreview({ game, name, source, mode, stake, agents, con
               {game?.policies.map(policy => settlementLabel(policy, mode)).join(' / ')}
             </p>
             <p className='gr-muted'>作者自制 · 未审核</p>
-            {mode === 'token' && (
-              <p className='gr-muted'>虚拟娱乐 Token，使用同一本地钱包支付各自费用。创建后仍须逐人确认费用。</p>
-            )}
+            {mode === 'token' && <p className='gr-muted'>结束时按游戏结果分配奖池，收益回到你的 Token 余额。</p>}
           </>
         )}
         {tab === 'source' && (

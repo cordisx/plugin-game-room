@@ -1,3 +1,4 @@
+import { LegacyGameSpend } from '../../server/game-spend-legacy.js'
 import { createGameServer } from '../../server/http.js'
 import type { GamePackage } from '../../sdk/index.js'
 import { build } from '../../games/tools/package.mjs'
@@ -7,39 +8,48 @@ import { generateKeyPairSync } from 'node:crypto'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { Economy, LocalSpendEngine } from '@cordisx/economy/server'
+import { Economy, LocalPoolEngine, LocalSpendEngine } from '@cordisx/economy/server'
 import {
   canonical,
   digest,
   type Signed,
   signingBytes,
-  type SpendReservation,
   verifySigned,
   type WalletChallenge,
 } from '@cordisx/economy/spend'
+import type { PoolReservation } from '@cordisx/economy/pool'
 import { sign } from 'node:crypto'
 import { game, harness, rules } from './helpers.js'
 
-async function fixture(t: test.TestContext, source: string | GamePackage = rules) {
+async function fixture(
+  t: test.TestContext,
+  source: string | GamePackage = rules,
+  options: { players?: number; rounds?: number } = {},
+) {
   const service = generateKeyPairSync('ed25519'), dir = mkdtempSync(join(tmpdir(), 'game-spend-'))
+  const walletKeys = [0, 1, 2].map(() => generateKeyPairSync('ed25519'))
   let now = Date.now()
   const h = await harness({
     database: join(dir, 'game.sqlite'),
     now: () => now,
     walletSpend: {
       origin: 'https://game.example',
+      trustedWalletPublicKeys: walletKeys.map(k =>
+        k.publicKey.export({ type: 'spki', format: 'der' }).toString('base64url')
+      ),
       privateKey: service.privateKey.export({ type: 'pkcs8', format: 'pem' }).toString(),
     },
   })
   const e = new Economy(join(dir, 'wallet.sqlite'), () => now)
   e.auth.createInstance('original', 1000)
-  const wallets = [h.alice, h.bob].map((account, i) => {
-    const id = 'wallet-' + i, key = generateKeyPairSync('ed25519')
+  const wallets = [h.alice, h.bob, h.stranger].slice(0, options.players ?? 2).map((account, i) => {
+    const id = 'wallet-' + i, key = walletKeys[i]
     e.auth.createAccount('original', id)
     // Test-only funding in a fresh temporary DB; this fixture never operates the actual usage wallet.
     e.store.transaction(() => e.store.transfer('original', '$issuer', id, 100, 'test-funding', 'fixture', now))
     const engine = new LocalSpendEngine(e.store, 'original', id, key.privateKey, () => now)
-    return { account, engine, key, session: engine.openSession(() => {}) }
+    const pool = new LocalPoolEngine(engine, key.privateKey)
+    return { account, engine: pool, key, binding: engine.openSession(() => {}), session: pool.openSession(() => {}) }
   })
   t.after(async () => {
     await h.app.close()
@@ -49,7 +59,7 @@ async function fixture(t: test.TestContext, source: string | GamePackage = rules
   for (const w of wallets) {
     const c = await h.request('/v1/wallet-bindings/challenge', w.account.token, {})
     assert.equal(c.status, 200)
-    const proof = w.session.bindGameAccount(w.session.quoteBinding(c.body))
+    const proof = w.binding.bindGameAccount(w.binding.quoteBinding(c.body))
     assert.equal((await h.request('/v1/wallet-bindings', w.account.token, proof)).status, 200)
   }
   const pkg = typeof source === 'string' ? game(source) : source
@@ -68,10 +78,13 @@ async function fixture(t: test.TestContext, source: string | GamePackage = rules
     policy: consent.policy,
     consent,
     turnTimeoutMs: 600000,
+    config: pkg.manifest.configSchema?.properties?.rounds ? { rounds: options.rounds ?? 1 } : {},
   })
   assert.equal(created.status, 200, JSON.stringify(created.body))
   const path = '/v1/rooms/' + created.body.id
-  assert.equal((await h.request(path + '/join', h.bob.token, { consent })).status, 200)
+  for (const w of wallets.slice(1)) {
+    assert.equal((await h.request(path + '/join', w.account.token, { consent })).status, 200)
+  }
   for (const w of wallets) {
     assert.equal((await h.request(path + '/ready', w.account.token, { ready: true, consent })).status, 200)
   }
@@ -79,7 +92,7 @@ async function fixture(t: test.TestContext, source: string | GamePackage = rules
   const record = (await h.request(path + '/spend', h.alice.token)).body
   const reserve = (i: number) =>
     wallets[i].session.reserve(wallets[i].session.quote(record.terms, record.requestIds[wallets[i].account.account.id]))
-  const submit = (i: number, receipt: Signed<SpendReservation>) =>
+  const submit = (i: number, receipt: Signed<PoolReservation>) =>
     h.request(path + '/spend-receipts', wallets[i].account.token, receipt)
   const balance = (i: number) =>
     e.store.one('SELECT available,reserved FROM accounts WHERE instance=? AND id=?', 'original', 'wallet-' + i)
@@ -100,11 +113,11 @@ async function fixture(t: test.TestContext, source: string | GamePackage = rules
   }
 }
 
-test('terms and receipts open play only after all original wallet confirmations; capture burns own cost, winner earns no Token', async t => {
+test('terms and receipts open play only after all original wallet confirmations; winner receives the funded pool in the original economy wallet', async t => {
   const f = await fixture(t)
   assert(await verifySigned(f.record.terms, f.record.terms.payload.servicePublicKey))
   assert.equal(f.record.termsHash, await digest(f.record.terms.payload))
-  assert.equal(f.record.terms.payload.policy, 'capture-and-release')
+  assert.equal(f.record.terms.payload.policy, 'winner-weights')
   const first = f.reserve(0)
   assert.equal((await f.submit(0, first.reservation)).body.view.status, 'funding')
   assert.deepEqual(f.reserve(0), first)
@@ -126,15 +139,14 @@ test('terms and receipts open play only after all original wallet confirmations;
   const done = (await f.h.request(f.path + '/spend', f.h.alice.token)).body
   assert.equal(done.phase, 'capture')
   assert(await verifySigned(done.decision, done.terms.payload.servicePublicKey))
-  assert.equal(done.decision.payload.entries.length, 2)
-  assert(done.decision.payload.entries.every((entry: { captureAmount: number }) => entry.captureAmount === 10))
+  assert.deepEqual(done.decision.payload.allocations.map((a: { paid: number }) => a.paid), [0, 20])
   for (const [i, w] of f.wallets.entries()) {
     const result = w.engine.applyDecision(done.decision, () => {})
-    assert.equal(result[0].settlement?.payload.captured, 10)
+    assert.equal(result.paid, i === 1 ? 20 : 0)
     assert.deepEqual(w.engine.applyDecision(done.decision, () => {}), result)
-    assert.deepEqual(f.balance(i), { available: 90, reserved: 0 })
+    assert.deepEqual(f.balance(i), { available: 90 + done.decision.payload.allocations[i].paid, reserved: 0 })
   }
-  assert.equal(eTotal(f.e), 980)
+  assert.equal(eTotal(f.e), 1000)
   assert.equal(f.e.store.one<{ n: number }>('SELECT COUNT(*) AS n FROM workIncomeReceipts')?.n, 0)
   assert.equal(
     canonical((await f.h.request(f.path + '/spend', f.h.alice.token)).body.decision),
@@ -150,14 +162,14 @@ test('cancel is globally final even before a local receipt arrives; same signed 
   const cancelled = await f.h.request(f.path + '/spend-cancel', f.h.bob.token, {})
   assert.equal(cancelled.status, 200)
   const final = cancelled.body.transaction
-  assert.equal(final.decision.payload.action, 'refund')
-  assert.equal(final.decision.payload.entries.length, 0)
+  assert.equal(final.decision.payload.phase, 'refunded')
+  assert.equal(final.decision.payload.reservations.length, 0)
   assert.equal((await f.submit(0, late.reservation)).status, 200)
   assert.equal(
     canonical((await f.h.request(f.path + '/spend', f.h.alice.token)).body.decision),
     canonical(final.decision),
   )
-  assert.equal(f.wallets[0].engine.applyDecision(final.decision, () => {})[0].state, 'refunded')
+  assert.equal(f.wallets[0].engine.applyDecision(final.decision, () => {}).exited, true)
   assert.deepEqual(f.balance(0), { available: 100, reserved: 0 })
   assert.equal((await f.h.request(f.path + '/start', f.h.alice.token, {})).body.status, 'aborted')
 })
@@ -198,10 +210,10 @@ test('deadline admits no new receipt and durably refunds known and unsubmitted o
   await f.h.app.engine.serial(() => f.h.app.engine.tick())
   const final = (await f.h.request(f.path + '/spend', f.h.alice.token)).body
   assert.equal(final.phase, 'refund')
-  assert.equal(final.decision.payload.entries.length, 1)
+  assert.equal(final.decision.payload.reservations.length, 1)
   await f.submit(1, b.reservation)
   for (const [i, w] of f.wallets.entries()) {
-    assert.equal(w.engine.applyDecision(final.decision, () => {})[0].state, 'refunded')
+    assert.equal(w.engine.applyDecision(final.decision, () => {}).exited, true)
     assert.deepEqual(f.balance(i), { available: 100, reserved: 0 })
   }
 })
@@ -213,13 +225,13 @@ test('cancel versus final receipt serializes one finality; no capture can replac
   const final = (await f.h.request(f.path + '/spend', f.h.alice.token)).body
   assert(['active', 'refund'].includes(final.phase))
   if (final.phase === 'refund') {
-    assert.equal(final.decision.payload.action, 'refund')
+    assert.equal(final.decision.payload.phase, 'refunded')
     assert.equal(canonical((await f.submit(1, b.reservation)).body.transaction.decision), canonical(final.decision))
   } else assert.equal(race[0].status, 409)
 })
 
 for (const name of ['gomoku', 'holdem']) {
-  test(`latest ${name} completes using local chips and signed own-principal capture`, async t => {
+  test(`latest ${name} settles signed winner payouts without issuing new Token`, async t => {
     const dir = mkdtempSync(join(tmpdir(), 'game-package-'))
     t.after(() => rmSync(dir, { recursive: true, force: true }))
     const pkg = (await build(name, dir)).pkg as unknown as GamePackage
@@ -245,10 +257,10 @@ for (const name of ['gomoku', 'holdem']) {
     const final = (await f.h.request(f.path + '/spend', f.h.alice.token)).body
     for (const [i, w] of f.wallets.entries()) {
       w.engine.applyDecision(final.decision, () => {})
-      assert.deepEqual(f.balance(i), { available: 90, reserved: 0 })
+      assert.deepEqual(f.balance(i), { available: 90 + final.decision.payload.allocations[i].paid, reserved: 0 })
     }
-    assert.equal(final.terms.payload.game.version, name === 'gomoku' ? '1.5.12' : '1.4.10')
-    assert.equal(eTotal(f.e), 980)
+    assert.equal(final.terms.payload.game.version, pkg.manifest.version)
+    assert.equal(eTotal(f.e), 1000)
     assert((await f.h.request(f.path + '/replay', f.h.alice.token)).body.events.length > count)
   })
 }
@@ -258,6 +270,7 @@ test('two independent remote sources/accounts consume the same original local wa
   const second = await harness({
     walletSpend: {
       origin: 'https://second-game.example',
+      trustedWalletPublicKeys: f.wallets.map(w => w.engine.wallet.walletPublicKey),
       privateKey: key.privateKey.export({ type: 'pkcs8', format: 'pem' }).toString(),
     },
   })
@@ -266,7 +279,7 @@ test('two independent remote sources/accounts consume the same original local wa
   assert.notEqual(accounts[0].account.id, f.h.alice.account.id)
   for (const [i, a] of accounts.entries()) {
     const challenge = (await second.request('/v1/wallet-bindings/challenge', a.token, {})).body
-    const proof = f.wallets[i].session.bindGameAccount(f.wallets[i].session.quoteBinding(challenge))
+    const proof = f.wallets[i].binding.bindGameAccount(f.wallets[i].binding.quoteBinding(challenge))
     assert.equal((await second.request('/v1/wallet-bindings', a.token, proof)).status, 200)
   }
   const meta = (await second.request('/v1/packages', accounts[0].token, game())).body
@@ -367,4 +380,94 @@ test('Game server restart preserves source key/account binding/terms/request IDs
   )
   f.wallets[0].engine.applyDecision(cancelled.transaction.decision, () => {})
   assert.deepEqual(f.balance(0), { available: 100, reserved: 0 })
+})
+
+test('Holdem cashout checkpoints survive disconnect and preserve other players holds through the final payout', async t => {
+  const dir = mkdtempSync(join(tmpdir(), 'pool-exit-'))
+  t.after(() => rmSync(dir, { recursive: true, force: true }))
+  const pkg = (await build('holdem', dir)).pkg as unknown as GamePackage
+  const f = await fixture(t, pkg, { players: 3, rounds: 3 })
+  for (const i of [0, 1, 2]) assert.equal((await f.submit(i, f.reserve(i).reservation)).status, 200)
+  let room = (await f.h.request(f.path, f.h.alice.token)).body
+  const ownerClose = await f.h.request(f.path + '/close', f.h.alice.token, {})
+  assert.equal(ownerClose.status, 409, 'owner cannot refund a live pool to erase losses')
+  let n = 0
+  // Finish first hand without eliminating anyone; remaining chips become cashout rights.
+  while (!room.observation.betweenHands && room.status === 'playing') {
+    assert(n++ < 30)
+    const actor = f.wallets[room.turn].account
+    room = (await f.h.request(f.path, actor.token)).body
+    const type = room.observation.legalActions.some((a: { type: string }) => a.type === 'call') ? 'call' : 'check'
+    const r = await f.h.request(f.path + '/actions', actor.token, {
+      expectedVersion: room.version,
+      idempotencyKey: 'hand:' + n,
+      action: { type },
+    })
+    assert.equal(r.status, 200, JSON.stringify(r.body))
+    room = r.body
+  }
+  assert.equal(room.status, 'playing')
+  const amount = room.observation.players[0].stack
+  assert.equal((await f.h.request(f.path + '/leave', f.h.alice.token, {})).status, 200)
+  const checkpoint = (await f.h.request(f.path + '/spend', f.h.alice.token)).body
+  assert.equal(checkpoint.decisions.length, 1)
+  assert.equal(checkpoint.decisions[0].payload.phase, 'active')
+  assert.equal(checkpoint.decisions[0].payload.allocations[0].paid, amount)
+  f.wallets[0].engine.applyDecision(checkpoint.decisions[0], () => {})
+  assert.deepEqual(f.balance(0), { available: 90 + amount, reserved: 0 })
+  for (const i of [1, 2]) assert.deepEqual(f.balance(i), { available: 90, reserved: 10 })
+  // A second leave finishes this table. The offline wallet replays both durable decisions.
+  assert.equal((await f.h.request(f.path + '/leave', f.h.bob.token, {})).status, 200)
+  const final = (await f.h.request(f.path + '/spend', f.h.alice.token)).body
+  assert.equal(final.decisions.length, 2)
+  assert.equal(final.phase, 'capture')
+  assert.equal(final.decisions[1].payload.previousHash, await digest(final.decisions[0].payload))
+  for (const [i, w] of f.wallets.entries()) {
+    for (const d of final.decisions) w.engine.applyDecision(d, () => {})
+    assert.deepEqual(f.balance(i), { available: 90 + final.decision.payload.allocations[i].paid, reserved: 0 })
+  }
+  assert.equal(eTotal(f.e), 1000)
+})
+
+test('historical fee receipts recover by original burn semantics and are never reinterpreted as pool payouts', async t => {
+  const f = await fixture(t), facade = f.h.app.engine.spend!
+  const original = await f.h.app.engine.load(f.path.slice('/v1/rooms/'.length))
+  const room = { ...original, matchId: original.matchId + ':historical' }
+  const legacy = new LegacyGameSpend(f.h.app.store, facade.service)
+  const record = await legacy.prepare(room)
+  for (const w of f.wallets) {
+    const oldWallet = w.engine.wallet, session = oldWallet.openSession(() => {})
+    const receipt = session.reserve(session.quote(record.terms, record.requestIds[w.account.account.id])).reservation
+    await legacy.accept(w.account.account, record, receipt)
+    session.close()
+  }
+  record.phase = 'active'
+  await f.h.app.store.atomic(() => legacy.write(room.id, record))
+  const loaded = await facade.load(room.matchId)
+  await facade.final(loaded, 'capture', room)
+  assert.equal(loaded.terms.payload.contract, 'economy.spend-terms/v1')
+  assert.equal(loaded.terms.payload.policy, 'capture-and-release')
+  for (const [i, w] of f.wallets.entries()) {
+    w.engine.wallet.applyDecision(loaded.decision, () => {})
+    assert.deepEqual(f.balance(i), { available: 90, reserved: 0 })
+  }
+  assert.equal(eTotal(f.e), 980)
+})
+
+test('a self-bound wallet cannot enter a Token pool until its authority is enrolled', async t => {
+  const f = await fixture(t)
+  const unknown = generateKeyPairSync('ed25519')
+  f.e.auth.createAccount('original', 'untrusted-wallet')
+  const local = new LocalSpendEngine(f.e.store, 'original', 'untrusted-wallet', unknown.privateKey)
+  const session = local.openSession(() => {})
+  const challenge = await f.h.request('/v1/wallet-bindings/challenge', f.h.stranger.token, {})
+  const proof = session.bindGameAccount(session.quoteBinding(challenge.body))
+  assert.equal((await f.h.request('/v1/wallet-bindings', f.h.stranger.token, proof)).status, 200)
+  const created = await f.h.request('/v1/rooms', f.h.stranger.token, {
+    packageHash: f.record.terms.payload.game.digest,
+    mode: 'token',
+    stake: 10,
+  })
+  assert.equal(created.status, 403)
+  assert.equal(created.body.error.code, 'wallet_authority_not_enrolled')
 })

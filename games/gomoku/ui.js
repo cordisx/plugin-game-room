@@ -6,6 +6,8 @@ globalThis.gomokuOutcome = view => {
   if (!view.result.winners.length) return '平局'
   const winner = view.result.winners[0] === 0 ? '黑' : '白'
   const loser = view.result.winners[0] === 0 ? '白' : '黑'
+  if (view.reason === 'resigned') return `${loser}方认输 · ${winner}方获胜`
+  if (!view.betweenRounds && view.rounds > 1) return `${winner}方获胜 · ${view.scores.join(' : ')}`
   return view.reason === 'timeout' ? `${loser}方超时 · ${winner}方获胜` : `${winner}方五子连线获胜`
 }
 globalThis.gomokuTimeLeft = (deadline, now) => Math.max(0, Math.ceil((deadline - now) / 1000))
@@ -39,7 +41,11 @@ globalThis.renderGame = (
   container.setAttribute('aria-label', '五子棋棋盘')
   const self = v.selfSeat
   const result = v.result
-  const heading = busy ? '正在提交操作…' : waiting ? initial.phase === 'funding' ? '等待投入确认' : '等待开局' : result
+  const heading = busy
+    ? '正在提交操作…'
+    : waiting
+    ? initial.phase === 'funding' ? '等待投入确认' : '等待开局'
+    : result
     ? globalThis.gomokuOutcome(v)
     : state.readOnly
     ? `轮到${v.turn === 0 ? '黑' : '白'}方`
@@ -175,6 +181,12 @@ globalThis.renderGame = (
   layout.append(topPlayers, board, bottomPlayers)
   container.append(layout)
   const controls = node('div', 'gomoku-undo')
+  if (v.betweenRounds) {
+    controls.append(node('span', '', `第 ${v.roundNo} / ${v.rounds} 局`))
+    if (!state.readOnly) {
+      controls.append(button('下一局', () => act({ type: 'next-round' }), busy || !state.canAct))
+    }
+  }
   if (result && v.canResumeUndo && !state.readOnly) {
     controls.append(button('悔棋并继续', () => act({ type: 'resume-undo' }), busy || !state.canAct))
   }
@@ -188,7 +200,9 @@ globalThis.renderGame = (
         controls.append(button('拒绝', () => act({ type: 'reject-undo' }), busy))
       }
     } else {
-      controls.append(button('悔棋', () => act({ type: 'request-undo' }), busy || !state.canAct || !v.canUndo))
+      controls.append(
+        button('悔棋', () => act({ type: 'request-undo' }), busy || !state.canAct || !v.canUndo),
+      )
     }
   }
   container.append(controls)

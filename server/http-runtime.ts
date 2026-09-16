@@ -152,7 +152,13 @@ export function createGameRuntime(options: RuntimeOptions) {
           seatManagement: ['targeted-bot-seats-v1'],
           displayProfiles: ['self-display-profile-v1'],
           modes: ['score', 'local-chips', 'token'],
-          walletSpend: spend ? { contract: 'economy.spend/v1', ...spend.service.binding() } : null,
+          walletSpend: spend
+            ? {
+              contract: 'economy.spend/v1',
+              ...(spend.service.trustedWalletPublicKeys.size ? { pool: 'economy.pool/v1' } : {}),
+              ...spend.service.binding(),
+            }
+            : null,
           economyAvailable: false,
           economy: null,
         })

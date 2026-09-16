@@ -9,6 +9,7 @@ export class CanonicalGameWallet {
   private generation = 0
   private available = false
   private closed = false
+  private pools = new Set<string>()
   private sources = new Map<string, { serviceOrigin: string; servicePublicKey: string; serverId: string }>()
   constructor(
     _transport: () => HttpTransport,
@@ -27,10 +28,13 @@ export class CanonicalGameWallet {
   discover(source: Source, value: unknown) {
     if (!value) {
       this.sources.delete(source.id)
+      this.pools.delete(source.id)
       return
     }
     const binding = object(value)
     if (binding.contract !== 'economy.spend/v1') return
+    if (binding.pool === 'economy.pool/v1') this.pools.add(source.id)
+    else this.pools.delete(source.id)
     const origin = new URL(source.url).origin
     if (binding.serviceOrigin !== origin || binding.serverId !== source.id) throw new Error('游戏来源身份不一致')
     const servicePublicKey = string(binding.servicePublicKey)
@@ -40,10 +44,10 @@ export class CanonicalGameWallet {
     this.sources.set(source.id, { serviceOrigin: origin, servicePublicKey, serverId: source.id })
   }
   supportsService(sourceId: string) {
-    return this.sources.has(sourceId)
+    return this.pools.has(sourceId)
   }
   hasService(sourceId: string) {
-    return this.walletStatus() === 'ready' && this.sources.has(sourceId)
+    return this.walletStatus() === 'ready' && this.pools.has(sourceId)
   }
   binding(sourceId: string) {
     const binding = this.sources.get(sourceId)

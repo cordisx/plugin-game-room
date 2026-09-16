@@ -1,5 +1,6 @@
 // Deterministic, observation-only: win, block, then extend open lines near the centre.
 globalThis.bot = view => {
+  if (view.betweenRounds) return { type: 'next-round' }
   const { board, size, selfSeat, legalActions } = view
   const dirs = [[1, 0], [0, 1], [1, 1], [1, -1]]
   function strength(x, y, seat) {

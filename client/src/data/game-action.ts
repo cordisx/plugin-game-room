@@ -20,6 +20,8 @@ export async function performGameAction(port: GameRoomPort, seat: Seat, payload:
 
 /** Leaving the view is distinct from removing a seat in a waiting room. */
 export async function leaveGameView(port: GameRoomPort, seat: Seat, signal: AbortSignal) {
-  if (seat.closed || ['playing', 'finished', 'aborted'].includes(seat.status ?? '')) return
+  if (seat.closed || !seat.room.game.playerExit && ['playing', 'finished', 'aborted'].includes(seat.status ?? '')) {
+    return
+  }
   await port.leave(seat, signal)
 }

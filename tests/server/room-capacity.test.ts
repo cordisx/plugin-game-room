@@ -24,7 +24,7 @@ try {
       'utf8',
     ),
   )
-  holdem = JSON.parse(readFileSync(join(built, 'texas-holdem-1.4.10.json'), 'utf8'))
+  holdem = JSON.parse(readFileSync(join(built, 'texas-holdem-1.5.0.json'), 'utf8'))
 } finally {
   rmSync(built, { recursive: true })
 }

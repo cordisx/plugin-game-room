@@ -27,7 +27,12 @@ async function setup(pkg: GamePackage, count = 1, mode = 'score') {
   const h = await harness()
   const meta = await h.request('/v1/packages', h.alice.token, pkg)
   assert.equal(meta.status, 200, JSON.stringify(meta.body))
-  const created = await h.request('/v1/rooms', h.alice.token, { packageHash: meta.body.hash, mode, botCount: count })
+  const created = await h.request('/v1/rooms', h.alice.token, {
+    packageHash: meta.body.hash,
+    mode,
+    botCount: count,
+    config: { rounds: 1 },
+  })
   assert.equal(created.status, 200, JSON.stringify(created.body))
   const path = `/v1/rooms/${created.body.id}`
   const start = async () => {
@@ -82,7 +87,7 @@ await test('default zero; waiting creator adds/removes real bot seats; capacity,
   const empty = await h.request('/v1/rooms', h.alice.token, { packageHash: legacy.body.hash, mode: 'score' })
   assert.equal(empty.body.seats.length, 1)
 })
-await test('Gomoku human action triggers one legal computer move; exit cancels; no bot impersonation', async (t) => {
+await test('Gomoku human action triggers one legal computer move; exit resigns; no bot impersonation', async (t) => {
   const h = await setup(gomoku)
   t.after(async () => await h.app.close())
   const r = await h.start()
@@ -112,7 +117,7 @@ await test('Gomoku human action triggers one legal computer move; exit cancels; 
   assert.equal((await h.request(h.path + '/bots', h.alice.token, { add: true })).status, 409)
   await h.request(h.path + '/leave', h.alice.token, {})
   const ended = await h.app.engine.load(r.id)
-  assert.equal(ended.status, 'aborted')
+  assert.equal(ended.status, 'finished')
   await h.tick()
   assert.equal((await h.app.engine.load(r.id)).version, ended.version)
 })

@@ -17,7 +17,7 @@ for (const name of ['gomoku', 'holdem']) {
   await test(`${name} public spectating is read-only and excludes private state`, async (t) => {
     const h = await harness()
     t.after(async () => await h.app.close())
-    const room = await h.room(builtin(name))
+    const room = await h.room(builtin(name), { config: { rounds: 1 } })
     const before = await h.app.engine.load(room.id)
     const response = await h.request(`/v1/rooms/${room.id}/spectate`)
     assert.equal(response.status, 200, JSON.stringify(response.body))

@@ -17,31 +17,27 @@ export function FundingPanel({ seat, quote, reserve, busy, refresh, back, source
   sources: readonly Source[]
   unavailable?: string
 }) {
-  const [acceptedKey, setAcceptedKey] = useState('')
   const [now, setNow] = useState(Date.now())
   const key = JSON.stringify([quote, seat.room.game.packageHash, seat.room.settlement])
-  const accepted = acceptedKey === key
   const expired = quoteExpired(quote.expiresAt, now)
   useEffect(() => {
-    setAcceptedKey('')
     setNow(Date.now())
     if (quoteExpired(quote.expiresAt, Date.now())) return
     const timer = setTimeout(() => {
       setNow(Date.now())
-      setAcceptedKey('')
     }, Math.min(2147483647, Math.max(0, quote.expiresAt - Date.now() + 1)))
     return () => clearTimeout(timer)
   }, [key])
-  const disabled = !accepted || busy || expired || quote.reserved || !!unavailable
+  const disabled = busy || expired || quote.reserved || !!unavailable
   return (
     <ConfirmationLayout
-      label='费用确认'
+      label='抵押确认'
       summary={<RoomSummary room={seat.room} sources={sources} />}
       footer={
         <>
           <span className='gr-muted'>
             {quote.reserved
-              ? '此账户已确认费用'
+              ? '此账户已确认抵押'
               : expired
               ? '报价已过期，请刷新后重新确认'
               : (
@@ -76,9 +72,9 @@ export function FundingPanel({ seat, quote, reserve, busy, refresh, back, source
                     if (!disabled && !quoteExpired(quote.expiresAt, Date.now())) reserve()
                   }}
                 >
-                  {quote.reserved ? '已确认费用' : (
+                  {quote.reserved ? '已确认抵押' : (
                     <>
-                      确认费用 <TokenAmount value={quote.amount} />
+                      确认抵押 <TokenAmount value={quote.amount} />
                     </>
                   )}
                 </Button>
@@ -90,7 +86,7 @@ export function FundingPanel({ seat, quote, reserve, busy, refresh, back, source
       <div className='gr-confirmation-heading'>
         <TokenIcon size='balance' />
         <div>
-          <strong>此次费用确认</strong>
+          <strong>此次抵押确认</strong>
           <p className='gr-muted'>
             虚拟 Token · {seat.room.game.name} · v{seat.room.game.version} · {seat.room.review}
           </p>
@@ -117,46 +113,30 @@ export function FundingPanel({ seat, quote, reserve, busy, refresh, back, source
         </dl>
       </section>
       <section className='gr-confirmation-section'>
-        <h3>费用与释放规则</h3>
-        <p>每个账户只承担自己的费用。正常结束扣除此费用，取消后退回原冻结费用。胜负计入分数或本局筹码。</p>
-        <p className='gr-muted'>审核标记不保证玩法公平。请确认以上全部席位、累计费用与费用规则。</p>
+        <h3>奖池与结算</h3>
         <dl className='gr-confirmation-facts'>
           <div>
-            <dt>全桌费用</dt>
+            <dt>总奖池</dt>
             <dd>
-              <TokenAmount value={quote.participants.reduce((sum, row) => sum + row.amount, 0)} /> ·{' '}
-              {quote.participants.length} 个账户
+              <TokenAmount value={quote.participants.reduce((n, p) => n + p.amount, 0)} />
             </dd>
           </div>
-          <div>
-            <dt>条款到期</dt>
-            <dd>{new Date(quote.expiresAt).toLocaleString()}</dd>
-          </div>
+          {quote.poolTerms && (
+            <div>
+              <dt>游戏轮数</dt>
+              <dd>{quote.poolTerms.payload.rounds}</dd>
+            </div>
+          )}
         </dl>
+        <p>
+          {quote.poolTerms?.payload.policy === 'remaining-chips'
+            ? '1 筹码 = 1 Token。离桌时兑回剩余筹码，本手下注结算后到账。'
+            : quote.poolTerms
+            ? '结束时胜者分配奖池，平局退回抵押。'
+            : '此为历史费用对局，按原条款恢复结算。'}
+        </p>
       </section>
-      <details className='gr-confirmation-ids'>
-        <summary>查看来源与条款标识</summary>
-        <p>本地钱包：{quote.instanceId}</p>
-        <p>游戏服务：{quote.serviceId}</p>
-        <p>账户：{quote.accountId}</p>
-        <p>条款：{quote.termsHash}</p>
-        <p>包：{seat.room.game.packageHash}</p>
-        <p>结算策略：{seat.room.settlement}</p>
-      </details>
-      {quote.reserved
-        ? <p role='status'>此账户已确认本局费用，等待其他账户。</p>
-        : expired
-        ? <p role='status'>报价已过期，请刷新报价后重新确认。</p>
-        : (
-          <label className='gr-confirmation-consent'>
-            <input
-              type='checkbox'
-              checked={accepted}
-              disabled={busy || !!unavailable}
-              onChange={event => setAcceptedKey(event.target.checked ? key : '')}
-            />我确认以上全部席位、累计费用和费用与退款规则
-          </label>
-        )}
+      {quote.reserved && <p role='status'>已抵押，等待其他玩家。</p>}
     </ConfirmationLayout>
   )
 }

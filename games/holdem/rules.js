@@ -18,7 +18,12 @@
     player.total += paid
   }
   function transition(state) {
-    return state.result ? { state, turn: null, done: state.result } : { state, turn: state.turn }
+    return {
+      state,
+      turn: state.result ? null : state.turn,
+      ...(state.result ? { done: state.result } : {}),
+      cashouts: state.players.map(p => p.left ? p.withdrawn ?? 0 : null),
+    }
   }
   function settle(state, uncontested) {
     const players = state.players
@@ -55,18 +60,110 @@
     players.forEach((p, i) => {
       p.stack += awards[i]
     })
-    if (sum(players.map(p => p.stack)) !== state.initialStack * players.length) {
+    if (
+      sum(players.map(p => p.stack + (p.withdrawn ?? 0))) !== state.initialStack * players.length
+    ) {
       throw Error('chip_conservation')
     }
     state.showdown = !uncontested
     state.street = 'finished'
     state.turn = null
-    const payouts = players.map(p => p.stack)
+    for (const p of players) {
+      if (p.leaving && !p.left) {
+        p.withdrawn = p.stack
+        p.stack = 0
+        p.left = true
+      }
+    }
+    const payouts = players.map(p => p.stack + (p.withdrawn ?? 0))
     state.result = {
       winners: [...winners].sort((a, b) => a - b),
       scores: payouts.map(n => n - state.initialStack),
       payouts,
     }
+    if (
+      (state.handNo ?? 1) < (state.rounds ?? 1)
+      && players.filter(p => !p.left && p.stack > 0).length >= 2
+    ) {
+      state.handResult = state.result
+      state.result = null
+      state.betweenHands = true
+      state.turn = players.findIndex((p, i) => !p.left && state.humans?.includes(i))
+      if (state.turn < 0) state.turn = players.findIndex(p => !p.left && p.stack > 0)
+    }
+    return transition(state)
+  }
+  function nextHand(state, ctx) {
+    state.handNo++
+    state.betweenHands = false
+    state.handResult = null
+    state.result = null
+    state.board = []
+    state.burns = []
+    state.pots = []
+    state.showdown = false
+    state.deck = Array.from({ length: 52 }, (_, i) => i)
+    for (let i = state.deck.length - 1; i > 0; i--) {
+      const j = Math.floor(ctx.random() * (i + 1))
+      ;[state.deck[i], state.deck[j]] = [state.deck[j], state.deck[i]]
+    }
+    state.players.forEach(p => {
+      p.bet = 0
+      p.total = 0
+      p.hole = []
+      p.folded = !!p.left || p.stack === 0
+      p.actedAt = null
+    })
+    const eligible = p => !p.folded
+    state.button = next(state, state.button, eligible)
+    const count = state.players.filter(eligible).length
+    for (let round = 0; round < 2; round++) {
+      let seat = state.button
+      for (let n = 0; n < count; n++) {
+        seat = next(state, seat, eligible)
+        state.players[seat].hole.push(state.deck.pop())
+      }
+    }
+    const sb = count === 2 ? state.button : next(state, state.button, eligible),
+      bb = next(state, sb, eligible)
+    state.smallBlindSeat = sb
+    state.bigBlindSeat = bb
+    pay(state.players[sb], state.smallBlind)
+    pay(state.players[bb], state.bigBlind)
+    state.street = 'preflop'
+    state.currentBet = state.bigBlind
+    state.lastFullRaise = state.bigBlind
+    state.pending = state.players.map(active)
+    state.lastAction = null
+    return advance(state, bb)
+  }
+  function exit(state, ctx) {
+    const seat = ctx.seatIndex, p = state.players[seat]
+    if (!p) invalid()
+    if (state.result || p.left || p.leaving) return transition(state)
+    p.leaving = true
+    if (state.betweenHands) {
+      p.left = true
+      p.withdrawn = p.stack
+      p.stack = 0
+      if (state.players.filter(p => !p.left && p.stack > 0).length < 2) {
+        const payouts = state.players.map(p => p.stack + (p.withdrawn ?? 0))
+        state.betweenHands = false
+        state.result = {
+          winners: state.players.flatMap((p, i) => !p.left && p.stack > 0 ? [i] : []),
+          payouts,
+          scores: payouts.map(n => n - state.initialStack),
+        }
+      } else if (state.turn === seat) state.turn = next(state, seat, p => !p.left)
+      return transition(state)
+    }
+    // A player already all-in keeps showdown eligibility; uncalled chips are never withdrawn before settlement.
+    if (p.stack > 0) {
+      p.folded = true
+      state.pending[seat] = false
+    }
+    if (state.players.filter(p => !p.folded).length === 1) return settle(state, true)
+    if (state.turn === seat) return advance(state, seat)
     return transition(state)
   }
   function dealStreet(state) {
@@ -105,6 +202,7 @@
   }
   function legal(state, seat) {
     if (state.result || seat !== state.turn) return []
+    if (state.betweenHands) return [{ type: 'next-hand' }]
     const p = state.players[seat]
     const call = Math.max(0, state.currentBet - p.bet)
     const max = p.bet + p.stack
@@ -124,6 +222,10 @@
   function act(state, action, ctx) {
     if (!action || typeof action !== 'object' || state.result || ctx.seatIndex !== state.turn) {
       invalid()
+    }
+    if (state.betweenHands) {
+      if (action.type !== 'next-hand') invalid()
+      return nextHand(state, ctx)
     }
     const options = legal(state, ctx.seatIndex)
     const option = options.find(o => o.type === action.type)
@@ -166,6 +268,8 @@
         || !Number.isSafeInteger(smallBlind) || smallBlind < 1 || smallBlind >= bigBlind
         || (ctx.mode === 'token' && ctx.policy !== 'conserved-payouts-v1')
       ) throw Error('invalid_config')
+      const rounds = config.rounds ?? 1
+      if (!Number.isInteger(rounds) || rounds < 1 || rounds > 1000) throw Error('invalid_config')
       const count = ctx.seats.length
       const deck = Array.from({ length: 52 }, (_, i) => i)
       for (let i = deck.length - 1; i > 0; i--) {
@@ -192,6 +296,11 @@
       pay(players[bb], bigBlind)
       const state = {
         players,
+        rounds,
+        handNo: 1,
+        betweenHands: false,
+        handResult: null,
+        humans: ctx.seats.flatMap((_, i) => ctx.participants?.[i]?.kind !== 'bot' ? [i] : []),
         initialStack,
         bigBlind,
         smallBlind,
@@ -214,7 +323,9 @@
       return advance(state, bb)
     },
     act,
+    exit,
     timeout(state, ctx) {
+      if (state.betweenHands) return nextHand(state, ctx)
       const options = legal(state, ctx.seatIndex)
       return act(state, { type: options.some(o => o.type === 'check') ? 'check' : 'fold' }, ctx)
     },
@@ -227,6 +338,9 @@
       }
       return {
         kind: 'holdem',
+        handNo: state.handNo ?? 1,
+        rounds: state.rounds ?? 1,
+        betweenHands: !!state.betweenHands,
         participants: ctx?.participants ?? [],
         selfSeat: seatIndex,
         turn: state.turn,
@@ -237,7 +351,7 @@
         smallBlind: state.smallBlind,
         bigBlind: state.bigBlind,
         board: state.board,
-        pot: state.result ? 0 : sum(state.players.map(p => p.total)),
+        pot: state.result || state.betweenHands ? 0 : sum(state.players.map(p => p.total)),
         currentBet: state.currentBet,
         players: state.players.map((p, i) => ({
           seat: i,
@@ -245,6 +359,8 @@
           bet: p.bet,
           total: p.total,
           folded: p.folded,
+          left: !!p.left,
+          leaving: !!p.leaving,
           allIn: !p.folded && p.stack === 0 && !state.result,
           hole: seatIndex !== null && (i === seatIndex || (state.showdown && !p.folded))
             ? p.hole
@@ -253,7 +369,7 @@
         legalActions: seatIndex === null ? [] : legal(state, seatIndex),
         lastAction: state.lastAction,
         pots: state.pots,
-        result: state.result,
+        result: state.result ?? state.handResult,
       }
     },
   }
