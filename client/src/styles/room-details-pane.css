@@ -1,0 +1,128 @@
+.gr-room-details-layout {
+  --gr-room-details-pane-width: clamp(320px, 30cqi, 400px);
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  flex: 1;
+  grid-template-columns: minmax(0, 1fr) 0;
+  grid-template-rows: minmax(0, 1fr);
+  overflow: hidden;
+  transition: grid-template-columns 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.gr-room-details-game {
+  position: relative;
+  z-index: 0;
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.gr-room-details-pane {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+  border-inline-start: 1px solid var(--gr-border);
+  background: var(--gr-surface);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(24px);
+  transition:
+    transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    opacity 160ms ease,
+    visibility 0s linear 220ms;
+}
+
+.gr-room-details-layout[data-mode="wide"][data-open="true"] {
+  grid-template-columns: minmax(0, 1fr) var(--gr-room-details-pane-width);
+}
+
+.gr-room-details-layout[data-open="true"] > .gr-room-details-pane {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(0);
+  transition-delay: 0s;
+}
+
+.gr-room-details-pane-header {
+  box-sizing: border-box;
+  display: flex;
+  min-height: 46px;
+  flex: none;
+  align-items: center;
+  gap: 12px;
+  padding: 0 var(--gr-toolbar-end-inset) 0 var(--gr-content-inset);
+  border-bottom: 1px solid var(--gr-border);
+  background: var(--gr-surface);
+}
+
+.gr-room-details-pane-header > strong {
+  margin-inline-end: auto;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.gr-room-details-pane-scroll {
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.gr-room-details-scrim {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  background: rgb(0 0 0 / 28%);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 160ms ease, visibility 0s linear 220ms;
+}
+
+.gr-room-details-layout[data-mode="overlay"] > .gr-room-details-pane {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: 0;
+  width: min(var(--gr-room-details-pane-width), calc(100% - 48px));
+  box-shadow: -8px 0 24px rgb(0 0 0 / 14%);
+  transform: translateX(calc(100% + 24px));
+}
+
+.gr-room-details-layout:where([data-mode="overlay"][data-open="true"])
+  > .gr-room-details-scrim {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transition-delay: 0s;
+}
+
+.gr-room-details-layout[data-open="true"]:where([data-mode="overlay"])
+  > .gr-room-details-pane {
+  transform: translateX(0);
+}
+
+@container game-room (max-width: 520px) {
+  .gr-room-details-layout {
+    --gr-room-details-pane-width: 100%;
+  }
+
+  .gr-room-details-layout[data-mode="overlay"] > .gr-room-details-pane {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gr-room-details-layout,
+  .gr-room-details-pane,
+  .gr-room-details-scrim {
+    transition: none;
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "id": "gomoku",
+  "version": "1.7.0",
+  "name": "五子棋",
+  "minPlayers": 2,
+  "maxPlayers": 2,
+  "modes": [
+    "score",
+    "local-chips",
+    "token"
+  ],
+  "description": "自由五子棋；支持 9×9、13×13、15×15 棋盘，连成至少五子获胜，超时判负。轮到自己时可申请悔棋，真人对手同意后撤回上一轮，电脑和 Agent 对手自动同意。",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "boardSize": {
+        "type": "integer",
+        "title": "棋盘大小",
+        "enum": [
+          9,
+          13,
+          15
+        ],
+        "default": 15
+      },
+      "rounds": {
+        "type": "integer",
+        "title": "游戏局数",
+        "default": 3,
+        "minimum": 1,
+        "maximum": 1000
+      }
+    }
+  },
+  "spectating": true,
+  "rulesBot": "rules-bot-v1",
+  "waitingUi": true,
+  "minimumViewport": {
+    "width": 460,
+    "height": 520
+  },
+  "playerExit": true
+}

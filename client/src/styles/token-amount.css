@@ -1,0 +1,38 @@
+.gr-token-amount {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+  gap: 5px;
+  white-space: nowrap;
+}
+.gr-token-icon {
+  display: inline-block;
+  position: relative;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  overflow: hidden;
+  vertical-align: middle;
+}
+.gr-token-icon[data-size="balance"] {
+  width: 28px;
+  height: 28px;
+}
+.gr-token-icon img {
+  position: absolute;
+  width: 123.5%;
+  height: 123.5%;
+  max-width: none;
+  left: -11.8%;
+  top: -10.8%;
+  object-fit: contain;
+}
+
+.gr-token-unit {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

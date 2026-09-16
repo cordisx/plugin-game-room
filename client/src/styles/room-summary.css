@@ -1,0 +1,25 @@
+.gr-room-summary {
+  background: var(--gr-surface);
+}
+.gr-room-summary .gr-confirmation-summary-body {
+  padding: 8px 18px 16px;
+}
+.gr-room-summary .gr-confirmation-facts > div {
+  align-items: center;
+  padding-block: 10px;
+  line-height: 20px;
+}
+.gr-room-summary .gr-confirmation-facts dt {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+.gr-summary-fact-icon {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  line-height: 1;
+}

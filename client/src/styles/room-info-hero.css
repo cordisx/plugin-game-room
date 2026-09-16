@@ -1,0 +1,118 @@
+.gr-room-info-hero {
+  --gr-room-info-content-inset: 18px;
+  --gr-room-info-color: var(--gr-text);
+  --gr-room-info-glass: color-mix(in srgb, var(--gr-surface) 70%, transparent);
+  --gr-room-info-glass-selected: color-mix(
+    in srgb,
+    var(--gr-text) 14%,
+    transparent
+  );
+  --gr-room-info-glass-hover: color-mix(
+    in srgb,
+    var(--gr-text) 10%,
+    transparent
+  );
+  --gr-room-info-glass-border: var(--gr-border);
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  flex: none;
+  padding: 16px 0 0;
+  box-sizing: border-box;
+  background: var(--gr-surface);
+  color: var(--gr-room-info-color);
+  overflow: hidden;
+}
+.gr-room-info-hero[data-preview="true"] {
+  --gr-room-info-content-inset: 22px;
+}
+.gr-room-info-hero[data-artwork="true"] {
+  --gr-room-info-color: #fff;
+  --gr-room-info-glass: rgb(255 255 255 / 10%);
+  --gr-room-info-glass-selected: rgb(255 255 255 / 22%);
+  --gr-room-info-glass-hover: rgb(255 255 255 / 17%);
+  --gr-room-info-glass-border: rgb(255 255 255 / 22%);
+}
+.gr-room-info-hero-image {
+  position: absolute;
+  z-index: -2;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.gr-room-info-hero[data-artwork="true"]::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgb(8 21 18 / 38%) 0%,
+    rgb(7 18 16 / 45%) 35%,
+    color-mix(in srgb, var(--gr-surface) 92%, transparent) 80%,
+    var(--gr-surface) 100%
+  );
+  pointer-events: none;
+}
+.gr-room-info-hero-top {
+  padding-inline: var(--gr-room-info-content-inset);
+  padding-inline-end: calc(
+    var(--gr-toolbar-end-inset) - var(--gr-toolbar-frame-border) - 1px
+  );
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 34px;
+}
+.gr-room-info-hero-game, .gr-room-info-hero-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 6px;
+  border: 1px solid var(--gr-room-info-glass-border);
+  background: var(--gr-room-info-glass);
+  backdrop-filter: blur(12px);
+  color: var(--gr-room-info-color);
+  font-size: 12px;
+}
+.gr-room-info-hero-game {
+  min-width: 0;
+  padding: 4px 8px;
+}
+.gr-room-info-hero-actions:empty {
+  display: none;
+}
+.gr-room-info-hero-actions {
+  border-radius: var(--gr-toolbar-action-radius);
+}
+.gr-room-info-hero-actions > span {
+  padding: 4px 8px;
+}
+.gr-root .gr-room-info-hero-actions button {
+  color: var(--gr-room-info-color);
+  border-radius: var(--gr-toolbar-action-radius);
+}
+.gr-room-info-hero-actions button:hover:where(:not(:disabled)) {
+  background: var(--gr-room-info-glass-hover);
+}
+.gr-room-info-hero-actions button:focus-visible {
+  outline: 2px solid var(--gr-room-info-color);
+  outline-offset: -3px;
+}
+.gr-room-info-hero .gr-symbol {
+  margin: 0;
+}
+.gr-room-info-hero-copy h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.gr-room-info-hero-copy {
+  margin-block-start: 44px;
+  padding: 0 var(--gr-room-info-content-inset) 18px;
+}

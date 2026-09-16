@@ -1,0 +1,24 @@
+.gr-page-body {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 16px;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  overflow: auto;
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+}
+.gr-page-body-lobby {
+  container-type: inline-size;
+  container-name: game-lobby;
+  overflow: visible;
+  scrollbar-gutter: auto;
+}
+
+.gr-page-body-directory {
+  overflow: hidden;
+  scrollbar-gutter: auto;
+}

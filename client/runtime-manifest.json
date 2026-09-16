@@ -1,0 +1,21 @@
+{
+  "$schema": "https://raw.githubusercontent.com/cordisx/cordisx-protocol/main/schemas/plugin-manifest.v11.schema.json",
+  "schemaVersion": 11,
+  "id": "game-room",
+  "name": "Game Room",
+  "services": [],
+  "capabilities": [
+    {
+      "name": "ui.extension-points.render",
+      "required": true,
+      "scope": {
+        "extensionPoints": [
+          "sidebar.navigation.items",
+          "main",
+          "manager.settings.navigation-items",
+          "manager.content"
+        ]
+      }
+    }
+  ]
+}

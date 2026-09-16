@@ -1,0 +1,45 @@
+{
+  "id": "texas-holdem",
+  "version": "1.5.0",
+  "name": "德州扑克",
+  "minPlayers": 2,
+  "maxPlayers": 8,
+  "modes": [
+    "score",
+    "local-chips",
+    "token"
+  ],
+  "settlementPolicies": [
+    "conserved-payouts-v1"
+  ],
+  "description": "固定手数德州：筹码延续、边池分配，离桌时兑回剩余筹码。",
+  "spectating": true,
+  "rulesBot": "rules-bot-v1",
+  "waitingUi": true,
+  "minimumViewport": {
+    "width": 560,
+    "height": 520
+  },
+  "playerExit": true,
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "rounds": {
+        "type": "integer",
+        "title": "游戏手数",
+        "default": 10,
+        "minimum": 1,
+        "maximum": 1000
+      },
+      "initialStack": {
+        "type": "integer",
+        "title": "初始筹码",
+        "description": "积分对局使用；Token 对局以抵押额为准",
+        "default": 1000,
+        "minimum": 2,
+        "maximum": 1000000000
+      }
+    }
+  }
+}

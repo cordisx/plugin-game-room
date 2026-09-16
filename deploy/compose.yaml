@@ -1,0 +1,26 @@
+services:
+  game-room:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    ports:
+      - "127.0.0.1:8787:8787"
+    volumes:
+      - game-room-data:/data
+    environment:
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-}
+      AUTH_POLICY: ${AUTH_POLICY:-login-required}
+      SPEND_TRUSTED_WALLET_KEYS: ${SPEND_TRUSTED_WALLET_KEYS:-[]}
+      SPEND_SERVICE_ORIGIN: ${SPEND_SERVICE_ORIGIN:-}
+      SPEND_SERVICE_PRIVATE_KEY: ${SPEND_SERVICE_PRIVATE_KEY:-}
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,noexec,nosuid
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 512m
+    cpus: 1
+    pids_limit: 128
+volumes:
+  game-room-data:

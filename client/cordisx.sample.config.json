@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "playground": {
+    "name": "Game Room · 组件预览",
+    "description": "真实插件组件，样例数据，非原生 App 验收",
+    "pluginBundleFixture": true,
+    "reviewNavigationItem": "game-room:open"
+  },
+  "providers": [],
+  "plugins": [
+    {
+      "id": "game-room",
+      "entry": "./src/client.tsx",
+      "enabled": true,
+      "config": {
+        "sample": true
+      }
+    }
+  ]
+}

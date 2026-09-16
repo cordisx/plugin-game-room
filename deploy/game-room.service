@@ -1,0 +1,30 @@
+[Unit]
+Description=Game Room authoritative server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=game-room
+Group=game-room
+WorkingDirectory=/opt/game-room
+EnvironmentFile=/etc/game-room.env
+Environment=DATABASE_PATH=/var/lib/game-room/game-room.sqlite
+ExecStart=/usr/bin/node /opt/game-room/dist/server/main.js
+Restart=on-failure
+StateDirectory=game-room
+StateDirectoryMode=0700
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/game-room
+RestrictSUIDSGID=true
+CapabilityBoundingSet=
+TasksMax=128
+MemoryMax=512M
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target

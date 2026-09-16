@@ -1,0 +1,116 @@
+.gr-task-directory {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  flex: 1;
+  font-size: 13px;
+}
+.gr-task-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  flex: none;
+}
+.gr-task-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 160px;
+  color: var(--gr-muted);
+}
+
+.gr-task-period {
+  display: flex;
+  gap: 4px;
+}
+.gr-task-period button {
+  min-height: 32px;
+  padding: 4px 8px;
+  font-size: 12px;
+}
+.gr-task-period [aria-pressed="true"] {
+  background: var(--cx-hover);
+}
+.gr-task-results {
+  overflow: auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 2px;
+}
+.gr-task-card {
+  --gr-text: #f3f4f5;
+  --gr-muted: #c3ccce;
+  --gr-surface: #1c2c2d;
+  --gr-border: #ffffff30;
+  color: var(--gr-text);
+  width: min(100%, 600px);
+  box-sizing: border-box;
+  position: relative;
+  isolation: isolate;
+  flex: none;
+  border: 1px solid var(--gr-border);
+  border-radius: 14px;
+  background: var(--gr-surface);
+}
+.gr-task-art {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  width: 60%;
+  height: 100%;
+  border-radius: 14px;
+  object-fit: cover;
+  object-position: left center;
+  opacity: 1;
+  mask-image: linear-gradient(90deg, #000 0%, #000 40%, transparent 100%);
+}
+.gr-task-content {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-left: 42%;
+  padding: 18px 14px 18px 0;
+  min-height: 172px;
+}
+.gr-task-title {
+  font-size: 16px;
+  line-height: 1.4;
+}
+.gr-task-agent {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-block: 6px;
+}
+.gr-task-card .gr-panel-actions {
+  margin-top: auto;
+  flex-wrap: wrap;
+}
+.gr-task-card .gr-square-button {
+  color: #f3f4f5;
+}
+.gr-task-card .gr-task-open {
+  min-height: 32px;
+  font-size: 12px;
+  padding: 4px 8px;
+  gap: 4px;
+  background: #eee6d5;
+  color: #263128;
+}
+.gr-task-card .gr-panel-identifiers {
+  color: var(--gr-text);
+}
+@container game-room (max-width: 420px) {
+  .gr-task-content {
+    margin-left: 32%;
+    padding-right: 10px;
+  }
+  .gr-task-art {
+    width: 50%;
+  }
+}

@@ -1,3 +1,16 @@
 # Developer documentation
 
 - [Architecture and scope](architecture.md)
+- [Local wallet fees and recovery](local-wallet-spend.md)
+- [Client development](client.md)
+- [Server API and game package contract](server-api.md)
+- [Server development](server-development.md)
+- [Node backend deployment](backend-deployment.md)
+- [Workers backend deployment](backend-workers.md)
+- [Shipped game packages](games.md)
+- [Authoring games](games-authoring.md)
+- [Game artwork and detail presentation checklist](../client/src/skills/game-development/references/detail-presentation.md)
+- [Bundled game-development Skill](../client/src/skills/game-development/SKILL.md)
+- [Agent dispatch](agents.md)
+- [Agent evidence](agents-evidence.md)
+- [Integrated acceptance](integration.md)

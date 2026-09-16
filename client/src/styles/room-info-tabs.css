@@ -1,0 +1,41 @@
+/* Room metadata tabs own their spacing; Host button chrome stays in Host. */
+.gr-room-info-tabs {
+  --gr-room-tab-content-inset: 18px;
+  --gr-room-tab-button-padding: 12px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+  margin-inline: calc(-1 * (var(--gr-room-tab-button-padding) + 1px));
+  padding: 8px var(--gr-room-tab-content-inset);
+}
+.gr-room-info-tabs[data-preview="true"] {
+  --gr-room-tab-content-inset: 22px;
+}
+.gr-room-info-tabs > [role="tab"] {
+  flex: none;
+  gap: 6px;
+  min-height: 34px;
+  padding: 6px var(--gr-room-tab-button-padding);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--gr-text);
+}
+.gr-room-info-tabs > [aria-selected="true"] {
+  border-color: color-mix(in srgb, var(--gr-text) 20%, transparent);
+  background: color-mix(in srgb, var(--gr-text) 14%, transparent);
+  backdrop-filter: blur(12px);
+}
+.gr-room-info-tabs > [aria-selected="true"]:hover:where(:not(:disabled)) {
+  background: color-mix(in srgb, var(--gr-text) 20%, transparent);
+}
+.gr-room-info-tabs > [role="tab"]:focus-visible {
+  outline: 2px solid var(--gr-text);
+  outline-offset: 1px;
+}
+.gr-room-info-tabs .gr-symbol {
+  margin: 0;
+}

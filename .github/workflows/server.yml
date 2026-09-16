@@ -1,0 +1,29 @@
+name: Game server
+on:
+  pull_request:
+    paths: ['server/**', 'sdk/**', 'tests/server/**', 'deploy/**', 'docs/server*.md', 'package*.json', 'tsconfig.json', 'dprint.json', 'eslint.config.mjs', '.github/workflows/server.yml']
+  push:
+    branches: [main, codex/game-server]
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24.14.1'
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - run: docker compose -f deploy/compose.yaml config --quiet
+      - run: docker build -f deploy/Dockerfile -t game-room-ci .
+      - name: Run constrained container smoke
+        run: >-
+          docker run --rm --read-only --tmpfs /tmp:rw,nosuid
+          --tmpfs /data:rw,uid=1000,gid=1000 --cap-drop ALL
+          --security-opt no-new-privileges
+          --mount type=bind,source="$PWD/deploy/container-smoke.mjs",target=/app/container-smoke.mjs,readonly
+          --entrypoint node game-room-ci /app/container-smoke.mjs

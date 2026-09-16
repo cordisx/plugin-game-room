@@ -1,0 +1,697 @@
+{
+  "owner": "cordisx/plugin-game-room",
+  "branch": "codex/c6d2-game-workers-r34",
+  "baseCommit": "7035d4377f4ae60250f65b995ba2017c1a752e70",
+  "source": "/Users/yijie/.codex/runtime-staging/game-workers-r34/plugin-game-room",
+  "state": "uncommitted_reviewed_candidate",
+  "files": [
+    {
+      "path": ".agents/rules/ui-design.md",
+      "bytes": 1726,
+      "sha256": "eb6e011dac1342d32d49cdded8700725c7a02a409ace1b84e9288548216a539a"
+    },
+    {
+      "path": "AGENTS.md",
+      "bytes": 1013,
+      "sha256": "aa1ebb3f75d4c64438983dca10021ca88f2239dabed704e98a5fa93048384454"
+    },
+    {
+      "path": "LICENSE",
+      "bytes": 1077,
+      "sha256": "df79e8636e5f4542913bcc0820289547718165e60a85831c6abef3d8d4fac951"
+    },
+    {
+      "path": "client/src/assets/room-owner.ts",
+      "bytes": 383,
+      "sha256": "476d3fe707c1243f097ed1d72f6cf457161c0062d21a0be4319f76612ce3250a"
+    },
+    {
+      "path": "deploy/Dockerfile",
+      "bytes": 955,
+      "sha256": "170685e0e389b2f9004af1ff3d85462e662c5e9266d6f262f2617a17ac7db170"
+    },
+    {
+      "path": "deploy/compose.yaml",
+      "bytes": 661,
+      "sha256": "28e51a460d4d62497679163a8a82891c1ec7cd15aa64ef495f5cf92e3eb19c4e"
+    },
+    {
+      "path": "deploy/container-smoke.mjs",
+      "bytes": 1514,
+      "sha256": "d3bb165107316caf0395e27578b477b6a496e37825cb944d16bfdd9e1fcad7cb"
+    },
+    {
+      "path": "deploy/demo-init.mjs",
+      "bytes": 7864,
+      "sha256": "096121ea4be7687b101847cbc6a77b819b83bc365b3eb7d3da95a55172a919da"
+    },
+    {
+      "path": "deploy/demo-practice.mjs",
+      "bytes": 8598,
+      "sha256": "3f1c3f35629210e6a8ddba6dc1daa9850df8947c640ef9f258760ed54909f7e6"
+    },
+    {
+      "path": "deploy/demo-start.mjs",
+      "bytes": 2068,
+      "sha256": "dead070e1cbb4235be5d6a3f4ea71b23bce01ac84f4ba82cf490f3f307f093eb"
+    },
+    {
+      "path": "deploy/game-room.service",
+      "bytes": 665,
+      "sha256": "d94c9a8a96e68bde0ea13ff5245db90f0a2e9c8806362112975eda82d943ae8f"
+    },
+    {
+      "path": "deploy/local-economy-game.mjs",
+      "bytes": 1041,
+      "sha256": "60b7f5c9eeae3f35876b16adf243c958f4ae7ef8093cd34a377be35e4152c91d"
+    },
+    {
+      "path": "deploy/local-economy-review.mjs",
+      "bytes": 5360,
+      "sha256": "9e88623d4278f946ed1b3929e94af80c5fab368736705af8294ada8af4c4298d"
+    },
+    {
+      "path": "deploy/workers-drizzle.config.ts",
+      "bytes": 175,
+      "sha256": "71c9070cb9bf625fddf86768096ae96833f9a6c3fc6573156bcc8f2daeb0e53c"
+    },
+    {
+      "path": "deploy/workers-schema.ts",
+      "bytes": 2907,
+      "sha256": "a3f7b92fa6534233be5499664868c1b7a823d378c3153e83982578371ec0be34"
+    },
+    {
+      "path": "docs/README.md",
+      "bytes": 703,
+      "sha256": "9e301c4c93be00fef08aaec14a882bcd5aa3454d67e4a22d283cdf7dfca1f79c"
+    },
+    {
+      "path": "docs/agents-evidence.md",
+      "bytes": 5260,
+      "sha256": "f55637208a532605c97f4ebf6807de7db8a0aeb195e48b675ffdc41e27be784b"
+    },
+    {
+      "path": "docs/agents.md",
+      "bytes": 8382,
+      "sha256": "40c7876a8eae127dbf80e2cfd0628461a5e811e2acc39412b1e53fd245145aca"
+    },
+    {
+      "path": "docs/architecture.md",
+      "bytes": 6157,
+      "sha256": "07770b88feaa6b7bf1a30f0771945a951a0aeeaeba60a8ae1abe62221490e497"
+    },
+    {
+      "path": "docs/backend-deployment.md",
+      "bytes": 2873,
+      "sha256": "8161b61127d7ceb399c1051e54a42fab6e7f79942a31f5f71f1080ae8260a30b"
+    },
+    {
+      "path": "docs/backend-workers.md",
+      "bytes": 3551,
+      "sha256": "91d05a6a11c57dc438685e8b90abcfec9ce1ac3be61ea6d74feb9c40ee0bd009"
+    },
+    {
+      "path": "docs/client.md",
+      "bytes": 7841,
+      "sha256": "f980476dd6f625d64ccb3b1d58edb38bccdbe89dd20282b8d2329e77df362220"
+    },
+    {
+      "path": "docs/games-authoring.md",
+      "bytes": 6160,
+      "sha256": "1e1e0a56f99ba24cbf758fff0eece0e78af4eb2e0f8a8ba1124cfb2f8712caba"
+    },
+    {
+      "path": "docs/games.md",
+      "bytes": 6240,
+      "sha256": "ff49dc9304ab8f87793de82e466980fddeb8f0538c27a79983d76b0c38657140"
+    },
+    {
+      "path": "docs/integration.md",
+      "bytes": 4232,
+      "sha256": "4a8f435202bc82bbe8a5de9b3726a8209e6e871a551714b858aab83b96c79ab3"
+    },
+    {
+      "path": "docs/server-api.md",
+      "bytes": 17197,
+      "sha256": "c3d0643d77f701b2efe466c35cbbcd41799cba3a0c23a0a6f5b2b5e0652bbb18"
+    },
+    {
+      "path": "docs/server-development.md",
+      "bytes": 7657,
+      "sha256": "96be496161752cbd3f5abfb24382886ac91309552dcee826c6f0cde0a5518298"
+    },
+    {
+      "path": "docs/server-preview.md",
+      "bytes": 7254,
+      "sha256": "cac62b68d546aa3b308c93c3a84ceeb3aa34bb2fcbda0783202c186aa45c81ff"
+    },
+    {
+      "path": "dprint.json",
+      "bytes": 527,
+      "sha256": "eea66bc635933055f6857b20ded0fb2453dea361f4c1d70e639f9181a02efd10"
+    },
+    {
+      "path": "eslint.config.mjs",
+      "bytes": 268,
+      "sha256": "ac890a3a5c7bb57fc9fa11fdc55c817759c29ebcd5d22005e3db8be3dc77283a"
+    },
+    {
+      "path": "games/.gitignore",
+      "bytes": 20,
+      "sha256": "790e3169bc19b046fe55ba1da6d13b976c28363c8c00462a2195fe5faf260910"
+    },
+    {
+      "path": "games/README.md",
+      "bytes": 436,
+      "sha256": "175584297f8def7815fb6f11cad3a7c7c2de614e2abe6617e442b28a3ad06252"
+    },
+    {
+      "path": "games/dprint.json",
+      "bytes": 443,
+      "sha256": "90f0a42b9747ad74992551d31a01f8ccf3329ad05bab7e85e1e1b922bdaae354"
+    },
+    {
+      "path": "games/eslint.config.mjs",
+      "bytes": 308,
+      "sha256": "70284f3f6f7106d9118181e54fdac63bd6e14c81bfbe964c479fcca47814af06"
+    },
+    {
+      "path": "games/gomoku/bot.js",
+      "bytes": 1337,
+      "sha256": "ba3169784e1077d97851df8b508d52147d79bd373912a475eeb75dc7df4f48d7"
+    },
+    {
+      "path": "games/gomoku/manifest.json",
+      "bytes": 712,
+      "sha256": "2cfe34bc5d39d5e9c1c972ec0c03c450612f3c0eac587cf5b690b252b00eda57"
+    },
+    {
+      "path": "games/gomoku/render.js",
+      "bytes": 1904,
+      "sha256": "6687da0d7a8fdb9b332e39476a5e7700be8e8e9d9ad0541718d9fdd5c071a198"
+    },
+    {
+      "path": "games/gomoku/rules.js",
+      "bytes": 2918,
+      "sha256": "18c9e41db7c921d037a90f9dcca0429d622e61e7ce00578e833b7027f7c86ff5"
+    },
+    {
+      "path": "games/gomoku/style.css",
+      "bytes": 3149,
+      "sha256": "f339f81129aa0ff81aae5df38668af1769d254ceebb43a5ad6568277a41cfe38"
+    },
+    {
+      "path": "games/gomoku/ui.js",
+      "bytes": 5487,
+      "sha256": "311fa4115b77c40a7e5f05be630abedac79eb48e433c219af719598780d7cb08"
+    },
+    {
+      "path": "games/holdem/bot.js",
+      "bytes": 937,
+      "sha256": "97a60f4c79093573da30dd41cba68066ba8d4169b55eef886082321cc2fbc4e4"
+    },
+    {
+      "path": "games/holdem/evaluate.js",
+      "bytes": 2084,
+      "sha256": "4b0df2f33ed76eee115f30d3f853c7bf05365463489c48b8313f05c6ba003862"
+    },
+    {
+      "path": "games/holdem/manifest.json",
+      "bytes": 482,
+      "sha256": "b476c3519a189836130ec801e17f70cd5aba14cce4214c7ed30a60259ce3c2dd"
+    },
+    {
+      "path": "games/holdem/render.js",
+      "bytes": 3243,
+      "sha256": "8c9fb80e94a0e177c274b9080455a8478abd135fca32218883135cbc95a100db"
+    },
+    {
+      "path": "games/holdem/rules.js",
+      "bytes": 9920,
+      "sha256": "db77f22b4b3327240d648724e14b06f8bdb3ba6f519de348b5ec51027ba7933c"
+    },
+    {
+      "path": "games/holdem/style.css",
+      "bytes": 8386,
+      "sha256": "829518af4cf17e15e0017e1a004f31be770aba6a71321b1751f81f01d7c6f566"
+    },
+    {
+      "path": "games/holdem/ui.js",
+      "bytes": 11846,
+      "sha256": "4416537b26d7d84bffa75702132be0bba000df5fbd6cd5f25d6977b3a7d69d1f"
+    },
+    {
+      "path": "games/package-lock.json",
+      "bytes": 98349,
+      "sha256": "a8587cdfb160fabc8eaafc18fd0989d295748beb8754ffa0a49eb9fb8177aead"
+    },
+    {
+      "path": "games/package.json",
+      "bytes": 883,
+      "sha256": "9f9c485dee276a5d8d3eae5cf4d11d05f75b575c0d258f05cd563dd82ad8847f"
+    },
+    {
+      "path": "games/stylelint.config.mjs",
+      "bytes": 288,
+      "sha256": "a04c5b7322e376c71c2801e37649ae445244bc8f70f3973bbdf6755f7f1fdc9f"
+    },
+    {
+      "path": "games/test/betting-ui.test.mjs",
+      "bytes": 527,
+      "sha256": "a4165395645874b2174928b832fefeb0baf5e7481c2d9453905d368fa630da5c"
+    },
+    {
+      "path": "games/test/evaluate.test.mjs",
+      "bytes": 1497,
+      "sha256": "a9f36eaee64f6c54da32e6cfdc2c814c1e9dc33774a1d6b37aee672b587e787a"
+    },
+    {
+      "path": "games/test/gomoku.test.mjs",
+      "bytes": 3295,
+      "sha256": "55320662adc8993f43771724d054fb1cc6392351fcacdc09135caa83c68145fd"
+    },
+    {
+      "path": "games/test/holdem.test.mjs",
+      "bytes": 7633,
+      "sha256": "5258bf56d719a7c278a643bce09c537ad2f0230400cf76f70d8bb654ffc663e2"
+    },
+    {
+      "path": "games/test/package.test.mjs",
+      "bytes": 1026,
+      "sha256": "697ae97818b8447522295963cad0a1b965106fd815ed67ab6438f8bfc0223559"
+    },
+    {
+      "path": "games/test/pots.test.mjs",
+      "bytes": 2431,
+      "sha256": "7116a0277dc45cbb998a6bac79b3bfdccebdc07b486cbb22b7e63d8d03cf4de7"
+    },
+    {
+      "path": "games/test/runtime.mjs",
+      "bytes": 63,
+      "sha256": "a8bd1139fe9b914058277d22bec9e77e6bcbd939bb1b8092670dc130e4117f54"
+    },
+    {
+      "path": "games/test/scene.test.mjs",
+      "bytes": 3794,
+      "sha256": "f031e38b06a05073067b3158852c4d70b8bfdc2e732747ae276640fffb6d0a24"
+    },
+    {
+      "path": "games/tools/http-check.mjs",
+      "bytes": 5353,
+      "sha256": "d584e94868c570e2a3ea5ba0354e561da6844c83370910b1c891a2bac10f21d7"
+    },
+    {
+      "path": "games/tools/local-ui-digests.mjs",
+      "bytes": 848,
+      "sha256": "6455b2df0e5c5c6e55c0a5b40f6f7e06de67f5a3fe3ee11bf3458a753a0ead5d"
+    },
+    {
+      "path": "games/tools/package.mjs",
+      "bytes": 5255,
+      "sha256": "751d20c17a183e414cfb3fa58dfa904d00e70c18c3d4813070ec13743de35afa"
+    },
+    {
+      "path": "games/tools/runtime.mjs",
+      "bytes": 2367,
+      "sha256": "282f409316d32b1c560992d648f5b0d489bc33446753c1c2c5a0c6ada27b606c"
+    },
+    {
+      "path": "games/tools/scene.mjs",
+      "bytes": 3404,
+      "sha256": "65bc3fe984786af11201df6f21a64590e7532d502e0616c8a1bc1756da95ed01"
+    },
+    {
+      "path": "games/tools/server-check.mjs",
+      "bytes": 2536,
+      "sha256": "21075ccded0867f6cf0ee43c07b3c75f637683583ca79611a3dfa11424bf3edb"
+    },
+    {
+      "path": "games/tools/smoke.mjs",
+      "bytes": 1265,
+      "sha256": "143794ee97fe6b6e539e2ac2e2dfbfa561ed4d1040d15d0cf8eb39dbdd6b1258"
+    },
+    {
+      "path": "games/ui/common.js",
+      "bytes": 5840,
+      "sha256": "9ca9328ab7ebe114c03b7b51264cf4fd08f0abf69d8207e64fe0dcd146e1ba73"
+    },
+    {
+      "path": "games/ui/game.css",
+      "bytes": 3929,
+      "sha256": "01448a9abbf194ec7dd30b276f7c746cb19f0df9878d432d2ddd86136a1539fe"
+    },
+    {
+      "path": "package-lock.json",
+      "bytes": 137881,
+      "sha256": "c9678b799c94c1f7f46839a385aa59d8efebf5e9a9074eb5d837f1d4dd2e32a6"
+    },
+    {
+      "path": "package.json",
+      "bytes": 1715,
+      "sha256": "a362da221967dc24e6d0ce60fe4923bba73feddc22d8fc0ff8061d3bec725f90"
+    },
+    {
+      "path": "scripts/build-workers.mjs",
+      "bytes": 1055,
+      "sha256": "85ee95f730c4278bfcb5850621db7bf0b0df108b6dca7e4f80c6004a1fb297fa"
+    },
+    {
+      "path": "scripts/workerd-availability.mjs",
+      "bytes": 690,
+      "sha256": "a2956d8f754a39eb976d9336e89c9513b032e3ffacf32bd76c6dbcec5f8953fe"
+    },
+    {
+      "path": "scripts/workerd-real-games.mjs",
+      "bytes": 5813,
+      "sha256": "5676168015251bf59468c3dfc652d4523690f61f46f466b7027d38b5964b4c71"
+    },
+    {
+      "path": "scripts/workerd-roundtrips.mjs",
+      "bytes": 2904,
+      "sha256": "0db1f51a7bd642d1b9d2919b9550ec3d30929c202c84037cd058e247c47e351a"
+    },
+    {
+      "path": "scripts/workerd-security.mjs",
+      "bytes": 12933,
+      "sha256": "85edba1467b16a71ed47a5e06f854e61c0434ddbde80b4b3c5c5724daabeb77b"
+    },
+    {
+      "path": "scripts/workerd-smoke.mjs",
+      "bytes": 2851,
+      "sha256": "aee1858a3b790b95d61d7fb060897cd8413adb724b369fa86e74ad1d7a1de093"
+    },
+    {
+      "path": "sdk/experimental/cordisx-protocol-local-v4-37ed3af0.tgz",
+      "bytes": 201793,
+      "sha256": "37ed3af003653f9c9bc076a4c7ba636602fe6a0151d3f253315d5718dc326444"
+    },
+    {
+      "path": "sdk/experimental/cordisx-protocol-local-work-settlement-v1.tgz",
+      "bytes": 203095,
+      "sha256": "1e8deb47dde19525b7836c499249c3fd4cfc79605cbd344c698a1ef85db45c94"
+    },
+    {
+      "path": "sdk/game-config.d.mts",
+      "bytes": 609,
+      "sha256": "8f54b4888fa79461df7756198ac056af33475474a2e9dc9fc98ae150377d1a3d"
+    },
+    {
+      "path": "sdk/game-config.mjs",
+      "bytes": 3603,
+      "sha256": "8f1234a8b8ecd1bd4bc492090d52d50465bbc326a891be75bff9d8554e75e803"
+    },
+    {
+      "path": "sdk/html-ui.d.mts",
+      "bytes": 497,
+      "sha256": "0c9f2bce37bbdbff2c9989641786ce1905919d11f836a00e4d87e88294691550"
+    },
+    {
+      "path": "sdk/html-ui.mjs",
+      "bytes": 2233,
+      "sha256": "759704cfd160033dadc0f7e7b6b862ad9a61925aabf88b9ae4c1dec001824c02"
+    },
+    {
+      "path": "sdk/index.ts",
+      "bytes": 4391,
+      "sha256": "a6d9c519acde243808ffa49506fbe29f2a7c113d09df22c44dd6898eb43ffdce"
+    },
+    {
+      "path": "sdk/scene.ts",
+      "bytes": 5676,
+      "sha256": "f2891cec2b988bc18645d57878cec6f35569f432272ed61cf059749b2cc0a153"
+    },
+    {
+      "path": "server/access-policy.ts",
+      "bytes": 1528,
+      "sha256": "2de5e5ddab946e2274816eba20b6425c0e90d1a8044de45fa88196a0f37a1e59"
+    },
+    {
+      "path": "server/accounts.ts",
+      "bytes": 6398,
+      "sha256": "5b8b41be143c21c590498614a07132fde079c1f200442461135b9b02854d440b"
+    },
+    {
+      "path": "server/display-profile.ts",
+      "bytes": 3142,
+      "sha256": "ff62206f6db3d6ebd9cc1b20119c747440462e2a89e5fd4d4f0eeb70ce756765"
+    },
+    {
+      "path": "server/economy.ts",
+      "bytes": 4799,
+      "sha256": "55e3c3587b83d17a59342ec9406c1262303d6716f8d6a388d671d69fd8e1c915"
+    },
+    {
+      "path": "server/engine.ts",
+      "bytes": 32224,
+      "sha256": "cdca1d472d5a5d2789cc95f8c04b25383bc55e89d16bb3a75a8ae2711207662d"
+    },
+    {
+      "path": "server/errors.ts",
+      "bytes": 1007,
+      "sha256": "16e54dee9d40b431ef30c72a7e079c50e5dbb874f4cdd06150cede7cfa0f75c7"
+    },
+    {
+      "path": "server/grants.ts",
+      "bytes": 3693,
+      "sha256": "56b701751b83ef9735db99c1d3038dea8bc373b45529ed74a1bb97ce4829ed88"
+    },
+    {
+      "path": "server/http-runtime.ts",
+      "bytes": 13863,
+      "sha256": "55c0837dd7143b634264713e8d3b298b4c1f3ce37e1bff072bd7373143357189"
+    },
+    {
+      "path": "server/http.ts",
+      "bytes": 1301,
+      "sha256": "950427c1fe42f81350479e4c773972c36c1d9b3a0a9bd8dcff23aeba9fb159e6"
+    },
+    {
+      "path": "server/main.ts",
+      "bytes": 1697,
+      "sha256": "469e53797cfc119c1e474d384a99bd483dcfc1f7adb5890030015561a848bb04"
+    },
+    {
+      "path": "server/managed-auth.ts",
+      "bytes": 6402,
+      "sha256": "fed6f82d045de0e8c59a5b68c5e34e5ccce23d524135ddd5e1d8554bcaf0f4ae"
+    },
+    {
+      "path": "server/managed-trust.ts",
+      "bytes": 1662,
+      "sha256": "1fc65d06b28727497557c51e38cb50026a8be163cfe67f4136849da661d5d976"
+    },
+    {
+      "path": "server/packages.ts",
+      "bytes": 5933,
+      "sha256": "08b0c6ea6595aef9c247c32334ce97d67b9b9c7c2ab885a2b8f7f80a89912a5b"
+    },
+    {
+      "path": "server/rules-bots.ts",
+      "bytes": 2750,
+      "sha256": "a740795780bcedcb106f6535cc55a0e06ae0eb0fda5614560eac74518dcadadb"
+    },
+    {
+      "path": "server/runner-contract.ts",
+      "bytes": 1114,
+      "sha256": "0450dca6361c9475aca5ff041f9d16074415a4f06b4c9afba3e40240c826d688"
+    },
+    {
+      "path": "server/runner-worker.ts",
+      "bytes": 3607,
+      "sha256": "ca71115a38a345b9ce63433063d3e17e031b98df42a911e1e81d8b615dbe19a5"
+    },
+    {
+      "path": "server/runner.ts",
+      "bytes": 3097,
+      "sha256": "bf7a9cb7a04ef3e439a7fe22a09f9f93c38211c3ddc16b9563d4aca4adeb9a41"
+    },
+    {
+      "path": "server/seat-positions.ts",
+      "bytes": 955,
+      "sha256": "304b94718220c2c7d4595a0f74a5f6af00df034c5bda335487a1404527fb8ad1"
+    },
+    {
+      "path": "server/spectate.ts",
+      "bytes": 2491,
+      "sha256": "b153bbc55ff81cf3917e8b5cf9c531c75610a525e8d4e95d1618de6c5513047d"
+    },
+    {
+      "path": "server/store-contract.ts",
+      "bytes": 700,
+      "sha256": "2a1b8ea2e3be7529e1d3e0dcf88efdcafd90d4172a17ffcbef529acd7dc15bed"
+    },
+    {
+      "path": "server/store.ts",
+      "bytes": 3330,
+      "sha256": "9ad3c2d5c95216e6c939b79e87b51935d98eb7fe79a955a59d5182cd9acf7807"
+    },
+    {
+      "path": "server/waiting.ts",
+      "bytes": 509,
+      "sha256": "cdfed5eb3168c81758891bfa0489e09efe4ca49446c44bc5295ad49c4886ea16"
+    },
+    {
+      "path": "server/workers/d1-store.ts",
+      "bytes": 6631,
+      "sha256": "40b43fac0902d2ce7c33f7fbc812d80e33c1ec4d66278076f367ef5cde708019"
+    },
+    {
+      "path": "server/workers/index.ts",
+      "bytes": 3348,
+      "sha256": "a6c177a7e4cedc4eff74b0fdb822b9070acbcdca4757612eaaa0e5108e854ffe"
+    },
+    {
+      "path": "server/workers/migrations/0000_game_backend.sql",
+      "bytes": 2978,
+      "sha256": "9c98a761b83374f2f4b4c5425eb6304eb95c07811ff4fabe42c9c7e8addc4110"
+    },
+    {
+      "path": "server/workers/migrations/meta/0000_snapshot.json",
+      "bytes": 14613,
+      "sha256": "a53de6f77004eeb47f0bbd579c9e8d12dc3b0cb6b323adb982755ad60097fdfe"
+    },
+    {
+      "path": "server/workers/migrations/meta/_journal.json",
+      "bytes": 202,
+      "sha256": "8d0d699f726ad6e1ff2022c8042bcb949b635832029747ca8921f3c4ad83e803"
+    },
+    {
+      "path": "server/workers/runner.ts",
+      "bytes": 4774,
+      "sha256": "8b581a5763db171ee92352d1dcfe42c1e272f0444823fd05756d6bdca86f3522"
+    },
+    {
+      "path": "server/workers/wasm.d.ts",
+      "bytes": 87,
+      "sha256": "3cac9debf61cfe30d323d70aa1d1c078c9b4727eab3cc106bcda226d3c1366f5"
+    },
+    {
+      "path": "tests/server/access-policy.test.ts",
+      "bytes": 2442,
+      "sha256": "dd6c17f9d3364aaaa49992c27354f92428338506b9b41ab62eed16f95b4bd869"
+    },
+    {
+      "path": "tests/server/crash-child.ts",
+      "bytes": 923,
+      "sha256": "21678fde9bd10ba651e6be69bbe77f8a4bc3a01b8da663b010aafa50bdcbe631"
+    },
+    {
+      "path": "tests/server/crash.test.ts",
+      "bytes": 1868,
+      "sha256": "7e254fe2f700df2ee82552f0c6f3c1b58df7a5e828541aa46b94949f7ea09db8"
+    },
+    {
+      "path": "tests/server/display-profile.test.ts",
+      "bytes": 2021,
+      "sha256": "b0468aaf3d84d2038e2583e1e89954b5a7dda70d52ac1c241397652da89cd854"
+    },
+    {
+      "path": "tests/server/economy.test.ts",
+      "bytes": 22010,
+      "sha256": "2bd9269940eb2341baee4abc5736fc722b9d9931324e142378e51a23e4390c34"
+    },
+    {
+      "path": "tests/server/game-config.test.ts",
+      "bytes": 2024,
+      "sha256": "aefbff8c0a9311dfc803ea9b4b1bab0147bec82a5476f0a94aa9483ceeebce20"
+    },
+    {
+      "path": "tests/server/guest-session.test.ts",
+      "bytes": 4441,
+      "sha256": "a4195a472d6d50b5d6a5bd03a7c2f3fc7872b9d9f3d8e3ef68980def9bd35110"
+    },
+    {
+      "path": "tests/server/helpers.ts",
+      "bytes": 3218,
+      "sha256": "95b4c7580667e3eaad99f94ab5eeb38ebcdd544083c6ad4273cfae092dacd707"
+    },
+    {
+      "path": "tests/server/html-ui.test.ts",
+      "bytes": 3236,
+      "sha256": "ad07fc813105e0320f736e3ed532773be78e6007569a463bab263946dceb952c"
+    },
+    {
+      "path": "tests/server/http.test.ts",
+      "bytes": 11244,
+      "sha256": "f396b832b52866dacf3ea48775e01df7c0b59c14042f58bb7c0db5fb06f8535d"
+    },
+    {
+      "path": "tests/server/managed-auth.test.ts",
+      "bytes": 10674,
+      "sha256": "dd477f79cccf6d32682f0632421f2802075d89cf926c4671946a7c7641720145"
+    },
+    {
+      "path": "tests/server/managed-trust.test.ts",
+      "bytes": 1625,
+      "sha256": "2dbcac6043f2c0387d12443e76b33e7e2b47033c2b493a6d2c257ec517420407"
+    },
+    {
+      "path": "tests/server/multiseat.test.ts",
+      "bytes": 4003,
+      "sha256": "c3b45447f649bebbc458cbe747762c6be44949d5e664bb960998953f56d69c76"
+    },
+    {
+      "path": "tests/server/production-smoke.mjs",
+      "bytes": 3174,
+      "sha256": "8bab560e67cdf10b44c5c43d41210c8784eeebde701d5b1d285e1a717d3fed1d"
+    },
+    {
+      "path": "tests/server/room-capacity.test.ts",
+      "bytes": 6772,
+      "sha256": "2b6cfba1de556675c6e23615ee27ce80b32fd363b329001e6ebd7a806676c309"
+    },
+    {
+      "path": "tests/server/rules-bots.test.ts",
+      "bytes": 14917,
+      "sha256": "27badaf7c831c56622ae196418181ca90f5ec1d33c45ac635e0950c46504374a"
+    },
+    {
+      "path": "tests/server/runner.test.ts",
+      "bytes": 1886,
+      "sha256": "ba8ebae03fabc75affdd8dd9e806dcdf78764a5093dee07dc675aa92b9adb890"
+    },
+    {
+      "path": "tests/server/scene.test.ts",
+      "bytes": 6775,
+      "sha256": "af6081503af14e217e92ac342f0175ab786a8a09633f88ee4221bae467281b37"
+    },
+    {
+      "path": "tests/server/spectate.test.ts",
+      "bytes": 4720,
+      "sha256": "a3d28f961be673c05bc9ed65ae8f5b84d6013943048185fe0f0d90ab8e1c69fc"
+    },
+    {
+      "path": "tsconfig.json",
+      "bytes": 393,
+      "sha256": "5a9ce4de99d866b7da8b6555dbf07d08d58884ab9b7c1213a64a4fe539a00d3c"
+    }
+  ],
+  "entry": "dist/server/index.js",
+  "wasm": "dist/server/quickjs.wasm",
+  "migrations": "server/workers/migrations",
+  "binding": "DB",
+  "compatibilityFlags": [
+    "nodejs_compat"
+  ],
+  "compatibilityDate": "2026-07-30",
+  "build": "npm ci && npm run build:workers",
+  "scope": "backend_only_no_native_wallet_migration",
+  "baseSourceArchiveSha256": "a35774f8d8ae39ce03f8c30b57e436b845916d9902a7bd4239030a6084cbeb78",
+  "delta": [
+    {
+      "path": "scripts/workerd-roundtrips.mjs",
+      "baseSha256": null,
+      "sha256": "0db1f51a7bd642d1b9d2919b9550ec3d30929c202c84037cd058e247c47e351a"
+    },
+    {
+      "path": "server/workers/d1-store.ts",
+      "baseSha256": "e8a873c8b68a9b18657b2e5a44bd36c9a21afcac161e64765bce0bf96cd73219",
+      "sha256": "40b43fac0902d2ce7c33f7fbc812d80e33c1ec4d66278076f367ef5cde708019"
+    },
+    {
+      "path": "server/workers/index.ts",
+      "baseSha256": "e0f9ec0ee36775706cf0a9f4009eb14cacb3d59f13fa609d347709015951f09d",
+      "sha256": "a6c177a7e4cedc4eff74b0fdb822b9070acbcdca4757612eaaa0e5108e854ffe"
+    }
+  ]
+}
