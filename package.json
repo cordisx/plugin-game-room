@@ -25,11 +25,11 @@
     "test:online-wallet-fixture": "npm run build && node scripts/verify-online-wallet-smoke.mjs"
   },
   "dependencies": {
-    "@cordisx/protocol": "file:sdk/experimental/protocol-token-pool-r46.tgz",
+    "@cordisx/protocol": "file:./sdk/release/cordisx-protocol-0.1.0-beta.3.tgz",
     "@jitl/quickjs-wasmfile-release-sync": "0.32.0",
     "quickjs-emscripten": "0.32.0",
     "quickjs-emscripten-core": "0.32.0",
-    "@cordisx/economy": "file:sdk/experimental/cordisx-economy-token-pool-r46.tgz"
+    "@cordisx/economy": "file:./sdk/release/cordisx-economy-0.1.0.tgz"
   },
   "devDependencies": {
     "@cordisx/eslint-config": "github:cordisx/cordisxmono#32fa3b257cd5a7bfa0bb2d5f1012ca18665d1637",
@@ -43,7 +43,7 @@
     "miniflare": "4.20260730.0",
     "tsx": "4.23.13",
     "typescript": "6.0.3",
-    "cordisx": "file:sdk/experimental/cordisx-host-token-pool-r46.tgz"
+    "cordisx": "file:./sdk/release/cordisx-0.1.0-beta.3.tgz"
   },
   "overrides": {
     "@cordisx/protocol": "$@cordisx/protocol"
