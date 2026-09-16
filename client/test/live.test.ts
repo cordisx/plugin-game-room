@@ -128,18 +128,23 @@ test('real two-server HTTP: exact packages, two-player match, lost ACK, replay, 
       stake: 0,
       allowAgents: true,
     }, signal)
-    assert.deepEqual(transport.requests, ['POST /v1/rooms'])
+    // Immutable package prefetch may finish here; creation still sends exactly one mutation.
+    assert.deepEqual(transport.requests.filter(request => !request.startsWith('GET /v1/packages/')), ['POST /v1/rooms'])
     assert.equal(aliceSeat.canCloseRoom, true)
     const invitation = { sourceId: sources[0]!.id, roomId: aliceSeat.room.id }
     assert.equal(decodeInvitation(encodeInvitation(invitation, sources), sources).sourceId, sources[0]!.id)
     await bob.list(bobSource, signal)
     bobTransport.requests.length = 0
     let bobSeat = await bob.join(invitation, signal)
-    assert.deepEqual(bobTransport.requests, [`POST /v1/rooms/${encodeURIComponent(invitation.roomId)}/join`])
+    assert.deepEqual(bobTransport.requests.filter(request => !request.startsWith('GET /v1/packages/')), [
+      `POST /v1/rooms/${encodeURIComponent(invitation.roomId)}/join`,
+    ])
     bobTransport.requests.length = 0
     const resumed = await bob.join(invitation, signal)
     assert.equal(resumed.seatId, bobSeat.seatId)
-    assert.deepEqual(bobTransport.requests, [`POST /v1/rooms/${encodeURIComponent(invitation.roomId)}/join`])
+    assert.deepEqual(bobTransport.requests.filter(request => !request.startsWith('GET /v1/packages/')), [
+      `POST /v1/rooms/${encodeURIComponent(invitation.roomId)}/join`,
+    ])
     assert.equal(aliceSeat.room.game.packageHash, game.packageHash)
     assert.equal(aliceSeat.room.game.publisherId, bobSource.accountId)
     aliceSeat = await port.ready(aliceSeat, true, consentFor(aliceSeat.room), signal)

@@ -8,7 +8,11 @@ import type { AgentProvider, Json, SeatGrant } from '../index.ts';
 
 const serverRoot = process.env.GAME_ROOM_SERVER_SOURCE;
 const packagesRoot = process.env.GAME_ROOM_PACKAGES;
-for (const name of ['gomoku-1.0.0', 'texas-holdem-1.0.0']) {
+for (const gameId of ['gomoku', 'holdem']) {
+  const manifest = JSON.parse(
+    await readFile(new URL(`../../games/${gameId}/manifest.json`, import.meta.url), 'utf8'),
+  );
+  const name = `${manifest.id}-${manifest.version}`;
   test(
     `published ${name} plays through dispatch using seat legal actions (deterministic fixture, not AI)`,
     { skip: !serverRoot || !packagesRoot },
@@ -21,8 +25,8 @@ for (const name of ['gomoku-1.0.0', 'texas-holdem-1.0.0']) {
       const pkg = JSON.parse(await readFile(resolve(packagesRoot!, `${name}.json`), 'utf8'));
       assert.equal(
         pkg.ui.format,
-        'scene-v1',
-        'integration packages must use the current scene UI contract',
+        'html-v1',
+        'integration packages must use the current isolated HTML UI contract',
       );
       const published = await h.request('/v1/packages', h.alice.token, pkg);
       assert.equal(published.status, 200, JSON.stringify(published.body));
@@ -30,6 +34,7 @@ for (const name of ['gomoku-1.0.0', 'texas-holdem-1.0.0']) {
         packageHash: published.body.hash,
         mode: 'score',
         allowAgents: true,
+        config: { rounds: 1 },
         policy: pkg.manifest.settlementPolicies?.[0] ?? 'equal-winners-v1',
       });
       assert.equal(created.status, 200, JSON.stringify(created.body));
