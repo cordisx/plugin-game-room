@@ -250,8 +250,12 @@ export class HostHttpTransport implements HttpTransport {
       pending = (async () => {
         const deadline = Date.now() + 15000
         const resumed = await this.wait(client.resume(this.scope(source)), new AbortController().signal, deadline)
-        if (resumed.status !== 'accepted') throw new Error(`会话恢复失败：${resumed.code}`)
-        const previous = resumed.value ?? undefined
+        if (
+          resumed.status !== 'accepted'
+          && !(resumed.status === 'unavailable'
+            && ['credential-unavailable', 'connection-unavailable'].includes(resumed.code))
+        ) throw new Error(`会话恢复失败：${resumed.code}`)
+        const previous = resumed.status === 'accepted' ? resumed.value ?? undefined : undefined
         if (this.disposed || this.epoch(key) !== epoch || Date.now() >= deadline) throw new Error('授权已被替换')
         const result = await client.connectAccount({
           origin: normalizeSourceUrl(source.url),
