@@ -1,3 +1,4 @@
+import { ActionConfirmation } from './action-confirmation.js'
 import holdemPresentation from '../data/holdem-presentation.json' with { type: 'json' }
 import { useEffect, useRef, useState } from 'cordisx/react'
 import type {
@@ -9,7 +10,7 @@ import type {
 } from '@cordisx/protocol/isolated-game-ui/v1'
 import type { RestrictedContentV1 } from '@cordisx/protocol/restricted-content/v1'
 import { LobbyEmptyState } from './lobby-empty-state.js'
-import { Button, Dialog } from 'cordisx/ui'
+import { Button } from 'cordisx/ui'
 import type { DialogsV1 } from '@cordisx/protocol/dialogs/v1'
 import { GameSurface as SceneSurface } from './game-surface.js'
 import type { GameRoomPort } from '../data/port.js'
@@ -48,8 +49,6 @@ export function GameSurface(
   const [loaded, setLoaded] = useState<KnownHtmlUi | null>()
   const [error, setError] = useState('')
   const [exitApproval, setExitApproval] = useState(false)
-  const [working, setWorking] = useState(false)
-  const [exitError, setExitError] = useState('')
   useEffect(() => {
     if (props.exitRequest) setExitApproval(true)
   }, [props.exitRequest])
@@ -125,59 +124,27 @@ export function GameSurface(
           <Button onClick={props.recoverConnection}>重试连接</Button>
         </div>
       )}
-      {exitApproval && props.dialogs && (
-        <Dialog
+      {exitApproval && (
+        <ActionConfirmation
           service={props.dialogs}
-          open={exitApproval}
           kind='leave-game'
           title='返回大厅？'
-          size='small'
-          beforeClose={() => !working}
-          onOpenChange={open => {
-            setExitApproval(open)
-            if (!open) setExitError('')
+          description={props.seat.status === 'playing'
+            ? props.seat.room.game.playerExit
+              ? props.seat.room.game.id === 'texas-holdem'
+                ? '离桌后不再参与下一手，筹码会在本手结算后退回。'
+                : '离开将视为认输。'
+              : '对局会继续计时，你可以随时返回。'
+            : '你将离开当前房间。'}
+          cancelLabel='继续游戏'
+          confirmLabel='返回大厅'
+          close={() => setExitApproval(false)}
+          confirm={async signal => {
+            await leaveGameView(props.port, props.seat, signal)
+            props.exited()
           }}
-          footer={{
-            status: exitError || undefined,
-            secondaryActions: [{
-              id: 'stay',
-              label: '继续游戏',
-              disabled: working,
-              onAction: () => setExitApproval(false),
-            }],
-            primaryAction: {
-              id: 'leave',
-              label: '返回大厅',
-              pending: working,
-              closeOnSuccess: true,
-              onAction: async signal => {
-                setWorking(true)
-                setExitError('')
-                try {
-                  await leaveGameView(props.port, props.seat, signal)
-                  props.exited()
-                } catch {
-                  setExitError('暂时未能退出，请重试。')
-                  throw new Error('暂时未能退出，请重试。')
-                } finally {
-                  setWorking(false)
-                }
-              },
-            },
-          }}
-        >
-          <p>
-            {props.seat.status === 'playing'
-              ? props.seat.room.game.playerExit
-                ? props.seat.room.game.id === 'texas-holdem'
-                  ? '离桌后不再参与下一手，筹码会在本手结算后退回。'
-                  : '离开将视为认输。'
-                : '对局会继续计时，你可以随时返回。'
-              : '你将离开当前房间。'}
-          </p>
-        </Dialog>
+        />
       )}
-      {exitApproval && !props.dialogs && <p role='status'>当前界面暂时无法打开确认弹窗，请重新加载插件。</p>}
     </div>
   )
 }

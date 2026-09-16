@@ -70,15 +70,6 @@
   padding-block: 16px;
   color: var(--gr-muted);
 }
-.gr-panel-confirm {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 12px;
-  border: 1px solid var(--gr-border);
-  border-radius: 10px;
-  overflow-wrap: anywhere;
-}
 .gr-panel-details {
   position: relative;
   flex: none;

@@ -1,30 +1,34 @@
+import { ActionConfirmation } from './action-confirmation.js'
+import type { DialogsV1 } from '@cordisx/protocol/dialogs/v1'
 import { filterTasks } from '../data/task-filter.js'
 import gomoku from '../assets/rooms/gomoku.webp'
 import holdem from '../assets/rooms/holdem.webp'
 import '../styles/task-directory.css'
-import { useEffect, useRef, useState } from 'cordisx/react'
+import { useEffect, useState } from 'cordisx/react'
 import { AgentAvatar, Button, SearchField } from 'cordisx/ui'
 import type { Agent, Dispatch, Room, Source } from '../data/model.js'
 import type { PanelResource } from '../data/use-panel-resource.js'
 import { PanelState, RecordDetails } from './panel-state.js'
 import { Symbol } from './icons.js'
 const labels = { running: '运行中', completed: '已完成', withdrawn: '已撤回', failed: '失败' }
-export function DispatchPanel({ resource, agents, rooms, sources, withdraw, busy, configure, openRoom, canSpectate }: {
-  resource: PanelResource<Dispatch>
-  agents: Agent[]
-  rooms: Room[]
-  sources: readonly Source[]
-  withdraw: (run: Dispatch) => void
-  busy: boolean
-  openRoom: (room: Room, watch: boolean) => void
-  canSpectate: boolean
-  configure: () => void
-}) {
+export function DispatchPanel(
+  { resource, agents, rooms, sources, withdraw, busy, configure, openRoom, canSpectate, dialogs }: {
+    resource: PanelResource<Dispatch>
+    agents: Agent[]
+    rooms: Room[]
+    sources: readonly Source[]
+    dialogs?: DialogsV1
+    withdraw: (run: Dispatch, signal: AbortSignal) => Promise<void>
+    busy: boolean
+    openRoom: (room: Room, watch: boolean) => void
+    canSpectate: boolean
+    configure: () => void
+  },
+) {
   const [search, setSearch] = useState('')
   const [period, setPeriod] = useState<'active' | 'history'>('active')
   const visible = filterTasks(resource.data, agents, rooms, search, period)
   const [confirm, setConfirm] = useState<string>()
-  const submitted = useRef(false)
   useEffect(() => {
     if (!resource.data.some(run => run.id === confirm && run.state === 'running')) setConfirm(undefined)
   }, [resource.data, confirm])
@@ -98,7 +102,6 @@ export function DispatchPanel({ resource, agents, rooms, sources, withdraw, busy
                         aria-label={`撤回 ${name}`}
                         title={`撤回 ${name}`}
                         onClick={() => {
-                          submitted.current = false
                           setConfirm(run.id)
                         }}
                       >
@@ -108,33 +111,17 @@ export function DispatchPanel({ resource, agents, rooms, sources, withdraw, busy
                   </div>
                 </div>
                 {confirm === run.id && run.state === 'running' && (
-                  <div className='gr-panel-confirm' role='group' aria-label='确认撤回'>
-                    <strong>撤回 {name}？</strong>
-                    <span className='gr-muted'>停止此派遣任务。已有对局结果与投入按原条款处理。</span>
-                    <div className='gr-action-row'>
-                      <Button
-                        disabled={busy}
-                        onClick={() =>
-                          setConfirm(undefined)}
-                      >
-                        取消
-                      </Button>
-                      <Button
-                        variant='primary'
-                        disabled={busy}
-                        onClick={() => {
-                          if (submitted.current || busy) {
-                            return
-                          }
-                          submitted.current = true
-                          setConfirm(undefined)
-                          withdraw(run)
-                        }}
-                      >
-                        确认撤回
-                      </Button>
-                    </div>
-                  </div>
+                  <ActionConfirmation
+                    service={dialogs}
+                    kind='withdraw-agent'
+                    title={`撤回 ${name}？`}
+                    description='此 Agent 将停止参与。已有对局结果和投入仍按游戏规则结算。'
+                    confirmLabel='撤回 Agent'
+                    danger
+                    disabled={busy}
+                    close={() => setConfirm(undefined)}
+                    confirm={signal => withdraw(run, signal)}
+                  />
                 )}
               </div>
             )

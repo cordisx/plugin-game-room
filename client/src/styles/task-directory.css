@@ -114,8 +114,3 @@
     width: 50%;
   }
 }
-
-.gr-task-card .gr-panel-confirm {
-  margin: 0 12px 12px;
-  background: var(--gr-surface);
-}

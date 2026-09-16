@@ -1,3 +1,5 @@
+import { ActionConfirmation } from './action-confirmation.js'
+import type { DialogsV1 } from '@cordisx/protocol/dialogs/v1'
 import { type ReactNode, useEffect, useRef, useState } from 'cordisx/react'
 import { Button } from 'cordisx/ui'
 import { Symbol } from './icons.js'
@@ -8,14 +10,15 @@ import { RoomSummary } from './room-summary.js'
 import '../styles/rules-bots.css'
 import '../styles/prepare-drawer.css'
 
-export function PreparePanel({ seat, detailsOpen, closeDetails, busy, sources, bots, surface, closeRoom }: {
+export function PreparePanel({ seat, detailsOpen, closeDetails, busy, sources, bots, surface, closeRoom, dialogs }: {
   seat: Seat
   detailsOpen: boolean
   closeDetails: () => void
   busy: boolean
   sources: readonly Source[]
   bots?: (change: { add: true; seatIndex: number } | { removeSeatId: string }) => void
-  closeRoom?: () => void
+  dialogs?: DialogsV1
+  closeRoom?: (signal: AbortSignal) => Promise<void>
   surface: ReactNode
 }) {
   const [confirmClose, setConfirmClose] = useState(false)
@@ -43,22 +46,22 @@ export function PreparePanel({ seat, detailsOpen, closeDetails, busy, sources, b
         <RoomSummary room={seat.room} sources={sources} busy={busy} bots={bots} />
         {seat.canCloseRoom && closeRoom && (
           <div className='gr-room-owner-actions'>
-            {confirmClose
-              ? (
-                <div className='gr-room-close-confirm' role='group' aria-label='确认关闭房间' aria-busy={busy}>
-                  <span>关闭后所有玩家将退出</span>
-                  <Button variant='ghost' disabled={busy} onClick={() => setConfirmClose(false)}>取消</Button>
-                  <Button className='gr-room-close-submit' variant='ghost' disabled={busy} onClick={closeRoom}>
-                    {busy ? '关闭中…' : '关闭房间'}
-                  </Button>
-                </div>
-              )
-              : (
-                <Button variant='ghost' disabled={busy} onClick={() => setConfirmClose(true)}>
-                  <Symbol name='close' size={16} />
-                  关闭房间
-                </Button>
-              )}
+            <Button variant='ghost' disabled={busy} onClick={() => setConfirmClose(true)}>
+              <Symbol name='close' size={16} />关闭房间
+            </Button>
+            {confirmClose && (
+              <ActionConfirmation
+                service={dialogs}
+                kind='close-room'
+                title='关闭房间？'
+                description='关闭后，所有玩家都会退出房间。'
+                confirmLabel='关闭房间'
+                danger
+                disabled={busy}
+                close={() => setConfirmClose(false)}
+                confirm={closeRoom}
+              />
+            )}
           </div>
         )}
       </RoomDetailsPane>

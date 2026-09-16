@@ -342,6 +342,7 @@ function EnabledGameRoomPage({ page, runtime }: { page: string; runtime: ClientR
       )}
       {page === 'prepare' && runtime.seat && (
         <PreparePanel
+          dialogs={runtime.dialogs}
           surface={
             <GameSurface
               dialogs={runtime.dialogs}
@@ -375,12 +376,11 @@ function EnabledGameRoomPage({ page, runtime }: { page: string; runtime: ClientR
             />
           }
           closeRoom={port.closeRoom
-            ? () =>
-              run(async signal => {
-                await port.closeRoom!(runtime.seat!, signal)
-                runtime.seat = undefined
-                navigate('lobby')
-              })
+            ? async signal => {
+              await port.closeRoom!(runtime.seat!, signal)
+              runtime.seat = undefined
+              navigate('lobby')
+            }
             : undefined}
           seat={runtime.seat}
           detailsOpen={detailsOpen}
@@ -461,6 +461,7 @@ function EnabledGameRoomPage({ page, runtime }: { page: string; runtime: ClientR
       )}
       {page === 'dispatch' && (
         <DispatchPanel
+          dialogs={runtime.dialogs}
           resource={dispatchResource}
           canSpectate={!!port.spectate && !!(runtime.restrictedContent || runtime.isolatedGameUi)}
           openRoom={(room, watch) => {
@@ -472,10 +473,10 @@ function EnabledGameRoomPage({ page, runtime }: { page: string; runtime: ClientR
           sources={port.sources}
           busy={busy}
           configure={() => navigate('configuration')}
-          withdraw={dispatch =>
-            run(async signal => {
-              await port.withdraw(dispatch, signal)
-            })}
+          withdraw={async (dispatch, signal) => {
+            await port.withdraw(dispatch, signal)
+            setEpoch(epoch => epoch + 1)
+          }}
         />
       )}
       {page === 'personal' && (
