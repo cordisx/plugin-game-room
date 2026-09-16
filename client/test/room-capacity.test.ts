@@ -42,6 +42,22 @@ test('live catalog retains player bounds and creation sends selected total capac
       assert.equal(sent.maxPlayers, expected)
       assert.equal(sent.packageHash, 'exact-hash')
     }
+    const order: string[] = []
+    port.connectEconomy = async () => {
+      order.push('authorize')
+    }
+    port.linkEconomy = async () => {
+      order.push('bind')
+    }
+    await assert.rejects(port.create('server', { ...draft, mode: 'token', stake: 100 }, signal), /request recorded/)
+    assert.deepEqual(order, ['authorize', 'bind'])
+    assert.equal(sent.mode, 'token')
+    sent = {}
+    port.linkEconomy = async () => {
+      throw Error('binding denied')
+    }
+    await assert.rejects(port.create('server', { ...draft, mode: 'token', stake: 100 }, signal), /binding denied/)
+    assert.deepEqual(sent, {})
   } finally {
     port.dispose()
   }
