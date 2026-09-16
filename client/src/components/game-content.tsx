@@ -39,6 +39,8 @@ export function GameSurface(
     syncRevision?: number
     connectionError?: string
     recoverConnection?: () => void
+    retryConnection?: () => void
+    reconnecting?: boolean
     funding?: (signal: AbortSignal) => Promise<void>
     changed: (seat: Seat) => void
     exited: () => void
@@ -119,9 +121,11 @@ export function GameSurface(
     <div className='gr-game-surface'>
       {content}
       {props.connectionError && (
-        <div className='gr-game-recovery' role='status'>
-          <p>连接自动恢复失败：{props.connectionError}</p>
-          <Button onClick={props.recoverConnection}>重试连接</Button>
+        <div className='gr-connection-notice' title={props.connectionError} role='status' aria-live='polite'>
+          <span>{props.reconnecting ? '正在重新连接…' : '连接已中断'}</span>
+          <Button disabled={props.reconnecting} onClick={props.retryConnection ?? props.recoverConnection}>
+            重新连接
+          </Button>
         </div>
       )}
       {exitApproval && (

@@ -107,3 +107,28 @@
   display: flex;
   background: var(--gr-surface);
 }
+
+.gr-connection-notice {
+  position: absolute;
+  z-index: 2;
+  inset-block-start: 12px;
+  inset-inline-start: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-sizing: border-box;
+  max-width: calc(100% - 24px);
+  padding: 6px 8px 6px 14px;
+  border: 1px solid var(--gr-border);
+  border-radius: 12px;
+  background: var(--gr-surface);
+  color: var(--gr-muted);
+  font-size: 12px;
+}
+.gr-connection-notice > span {
+  min-width: 0;
+}
+.gr-connection-notice > button {
+  flex-shrink: 0;
+}

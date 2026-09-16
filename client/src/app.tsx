@@ -1,3 +1,4 @@
+import { reconnectSeat } from './data/reconnect-seat.js'
 import type { DialogsV1 } from '@cordisx/protocol/dialogs/v1'
 import type { CreatePreferences } from './data/create-preferences.js'
 import { walletBalanceResource } from './data/wallet-presentation.js'
@@ -113,6 +114,12 @@ function EnabledGameRoomPage({ page, runtime }: { page: string; runtime: ClientR
   const [exitRequest, setExitRequest] = useState(0)
   const [syncRevision, setSyncRevision] = useState(0)
   const [connectionError, setConnectionError] = useState('')
+  const [reconnecting, setReconnecting] = useState(false)
+  const reconnectLock = useRef(false)
+  const reconnectAbort = useRef<AbortController | undefined>(undefined)
+  useEffect(() => () => {
+    reconnectAbort.current?.abort()
+  }, [page])
   const [refreshAttempt, setRefreshAttempt] = useState(0)
   const uncertainConnection = useRef(false)
   const poll = ['lobby', 'agents', 'agent', 'dispatch'].includes(page)
@@ -350,6 +357,31 @@ function EnabledGameRoomPage({ page, runtime }: { page: string; runtime: ClientR
               exitRequest={exitRequest}
               syncRevision={syncRevision}
               connectionError={connectionError}
+              reconnecting={reconnecting}
+              retryConnection={() => {
+                if (reconnectLock.current || !runtime.seat || !port.refreshSeat) return
+                reconnectLock.current = true
+                setReconnecting(true)
+                const seat = runtime.seat
+                const abort = new AbortController()
+                reconnectAbort.current = abort
+                void (async () => {
+                  const next = await reconnectSeat(port, seat, abort.signal)
+                  abort.signal.throwIfAborted()
+                  if (runtime.seat?.seatId !== seat.seatId || runtime.seat.room.id !== seat.room.id) return
+                  runtime.seat = next
+                  setConnectionError('')
+                  setSyncRevision(value => value + 1)
+                  setRefreshAttempt(value => value + 1)
+                })().catch(error => {
+                  if (!abort.signal.aborted) {
+                    setConnectionError(error instanceof Error ? error.message : '暂时无法连接，请稍后重试。')
+                  }
+                }).finally(() => {
+                  reconnectLock.current = false
+                  setReconnecting(false)
+                })
+              }}
               recoverConnection={() => {
                 uncertainConnection.current = true
                 setRefreshAttempt(value => value + 1)
