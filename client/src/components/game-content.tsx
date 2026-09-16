@@ -119,13 +119,16 @@ export function GameSurface(
 
   return (
     <div className='gr-game-surface'>
-      {content}
+      <div className='gr-game-stage' inert={!!props.connectionError}>{content}</div>
       {props.connectionError && (
-        <div className='gr-connection-notice' title={props.connectionError} role='status' aria-live='polite'>
-          <span>{props.reconnecting ? '正在重新连接…' : '连接已中断'}</span>
-          <Button disabled={props.reconnecting} onClick={props.retryConnection ?? props.recoverConnection}>
-            重新连接
-          </Button>
+        <div className='gr-connection-overlay'>
+          <div className='gr-connection-notice' role='status' aria-live='polite'>
+            <strong>{props.reconnecting ? '正在重新连接…' : '连接已中断'}</strong>
+            <p>连接恢复后即可继续游戏</p>
+            <Button disabled={props.reconnecting} onClick={props.retryConnection ?? props.recoverConnection}>
+              {props.reconnecting ? '连接中…' : '重新连接'}
+            </Button>
+          </div>
         </div>
       )}
       {exitApproval && (

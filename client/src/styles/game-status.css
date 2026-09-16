@@ -108,27 +108,41 @@
   background: var(--gr-surface);
 }
 
-.gr-connection-notice {
-  position: absolute;
-  z-index: 2;
-  inset-block-start: 12px;
-  inset-inline-start: 50%;
-  transform: translateX(-50%);
+/* Keep the game mounted and its layout stable while connection recovery blocks input. */
+.gr-game-stage {
+  position: relative;
   display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+.gr-connection-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: color-mix(in srgb, var(--gr-surface) 82%, transparent);
+  backdrop-filter: blur(4px);
+}
+.gr-connection-notice {
+  display: flex;
+  flex-direction: column;
   align-items: center;
   gap: 12px;
-  box-sizing: border-box;
-  max-width: calc(100% - 24px);
-  padding: 6px 8px 6px 14px;
-  border: 1px solid var(--gr-border);
-  border-radius: 12px;
-  background: var(--gr-surface);
-  color: var(--gr-muted);
-  font-size: 12px;
+  max-width: 100%;
+  text-align: center;
 }
-.gr-connection-notice > span {
-  min-width: 0;
+.gr-connection-notice > strong {
+  font-size: 18px;
+}
+.gr-connection-notice > p {
+  margin: 0;
+  color: var(--gr-muted);
+  font-size: 13px;
 }
 .gr-connection-notice > button {
-  flex-shrink: 0;
+  margin-top: 8px;
 }
