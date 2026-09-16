@@ -67,6 +67,7 @@ function fixture(previous: HttpConnectionV1 | null = null) {
   }
   const transport = new HostHttpTransport(client)
   return {
+    client,
     transport,
     holdRetain: (wait: Promise<void>) => {
       retainWait = wait
@@ -112,6 +113,17 @@ test('managed transport uses exact source trust and its own resumed guest grant,
     displayName: '朋友甲',
     previousConnection: old,
   }])
+  f.finish()
+  await pending
+  assert.equal(f.retained(), 1)
+})
+test('missing saved credential reconnects with the current Codex account without a stale grant', async t => {
+  const f = fixture(grant('expired'))
+  t.after(() => f.transport.dispose())
+  f.client.resume = async () => ({ status: 'unavailable', code: 'credential-unavailable' })
+  const pending = f.transport.connectAccount(source, new AbortController().signal)
+  await f.started()
+  assert.equal(f.inputs[0].previousConnection, undefined)
   f.finish()
   await pending
   assert.equal(f.retained(), 1)
