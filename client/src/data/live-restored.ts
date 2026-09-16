@@ -529,6 +529,7 @@ export class LivePort implements GameRoomPort {
     void this.gameUiPackage(sourceId, draft.packageHash, signal).catch(() => {})
     const manifest = object(pkg.manifest)
     const policies = Array.isArray(manifest.settlementPolicies) ? manifest.settlementPolicies : ['equal-winners-v1']
+    if (draft.mode === 'token') await this.prepareTokenWallet(sourceId, signal)
     const view = object(
       await this.request(sourceId, '/v1/rooms', signal, {
         packageHash: string(pkg.hash),
@@ -650,6 +651,7 @@ export class LivePort implements GameRoomPort {
         || consent.review !== this.room(view, this.source(seat.room.sourceId)).review
       )
     ) throw new Error('游戏包已变更，请重新确认')
+    if (ready && view.mode === 'token') await this.prepareTokenWallet(seat.room.sourceId, signal)
     if (ready && !seat.seatId) {
       await this.request(seat.room.sourceId, `/v1/rooms/${encodeURIComponent(seat.room.id)}/join`, signal, {
         consent: {
@@ -820,6 +822,12 @@ export class LivePort implements GameRoomPort {
   async economyLinked(sourceId: string, signal: AbortSignal) {
     if (!this.isConnected(sourceId) || !this.economy.hasService(sourceId)) return false
     return this.spend.linked(sourceId, signal)
+  }
+  private async prepareTokenWallet(sourceId: string, signal: AbortSignal) {
+    // Explicit Token participation may request approval; catalog discovery never does.
+    if (!this.spend.available(sourceId)) await this.connectEconomy(sourceId, signal)
+    await this.linkEconomy(sourceId, signal)
+    signal.throwIfAborted()
   }
   async connectEconomy(sourceId: string, signal: AbortSignal) {
     await this.refreshWallet(signal)
