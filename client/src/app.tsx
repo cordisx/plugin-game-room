@@ -1,3 +1,4 @@
+import type { DialogsV1 } from '@cordisx/protocol/dialogs/v1'
 import type { CreatePreferences } from './data/create-preferences.js'
 import { walletBalanceResource } from './data/wallet-presentation.js'
 import { useSourceStates } from './data/use-source-states.js'
@@ -48,6 +49,7 @@ export type ClientRuntime = {
   updateRoomHeader?: (name: string) => void
   subscribeWallet?: (changed: () => void) => () => void
   subscribeCurrentUser?: (changed: () => void) => () => void
+  dialogs?: DialogsV1
   isolatedGameUi?: IsolatedGameUiV1
   restrictedContent?: RestrictedContentV1
   navigate: (page: string) => void
@@ -342,6 +344,7 @@ function EnabledGameRoomPage({ page, runtime }: { page: string; runtime: ClientR
         <PreparePanel
           surface={
             <GameSurface
+              dialogs={runtime.dialogs}
               htmlService={runtime.isolatedGameUi}
               exitRequest={exitRequest}
               syncRevision={syncRevision}

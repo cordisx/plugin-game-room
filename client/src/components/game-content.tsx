@@ -9,7 +9,8 @@ import type {
 } from '@cordisx/protocol/isolated-game-ui/v1'
 import type { RestrictedContentV1 } from '@cordisx/protocol/restricted-content/v1'
 import { LobbyEmptyState } from './lobby-empty-state.js'
-import { Button } from 'cordisx/ui'
+import { Button, Dialog } from 'cordisx/ui'
+import type { DialogsV1 } from '@cordisx/protocol/dialogs/v1'
 import { GameSurface as SceneSurface } from './game-surface.js'
 import type { GameRoomPort } from '../data/port.js'
 import { consentFor, type Seat } from '../data/model.js'
@@ -32,6 +33,7 @@ export function GameSurface(
     port: GameRoomPort
     service?: RestrictedContentV1
     htmlService?: IsolatedGameUiV1
+    dialogs?: DialogsV1
     exitRequest?: number
     syncRevision?: number
     connectionError?: string
@@ -123,26 +125,59 @@ export function GameSurface(
           <Button onClick={props.recoverConnection}>重试连接</Button>
         </div>
       )}
-      {exitApproval && (
-        <div className='gr-game-recovery' role='dialog' aria-label='确认退出'>
+      {exitApproval && props.dialogs && (
+        <Dialog
+          service={props.dialogs}
+          open={exitApproval}
+          kind='leave-game'
+          title='返回大厅？'
+          size='small'
+          beforeClose={() => !working}
+          onOpenChange={open => {
+            setExitApproval(open)
+            if (!open) setExitError('')
+          }}
+          footer={{
+            status: exitError || undefined,
+            secondaryActions: [{
+              id: 'stay',
+              label: '继续游戏',
+              disabled: working,
+              onAction: () => setExitApproval(false),
+            }],
+            primaryAction: {
+              id: 'leave',
+              label: '返回大厅',
+              pending: working,
+              closeOnSuccess: true,
+              onAction: async signal => {
+                setWorking(true)
+                setExitError('')
+                try {
+                  await leaveGameView(props.port, props.seat, signal)
+                  props.exited()
+                } catch {
+                  setExitError('暂时未能退出，请重试。')
+                  throw new Error('暂时未能退出，请重试。')
+                } finally {
+                  setWorking(false)
+                }
+              },
+            },
+          }}
+        >
           <p>
-            {props.seat.status === 'playing' ? '返回大厅？对局会继续计时，可随时返回。' : '确认离开房间，返回大厅？'}
+            {props.seat.status === 'playing'
+              ? props.seat.room.game.playerExit
+                ? props.seat.room.game.id === 'texas-holdem'
+                  ? '离桌后不再参与下一手，筹码会在本手结算后退回。'
+                  : '离开将视为认输。'
+                : '对局会继续计时，你可以随时返回。'
+              : '你将离开当前房间。'}
           </p>
-          {exitError && <p role='status'>{exitError}</p>}
-          <Button onClick={() => setExitApproval(false)}>取消</Button>
-          <Button
-            disabled={working}
-            onClick={() => {
-              setWorking(true)
-              setExitError('')
-              void leaveGameView(props.port, props.seat, new AbortController().signal).then(props.exited)
-                .catch(() => setExitError('暂时未能退出，请重试。')).finally(() => setWorking(false))
-            }}
-          >
-            确认
-          </Button>
-        </div>
+        </Dialog>
       )}
+      {exitApproval && !props.dialogs && <p role='status'>当前界面暂时无法打开确认弹窗，请重新加载插件。</p>}
     </div>
   )
 }

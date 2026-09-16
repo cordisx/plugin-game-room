@@ -1,3 +1,4 @@
+import type { DialogsV1 } from '@cordisx/protocol/dialogs/v1'
 import { RoomRecovery } from './data/room-recovery.js'
 import { DEFAULT_OFFICIAL_SOURCE_ORIGINS } from './data/create-source-selection.js'
 import { CreatePreferences } from './data/create-preferences.js'
@@ -187,6 +188,12 @@ export function apply(
       })
     })
   }
+  ctx.inject(['dialogs'], child => {
+    runtime.dialogs = (child as Context & { dialogs: DialogsV1 }).dialogs
+    child.effect(() => () => {
+      runtime.dialogs = undefined
+    })
+  })
   ctx.inject(['isolatedGameUi'], child => {
     runtime.isolatedGameUi = (child as Context & { isolatedGameUi: IsolatedGameUiV1 }).isolatedGameUi
     child.effect(() => () => {
