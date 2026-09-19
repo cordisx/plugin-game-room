@@ -38,6 +38,7 @@ import type { Source } from './data/model.js'
 import { SamplePort } from './data/sample.js'
 import type { ClientRuntime } from './app.js'
 export const name = 'game-room'
+export { icon } from './brand-icon.js'
 export const manifest = {
   $schema: CORDISX_PLUGIN_MANIFEST_SCHEMA_V11,
   schemaVersion: 11,
