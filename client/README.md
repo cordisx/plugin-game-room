@@ -15,14 +15,13 @@ npm run check
 npm run dev:dry-run
 ```
 
-The preparation script builds exact experimental Host
-`58a9e54b50d41a1ed58aaca555f73a4352822948` and Protocol
-`465c444c65eec1be8e337b94c2cf658ed536f49c` into ignored `.cache/`. It records artifact
-provenance there and checks both archive hashes. It delegates to the Host’s
-maintained source recipe before any dependency install; that recipe builds and
-verifies bundled Channel/Proxy dependencies without recursive Git preparation.
-Each run uses a new disposable output directory. The package dependency uses a
-relative tarball path; no developer machine path or SDK binary is committed. The owning sibling `../agents` must be present; `.npmrc` materializes
+The preparation script verifies the committed owner-built SDK archives against
+`../sdk/release/sdk-evidence.json`: Host
+`6d241082ac18c59de2983bdbb32c7c79e4a98168` and Protocol
+`55621cd211d48783eb0f729f2925b54bd621a810`. These archives identify the supported
+source baseline; the shared `0.1.0-beta.3` version alone does not establish
+compatibility with other Host builds. The package dependencies use relative
+tarball paths. The owning sibling `../agents` must be present; `.npmrc` materializes
 it with its declared dependencies for independent installation.
 
 `cordisx/vite` retains the complete indexed ESM/CSS graph in `dist/runtime`.
@@ -44,3 +43,17 @@ runs only in the server runner; the client publishes validated declarative scene
 through public `restrictedContent`.
 
 [Client implementation and evidence](../docs/client.md) · [Architecture](../docs/architecture.md)
+
+## Plugin brand icon
+
+`assets/icon.png` is the owned 256×256 brand asset. The public plugin-module
+`icon` export embeds its PNG bytes as `CordisXPluginBrandIcon`; Host renders that
+metadata in the plugin list. Runtime manifest permissions and semantic menu
+icons remain separate. Regenerate the metadata with
+`node scripts/generate-brand-icon.mjs` when replacing the PNG. Tests check the
+bytes, and the artifact check verifies that the production entry retains them.
+
+This private client is distributed from repository source, with development
+entry `src/client.tsx` and built entry `dist/runtime/module.js`. Its package
+allowlist includes the original PNG and the built runtime. There is no client
+npm publication or release-tag step for a brand-asset update.

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
+import { execFileSync } from 'node:child_process'
 import { readdirSync, readFileSync } from 'node:fs'
 const root = new URL('../dist/runtime/', import.meta.url)
 const artifact = JSON.parse(readFileSync(new URL('artifact.json', root), 'utf8'))
@@ -8,6 +9,11 @@ assert.equal(artifact.format, 'browser-esm-graph')
 assert.deepEqual(artifact.initialStyles, [])
 const indexed = new Map(artifact.files.map(file => [file.path, file]))
 assert(indexed.has(artifact.entry))
+const brandPng = readFileSync(new URL('../assets/icon.png', import.meta.url))
+assert(
+  readFileSync(new URL(artifact.entry, root), 'utf8').includes(brandPng.toString('base64')),
+  'production entry must embed the owned brand PNG for Host plugin metadata',
+)
 let lazy = 0
 let styles = 0
 for (const file of artifact.files) {
@@ -41,4 +47,13 @@ function verifyResource(relative) {
   }
 }
 verifyResource('skills')
+const [packed] = JSON.parse(execFileSync('npm', ['pack', '--dry-run', '--ignore-scripts', '--json'], {
+  cwd: new URL('../', import.meta.url),
+  encoding: 'utf8',
+}))
+const packageFiles = new Set(packed.files.map(file => file.path))
+assert(packageFiles.has('assets/icon.png'), 'package must retain the original brand PNG')
+for (const file of artifact.files) {
+  assert(packageFiles.has(`dist/runtime/${file.path.slice(2)}`), `unpacked runtime file ${file.path}`)
+}
 console.info(`Verified ${indexed.size} indexed runtime files and complete lazy CSS graph.`)
